@@ -56,12 +56,14 @@ class Panasonic::Projector::PjLink
 		self[:stable_state] = false
 		if is_affirmative?(state)
 			self[:power_target] = On
-			do_send(:POWR, 1, {:timeout => 40000, :name => :power})
-			logger.debug "-- epson Proj, requested to power on"
+			do_send(:POWR, 1, {:retries => 10, :name => :power})
+			logger.debug "-- panasonic Proj, requested to power on"
+			do_send('POWR', '?', :name => :power_state)
 		else
 			self[:power_target] = Off
-			do_send(:POWR, 0, {:timeout => 10000, :name => :power})
-			logger.debug "-- epson Proj, requested to power off"
+			do_send(:POWR, 0, {:retries => 10, :name => :power})
+			logger.debug "-- panasonic Proj, requested to power off"
+			do_send('POWR', '?', :name => :power_state)
 		end
 	end
 
@@ -89,7 +91,8 @@ class Panasonic::Projector::PjLink
 		input = input.to_sym
 		return unless INPUTS.has_key? input
 		
-		do_send(:INPT, INPUTS[input], {:name => :inpt_source})
+		do_send(:INPT, INPUTS[input], {:retries => 10, :name => :inpt_source})
+		do_send('INPT', '?', {:name => :inpt_query})
 		logger.debug "-- panasonic LCD, requested to switch to: #{input}"
 		
 		self[:input] = input	# for a responsive UI
@@ -254,9 +257,9 @@ class Panasonic::Projector::PjLink
 		end
 
 		if @mode == '0'
-			send("00#{pj}\x0D", options)
+			send("00#{pj}\r", options)
 		else
-			send("#{@pass}00#{pj}\x0D", options)
+			send("#{@pass}00#{pj}\r", options)
 		end
 	end
 end
