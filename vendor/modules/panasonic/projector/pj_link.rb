@@ -89,7 +89,7 @@ class Panasonic::Projector::PjLink
 		input = input.to_sym
 		return unless INPUTS.has_key? input
 		
-		do_send(:INPT, INPUTS[input], {:name => :inpt_source}
+		do_send(:INPT, INPUTS[input], {:name => :inpt_source})
 		logger.debug "-- panasonic LCD, requested to switch to: #{input}"
 		
 		self[:input] = input	# for a responsive UI
