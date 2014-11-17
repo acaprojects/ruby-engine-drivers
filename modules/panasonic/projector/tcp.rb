@@ -146,11 +146,11 @@ class Panasonic::Projector::Tcp
 			end
 
 		else
-			data = data[2..-1].split(':')
+			data = data[2..-1]
 
 			# Error Response
-			if data[0][0] == 'E'
-				error = data[0].to_sym
+			if data[0] == 'E'
+				error = data.to_sym
 				self[:last_error] = ERRORS[error]
 
 				# Check for busy or timeout
@@ -163,8 +163,9 @@ class Panasonic::Projector::Tcp
 				end
 			end
 
-			cmd = COMMANDS[data[0].to_sym]
-			val = data[1]
+                        resp = data.split(':')
+			cmd = COMMANDS[resp[0].to_sym]
+			val = resp[1]
 				
 			case cmd
 			when :power_on
@@ -181,7 +182,7 @@ class Panasonic::Projector::Tcp
 				self[:mute] = val.to_i == 1
 			else
 				if command && command[:name] == :lamp
-					ival = cmd.to_i
+					ival = resp[0].to_i
 					self[:power] = ival == 1 || ival == 2
 					self[:warming] = ival == 1
 					self[:cooling] = ival == 3
