@@ -132,7 +132,7 @@ class Panasonic::Projector::PjLink
 			@mode = data[1]
 			if @mode == '1'
 				@pass = "#{setting(:username) || 'admin1'}:#{setting(:password) || 'panasonic'}:#{data.strip.split(/\s+/)[-1]}"
-				@pass = Digest::MD5.hexdigest(@hash)
+				@pass = Digest::MD5.hexdigest(@pass)
 			end
 
 			:success
