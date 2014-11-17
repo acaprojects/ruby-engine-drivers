@@ -70,7 +70,7 @@ class Panasonic::Projector::Tcp
 			do_send(:lamp)
 		else
 			self[:power_target] = Off
-			do_send(:Ppower_off, {:retries => 10, :name => :power})
+			do_send(:power_off, {:retries => 10, :name => :power})
 			logger.debug "-- panasonic Proj, requested to power off"
 			do_send(:lamp)
 		end
