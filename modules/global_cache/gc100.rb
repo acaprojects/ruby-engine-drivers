@@ -80,7 +80,7 @@ class GlobalCache::Gc100
     
     
     
-    def received(data, command)
+    def received(data, resolve, command)
         logger.debug "GlobalCache sent #{data}"
         data = data.split(',')
         
