@@ -149,7 +149,7 @@ class Panasonic::Projector::Tcp
 			data = data[2..-1].split(':')
 
 			# Error Response
-			if data[0] == 'E'
+			if data[0][0] == 'E'
 				error = data[0].to_sym
 				self[:last_error] = ERRORS[error]
 
@@ -163,8 +163,8 @@ class Panasonic::Projector::Tcp
 				end
 			end
 
-			cmd = COMMANDS[data[1]]
-			val = data[2]
+			cmd = COMMANDS[data[0].to_sym]
+			val = data[1]
 				
 			case cmd
 			when :power_on
@@ -173,38 +173,41 @@ class Panasonic::Projector::Tcp
 				self[:power] = false
 			when :power_query
 				self[:power] = val.to_i == 1
-			when :lamp
-				ival = val.to_i
-				self[:power] = ival == 1 || ival == 2
-				self[:warming] = ival == 1
-				self[:cooling] = ival == 3
-
-				if (self[:warming] || self[:cooling]) && !@check_scheduled && !self[:stable_state]
-					@check_scheduled = true
-					schedule.in('13s') do
-						@check_scheduled = false
-						logger.debug "-- checking panasonic state"
-						power?({:priority => 0}) do
-							state = self[:power]
-							if state != self[:power_target]
-								if self[:power_target] || !self[:cooling]
-									power(self[:power_target])
-								end
-							elsif self[:power_target] && self[:cooling]
-								power(self[:power_target])
-							else
-								self[:stable_state] = true
-								switch_to(self[:input]) if self[:power_target] == On && !self[:input].nil?
-							end
-						end
-					end
-				end
 			when :freeze
 				self[:frozen] = val.to_i == 1
 			when :input
 				self[:input] = INPUTS[val]
 			when :mute
 				self[:mute] = val.to_i == 1
+			else
+				if command && command[:name] == :lamp
+					ival = cmd.to_i
+					self[:power] = ival == 1 || ival == 2
+					self[:warming] = ival == 1
+					self[:cooling] = ival == 3
+	
+					if (self[:warming] || self[:cooling]) && !@check_scheduled && !self[:stable_state]
+						@check_scheduled = true
+						schedule.in('13s') do
+							@check_scheduled = false
+							logger.debug "-- checking panasonic state"
+							power?({:priority => 0}) do
+								state = self[:power]
+								if state != self[:power_target]
+									if self[:power_target] || !self[:cooling]
+										power(self[:power_target])
+									end
+								elsif self[:power_target] && self[:cooling]
+									power(self[:power_target])
+								else
+									self[:stable_state] = true
+									switch_to(self[:input]) if self[:power_target] == On && !self[:input].nil?
+								end
+							end
+						end
+					end	
+				end
+			end
 		end
 
 		:success
