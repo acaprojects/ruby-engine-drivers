@@ -177,7 +177,7 @@ class Panasonic::Projector::Tcp
 			when :freeze
 				self[:frozen] = val.to_i == 1
 			when :input
-				self[:input] = INPUTS[val]
+				self[:input] = INPUTS[val.to_sym]
 			when :mute
 				self[:mute] = val.to_i == 1
 			else
