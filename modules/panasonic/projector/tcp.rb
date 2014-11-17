@@ -30,18 +30,20 @@ class Panasonic::Projector::Tcp
 		
 		# Meta data for inquiring interfaces
 		self[:type] = :projector
+		
+		# The projector drops the connection when there is no activity
+		schedule.every('60s') do
+			power?({:priority => 0})
+		end
 	end
 
 	def on_update
 	end
 	
 	def connected
-		@polling_timer = schedule.every('60s', method(:do_poll))
 	end
 
 	def disconnected
-		@polling_timer.cancel unless @polling_timer.nil?
-        @polling_timer = nil
 	end
 
 
@@ -215,13 +217,8 @@ class Panasonic::Projector::Tcp
 	end
 
 	
-	
 	protected
-	
-	
-	def do_poll(*args)
-		power?({:priority => 0})
-	end
+
 
 	def do_send(command, param = nil, options = {})
 		if param.is_a? Hash
