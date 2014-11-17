@@ -16,7 +16,6 @@ class GlobalCache::Gc100
     end
     
     def on_update
-        self[:config_indexed] = false
     end
     
     #
@@ -24,10 +23,9 @@ class GlobalCache::Gc100
     #  config => {:relay => {0 => '2:1',1 => '2:2',2 => '2:3',3 => '3:1'}} etc
     #
     def connected
-        unless self[:config_indexed]
-            self[:config] = {}
-            do_send('getdevices', :max_waits => 100)
-        end
+        @config = nil
+        self[:config_indexed] = false
+        do_send('getdevices', :max_waits => 100)
         
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling GC100"
@@ -96,28 +94,27 @@ class GlobalCache::Gc100
             
             type = type.downcase.to_sym
             
-            update_status(:config) do |value|
-                value ||= {}
-                value[type] ||= {}
-                current = value[type].length
-                
-                dev_index = 1                
-                (current..(current + number.to_i - 1)).each do |index|
-                    port = "#{address}:#{dev_index}"
-                    value[type][index] = port
-                    value[port] = [type, index]
-                    dev_index += 1
-                end
-                
-                value
+            value = @config || {}
+            value[type] ||= {}
+            current = value[type].length
+            
+            dev_index = 1                
+            (current..(current + number.to_i - 1)).each do |index|
+                port = "#{address}:#{dev_index}"
+                value[type][index] = port
+                value[port] = [type, index]
+                dev_index += 1
             end
+            @config = value
+
             return :ignore
             
         when :endlistdevices
+            self[:num_relays] = @config[:relay].length unless @config[:relay].nil?
+            self[:num_ir] = @config[:ir].length unless @config[:ir].nil?
+            self[:config] = @config
+            @config = nil
             self[:config_indexed] = true
-            config = self[:config]
-            self[:num_relays] = config[:relay].length unless config[:relay].nil?
-            self[:num_ir] = config[:ir].length unless config[:ir].nil?
             
             return :success
         end

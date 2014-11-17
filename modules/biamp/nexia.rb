@@ -57,8 +57,9 @@ class Biamp::Nexia
 		do_send('SETD', self[:device_id], 'FDRLVL', fader_id, 1, level)
 	end
 	
-	def mute(fader_id)
-		do_send('SETD', self[:device_id], 'FDRMUTE', fader_id, 1, 1)
+	def mute(fader_id, val = true)
+		actual = val ? 1 : 0
+		do_send('SETD', self[:device_id], 'FDRMUTE', fader_id, 1, actual)
 	end
 	
 	def unmute(fader_id)
