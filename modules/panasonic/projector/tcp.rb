@@ -30,18 +30,20 @@ class Panasonic::Projector::Tcp
 		
 		# Meta data for inquiring interfaces
 		self[:type] = :projector
+		
+		# The projector drops the connection when there is no activity
+		schedule.every('60s') do
+			power?({:priority => 0})
+		end
 	end
 
 	def on_update
 	end
 	
 	def connected
-		@polling_timer = schedule.every('60s', method(:do_poll))
 	end
 
 	def disconnected
-		@polling_timer.cancel unless @polling_timer.nil?
-        @polling_timer = nil
 	end
 
 
@@ -70,7 +72,7 @@ class Panasonic::Projector::Tcp
 			do_send(:lamp)
 		else
 			self[:power_target] = Off
-			do_send(:Ppower_off, {:retries => 10, :name => :power})
+			do_send(:power_off, {:retries => 10, :name => :power})
 			logger.debug "-- panasonic Proj, requested to power off"
 			do_send(:lamp)
 		end
@@ -146,11 +148,11 @@ class Panasonic::Projector::Tcp
 			end
 
 		else
-			data = data[2..-1].split(':')
+			data = data[2..-1]
 
 			# Error Response
 			if data[0] == 'E'
-				error = data[0].to_sym
+				error = data.to_sym
 				self[:last_error] = ERRORS[error]
 
 				# Check for busy or timeout
@@ -163,8 +165,9 @@ class Panasonic::Projector::Tcp
 				end
 			end
 
-			cmd = COMMANDS[data[1]]
-			val = data[2]
+                        resp = data.split(':')
+			cmd = COMMANDS[resp[0].to_sym]
+			val = resp[1]
 				
 			case cmd
 			when :power_on
@@ -173,51 +176,49 @@ class Panasonic::Projector::Tcp
 				self[:power] = false
 			when :power_query
 				self[:power] = val.to_i == 1
-			when :lamp
-				ival = val.to_i
-				self[:power] = ival == 1 || ival == 2
-				self[:warming] = ival == 1
-				self[:cooling] = ival == 3
-
-				if (self[:warming] || self[:cooling]) && !@check_scheduled && !self[:stable_state]
-					@check_scheduled = true
-					schedule.in('13s') do
-						@check_scheduled = false
-						logger.debug "-- checking panasonic state"
-						power?({:priority => 0}) do
-							state = self[:power]
-							if state != self[:power_target]
-								if self[:power_target] || !self[:cooling]
-									power(self[:power_target])
-								end
-							elsif self[:power_target] && self[:cooling]
-								power(self[:power_target])
-							else
-								self[:stable_state] = true
-								switch_to(self[:input]) if self[:power_target] == On && !self[:input].nil?
-							end
-						end
-					end
-				end
 			when :freeze
 				self[:frozen] = val.to_i == 1
 			when :input
-				self[:input] = INPUTS[val]
+				self[:input] = INPUTS[val.to_sym]
 			when :mute
 				self[:mute] = val.to_i == 1
+			else
+				if command && command[:name] == :lamp
+					ival = resp[0].to_i
+					self[:power] = ival == 1 || ival == 2
+					self[:warming] = ival == 1
+					self[:cooling] = ival == 3
+	
+					if (self[:warming] || self[:cooling]) && !@check_scheduled && !self[:stable_state]
+						@check_scheduled = true
+						schedule.in('13s') do
+							@check_scheduled = false
+							logger.debug "-- checking panasonic state"
+							power?({:priority => 0}) do
+								state = self[:power]
+								if state != self[:power_target]
+									if self[:power_target] || !self[:cooling]
+										power(self[:power_target])
+									end
+								elsif self[:power_target] && self[:cooling]
+									power(self[:power_target])
+								else
+									self[:stable_state] = true
+									switch_to(self[:input]) if self[:power_target] == On && !self[:input].nil?
+								end
+							end
+						end
+					end	
+				end
+			end
 		end
 
 		:success
 	end
 
 	
-	
 	protected
-	
-	
-	def do_poll(*args)
-		power?({:priority => 0})
-	end
+
 
 	def do_send(command, param = nil, options = {})
 		if param.is_a? Hash
