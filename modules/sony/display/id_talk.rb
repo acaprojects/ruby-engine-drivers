@@ -5,7 +5,7 @@ module Sony::Display; end
 #
 # Port: 53484
 #
-class Sony::Display::GdxAndFwd
+class Sony::Display::IdTalk
 	include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
@@ -16,8 +16,18 @@ class Sony::Display::GdxAndFwd
         self[:contrast_max] = 0x64
         self[:volume_min] = 0x00
         self[:volume_max] = 0x64
+
         self[:power] = false
         self[:type] = :lcd
+
+        config({
+            tokenize: proc {
+                ::UV::AbstractTokenizer.new({
+                    indicator: "\x02\x10",  # Header
+                    callback: method(:check_complete)
+                })
+            }
+        })
 
 		on_update
 	end
@@ -164,15 +174,14 @@ class Sony::Display::GdxAndFwd
 	}
 	
 
-	def received(data, resolve, command)		# Data is default received as a string
+	def received(byte_str, resolve, command)		# Data is default received as a string
 		logger.debug "sony display sent: 0x#{byte_to_hex(data)}"
 
-		idt_header = data[0..1]
-		idt_community = data[2..5]
-		idt_command = str_to_array(data[6..9])
-		resp = str_to_array(data[10..-1])
+		data = str_to_array(byte_str)
+		idt_command = data[5..6]
+		resp = data[8..-1]
 
-		if idt_command[0] == 0x01
+		if data[4] == 0x01
 			# resp is now equal to the unit control codes
 
 			type = RESP[resp[1]]
@@ -216,6 +225,28 @@ class Sony::Display::GdxAndFwd
 	
 	
 	protected
+
+
+	# Called by the Abstract Tokenizer to confirm we have the
+	# whole message.
+    def check_complete(byte_str)
+    	bytes = str_to_array(byte_str)
+
+    	# Min message length is 8 bytes
+        return false if bytes.length < 8
+
+        # Check we have the data
+        data = bytes[8..-1]
+        if data.length == bytes[7]
+        	return true
+        elsif data.length > bytes[7]
+        	# Let the tokeniser know we only want the following number of bytes
+        	return 7 + bytes[7]
+        end
+
+        # Still waiting on data
+        return false
+    end
 	
 	
 	def do_poll(*args)
