@@ -32,12 +32,22 @@ class ScreenTechnics::Connect
 
 	def down(index = 1)
 		stop(index)
-		do_send(state: :down, body: "Down#{index}=Down", name: :position)
+		do_send({
+			state: :down,
+			body: "Down#{index}=Down",
+			name: :position,
+			index: index
+		})
 	end
 
 	def up(index = 1)
 		stop(index)
-		do_send(state: :up, body: "Up#{index}=Up", name: :position)
+		do_send({
+			state: :up,
+			body: "Up#{index}=Up",
+			name: :position,
+			index: index
+		})
 	end
 
 	def stop(index = 1)
@@ -50,8 +60,9 @@ class ScreenTechnics::Connect
 
 	def do_send(options)
 		state = options.delete(:state)
+		index = options.delete(:index)
 		post('/ADirectControl.html', options) do
-			self[:state] = state if state
+			self[:"screen#{index}"] = state if state
 		end
 	end
 end
