@@ -1,19 +1,16 @@
 module ScreenTechnics; end
 
+# Port 80
+# Make break?
 
 class ScreenTechnics::Connect
 	include ::Orchestrator::Constants
 
 
 	def on_load
-		defaults({
-            delay: 130,
-            keepalive: false,
-            inactivity_timeout: 1.5,  # seconds before closing the connection if no response
-            connect_timeout: 2        # max seconds for the initial connection to the device
-        })
+	end
 
-		self[:state] = :up
+	def on_unload
 	end
 	
 	def on_update
@@ -21,6 +18,10 @@ class ScreenTechnics::Connect
 	
 	def connected
 	end
+	
+	def disconnected
+	end
+	
 	
 	def state(new_state, index = 1)
 		if is_affirmative?(new_state)
@@ -32,37 +33,26 @@ class ScreenTechnics::Connect
 
 	def down(index = 1)
 		stop(index)
-		do_send({
-			state: :down,
-			body: "Down#{index}=Down",
-			name: :position,
-			index: index
-		})
+		send("POST /ADirectControl.html HTTP/1.1\r\nContent-Length: 10\r\n\r\nDown#{index}=Down", :name => :position) do
+			self[:"screen#{index}"] = :down
+			:success
+		end
 	end
 
 	def up(index = 1)
 		stop(index)
-		do_send({
-			state: :up,
-			body: "Up#{index}=Up",
-			name: :position,
-			index: index
-		})
+		send("POST /ADirectControl.html HTTP/1.1\r\nContent-Length: 6\r\n\r\nUp#{index}=Up", :name => :position) do
+			self[:"screen#{index}"] = :up
+			:success
+		end
 	end
 
 	def stop(index = 1)
-		do_send(body: "Stop#{index}=Stop", name: :stop)
+		send("POST /ADirectControl.html HTTP/1.1\r\nContent-Length: 10\r\n\r\nStop#{index}=Stop", {:delay_on_receive => 3, :name => :stop})
 	end
-
-
-	protected
-
-
-	def do_send(options)
-		state = options.delete(:state)
-		index = options.delete(:index)
-		post('/ADirectControl.html', options) do
-			self[:"screen#{index}"] = state if state
-		end
+	
+	
+	def received(data, resolve, command)
+		:success
 	end
 end
