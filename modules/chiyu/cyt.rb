@@ -1,19 +1,25 @@
 module Chiyu; end
 
 
+# Normal state for inputs == open
+# IO Operations mode TCP server
+# Periodically every second
+
+
+# Default port: 50001
 class Chiyu::Cyt
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
 
     def on_load
-        @inputs = Array.new(32, 2)
-        @outputs = Array.new(32, 0)
+        @outputs = Array.new(32, 1)
 
         config({
             tokenize: true,
             delimiter: "\xF0\xF0",
-            min_length: 2 # this will ignore the CRC check byte
+            min_length: 2, # this will ignore the CRC check byte
+            encoding: "ASCII-8BIT"
         })
     end
     
@@ -43,7 +49,8 @@ class Chiyu::Cyt
         [0x00, 0x04] => :trigger,
         [0x00, 0x06] => :emailed,
         [0x00, 0x10] => :report,
-        [0x00, 0x07] => :keepalive
+        [0x00, 0x07] => :keepalive,
+        [0x00, 0x08] => :keepalive
     }
 
     ERRORS = {
@@ -59,7 +66,7 @@ class Chiyu::Cyt
         index = index - 1
         return if index >= 30 || index < 0
 
-        @outputs[index] = is_affirmative?(state) ? 1 : 0
+        @outputs[index] = is_affirmative?(state) ? 0 : 1
         opts = {
             data1: @outputs
         }
@@ -71,18 +78,18 @@ class Chiyu::Cyt
         end
 
         do_send(:trigger, opts)
-        self[:"relay#{index}"] = true
+        self[:"relay#{index + 1}"] = true
     end
     
     
     
     def received(data_str, resolve, command)
-        data = str_to_array(byte_str)
+        data = str_to_array(data_str)
         logger.debug "Chiyu sent #{data}"
 
-        cmd = data[0..2]
-        data1 = data[3..34]
-        data2 = data[35..66]
+        cmd = data[0..1]
+        data1 = data[2..33]
+        data2 = data[34..65]
 
         if cmd[0] != 0xFF
             case RESPONSES[cmd]
@@ -95,11 +102,12 @@ class Chiyu::Cyt
                     end
                 end
 
+                @outputs = data2
                 data2.each_index do |index|
                     next if index >= 30
                     byte = data2[index]
                     if byte < 2
-                        self[:"relay#{index + 1}"] = byte == 1
+                        self[:"relay#{index + 1}"] = byte == 0
                     end
                 end
             when :keepalive
@@ -143,7 +151,7 @@ class Chiyu::Cyt
 
         options[:name] = command unless options[:name]
 
-        send(command, options)
+        send(cmd, options)
         logger.debug "-- CYT, sending: #{command}"
     end
 end
