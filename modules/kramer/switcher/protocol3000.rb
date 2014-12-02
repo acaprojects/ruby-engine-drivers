@@ -119,16 +119,22 @@ class Kramer::Switcher::Protocol3000
 		end
 
 		data = components[-1].strip
-		components = data.split(' ')
+		components = data.split(/\s+|,/)
 
-		cmd = data[0]
-		args = data[1..-1]
+		cmd = components[0]
+		args = components[1..-1]
 
 		if cmd == 'OK'
 			return :success
-		elsif cmd[0..2] == 'ERR' || args[0] == 'ERR'
-			error = cmd == 'ERR' ? cmd[3..-1] : args[1]
-			logger.error "Kramer command error #{error}"
+		elsif cmd[0..2] == 'ERR' || args[0][0..2] == 'ERR'
+			if cmd[0..2] == 'ERR'
+				error = cmd[3..-1]
+				errfor = nil
+			else
+				error = args[0][3..-1]
+				errfor = " on #{cmd}"
+			end
+			logger.error "Kramer command error #{error}#{errfor}"
 			self[:last_error] = error
 			return :abort
 		end
@@ -151,7 +157,7 @@ class Kramer::Switcher::Protocol3000
 			type = :video if CMDS[cmd] == :switch_video
 
 			mappings = args[0].split(',')
-			mapping.each do |map|
+			mappings.each do |map|
 				inout = map.split('>')
 				self[:"#{type}#{inout[1]}"] = inout[0].to_i
 			end
