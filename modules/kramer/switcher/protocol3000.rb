@@ -71,38 +71,38 @@ class Kramer::Switcher::Protocol3000
 	#
 	def switch(map, out = nil)
 		map = {map => out} if out
-		do_send(CMD[:switch], build_switch_data(map))
+		do_send(CMDS[:switch], build_switch_data(map))
 	end
 
 
 	def switch_video(map, out = nil)
 		map = {map => out} if out
-		do_send(CMD[:switch_video], build_switch_data(map))
+		do_send(CMDS[:switch_video], build_switch_data(map))
 	end
 
 
 	def switch_audio(map, out = nil)
 		map = {map => out} if out
-		do_send(CMD[:switch_audio], build_switch_data(map))
+		do_send(CMDS[:switch_audio], build_switch_data(map))
 	end
 
 
-	def mute_video(state = true)
+	def mute_video(out, state = true)
 		data = is_affirmative?(state) ? 1 : 0
-		do_send(cmd[:video_mute], data)
+		do_send(CMDS[:video_mute], out, data)
 	end
 
-	def mute_audio(state = true)
+	def mute_audio(out, state = true)
 		data = is_affirmative?(state) ? 1 : 0
-		do_send(cmd[:audio_mute], data)
+		do_send(CMDS[:audio_mute], out, data)
 	end
 
-	def unmute_video
-		mute_video false
+	def unmute_video(out)
+		mute_video out, false
 	end
 
-	def unmute_audio
-		mute_audio false
+	def unmute_audio(out)
+		mute_audio out, false
 	end
 	
 
@@ -121,19 +121,19 @@ class Kramer::Switcher::Protocol3000
 		data = components[-1].strip
 		components = data.split(' ')
 
-		cmd = data[0].to_sym
+		cmd = data[0]
 		args = data[1..-1]
 
-		if cmd == :OK
+		if cmd == 'OK'
 			return :success
-		elsif cmd == :ERR || args[0] == 'ERR'
-			error = cmd == :ERR ? args[0] : args[1]
+		elsif cmd[0..2] == 'ERR' || args[0] == 'ERR'
+			error = cmd == 'ERR' ? cmd[3..-1] : args[1]
 			logger.error "Kramer command error #{error}"
 			self[:last_error] = error
 			return :abort
 		end
 
-		case CMDS[cmd]
+		case CMDS[cmd.to_sym]
 		when :info
 			self[:video_inputs] = args[1].to_i
 			self[:video_outputs] = args[3].to_i
