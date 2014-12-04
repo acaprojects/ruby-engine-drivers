@@ -52,22 +52,22 @@ class Biamp::Nexia
 		do_send('RECALL', 0, 'PRESET', number)
 	end
 	
-	def fader(fader_id, level)
+	def fader(fader_id, level, index = 1)
 		# value range: -100 ~ 12
-		do_send('SETD', self[:device_id], 'FDRLVL', fader_id, 1, level)
+		do_send('SETD', self[:device_id], 'FDRLVL', fader_id, index, level)
 	end
 	
-	def mute(fader_id, val = true)
+	def mute(fader_id, val = true, index = 1)
 		actual = val ? 1 : 0
-		do_send('SETD', self[:device_id], 'FDRMUTE', fader_id, 1, actual)
+		do_send('SETD', self[:device_id], 'FDRMUTE', fader_id, index, actual)
 	end
 	
-	def unmute(fader_id)
-		do_send('SETD', self[:device_id], 'FDRMUTE', fader_id, 1, 0)
+	def unmute(fader_id, index = 1)
+		mute(fader_id, false, index)
 	end
 
-	def query_fader(fader_id)
-		send("GET #{self[:device_id]} FDRLVL #{fader_id} 1 \n") do |data|
+	def query_fader(fader_id, index = 1)
+		send("GET #{self[:device_id]} FDRLVL #{fader_id} #{index} \n") do |data|
 			if data == "-ERR"
 				:abort
 			else
@@ -77,8 +77,8 @@ class Biamp::Nexia
 		end
 	end
 
-	def query_mute(fader_id)
-		send("GET #{self[:device_id]} FDRMUTE #{fader_id} 1 \n") do |data|
+	def query_mute(fader_id, index = 1)
+		send("GET #{self[:device_id]} FDRMUTE #{fader_id} #{index} \n") do |data|
 			if data == "-ERR"
 				:abort
 			else

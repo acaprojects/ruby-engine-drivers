@@ -15,12 +15,15 @@ class Bss::Blu100
             delimiter: "\x03",
             indicator: "\x02"
         })
+
+        on_update
 	end
 	
 	def on_unload
 	end
 	
 	def on_update
+        @type_lookup ||= {}
 	end
 
     def connected
@@ -64,69 +67,82 @@ class Bss::Blu100
     #
     # Level controls
     #
-    def fader(fader, percent)
+    def fader(fader, percent, index = 0)
+        index_data = id_to_array(index, :gain)
+
         percent = percent.to_i
         percent = 6553600 if percent > 6553600
         percent = 0 if percent < 0
 
         percent = number_to_data(percent)
 
-        do_send([OPERATION_CODE[:set_percent]] + NODE + VIRTUAL + number_to_object(fader.to_i) + CONTROLS[:gain] + percent)
+        do_send([OPERATION_CODE[:set_percent]] + NODE + VIRTUAL + number_to_object(fader.to_i) + index_data + percent)
         subscribe_percent(fader)
     end
 
-    def mute(fader)
-        do_send([OPERATION_CODE[:set_state]] + NODE + VIRTUAL + number_to_object(fader.to_i) + CONTROLS[:mute] + number_to_data(1))
+    def mute(fader, val = true, index = 1)
+        actual = val ? 1 : 0
+
+        index_data = id_to_array(index, :mute)
+
+        do_send([OPERATION_CODE[:set_state]] + NODE + VIRTUAL + number_to_object(fader.to_i) + index_data + number_to_data(actual))
         subscribe_state(fader)
     end
 
-    def unmute(fader)
-        do_send([OPERATION_CODE[:set_state]] + NODE + VIRTUAL + number_to_object(fader.to_i) + CONTROLS[:mute] + number_to_data(0))
-        subscribe_state(fader)
+    def unmute(fader, index = 1)
+        mute(fader, false, index)
     end
 
 
-    def query_fader(fader_id)
-        subscribe_percent(fader_id)
+    def query_fader(fader_id, index = 0)
+        subscribe_percent(fader_id, index)
     end
 
-    def query_mute(fader_id)
-        subscribe_state(fader_id)
+    def query_mute(fader_id, index = 1)
+        subscribe_state(fader_id, index)
     end
 
 
     #
     # Percent controls for relative values
     #
-    def subscribe_percent(fader, rate = 0, control = CONTROLS[:gain])   # rate must be 0 for non meter controls
+    def subscribe_percent(fader, index = 0, rate = 0)   # rate must be 0 for non meter controls
+        index_data = id_to_array(index, :gain)
+
         fader = number_to_object(fader.to_i)
         rate = number_to_data(rate.to_i)
 
-        do_send([OPERATION_CODE[:subscribe_percent]] + NODE + VIRTUAL + fader + control + rate)
+        do_send([OPERATION_CODE[:subscribe_percent]] + NODE + VIRTUAL + fader + index_data + rate)
     end
 
-    def unsubscribe_percent(fader, control = CONTROLS[:gain])   # rate must be 0 for non meter controls
+    def unsubscribe_percent(fader, index = 0)   # rate must be 0 for non meter controls
+        index_data = id_to_array(index, :gain)
+
         fader = number_to_object(fader.to_i)
         rate = number_to_data(0)
 
-        do_send([OPERATION_CODE[:unsubscribe_percent]] + NODE + VIRTUAL + fader + control + rate)
+        do_send([OPERATION_CODE[:unsubscribe_percent]] + NODE + VIRTUAL + fader + index_data + rate)
     end
 
     #
     # State controls are for discrete values
     #
-    def subscribe_state(fader, rate = 0, control = CONTROLS[:mute]) # 1000 == every second
+    def subscribe_state(fader, index = 1, rate = 0) # 1000 == every second
+        index_data = id_to_array(index, :mute)
+
         fader = number_to_object(fader.to_i)
         rate = number_to_data(rate.to_i)
 
-        do_send([OPERATION_CODE[:subscribe_state]] + NODE + VIRTUAL + fader + control + rate)
+        do_send([OPERATION_CODE[:subscribe_state]] + NODE + VIRTUAL + fader + index_data + rate)
     end
 
-    def unsubscribe_state(fader, control = CONTROLS[:mute]) # 1000 == every second
+    def unsubscribe_state(fader, index = 1) # 1000 == every second
+        index_data = id_to_array(index, :mute)
+
         fader = number_to_object(fader.to_i)
         rate = number_to_data(0)
 
-        do_send([OPERATION_CODE[:unsubscribe_state]] + NODE + VIRTUAL + fader + control + rate)
+        do_send([OPERATION_CODE[:unsubscribe_state]] + NODE + VIRTUAL + fader + index_data + rate)
     end
 
 
@@ -169,8 +185,9 @@ class Bss::Blu100
 
             case OPERATION_CODE[type]
             when :set_state   # This is the mute response
+                # TODO:: we should include the index in the status object?
                 obj = byte_to_hex(array_to_str(obj)).to_i(16)
-                if CONTROLS[cntrl] == :mute
+                if @type_lookup[cntrl] == :mute
                     self[:"fader_#{obj}_mute"] = data == 1
                 else
                     self[:"fader_#{obj}"] = data
@@ -198,24 +215,24 @@ class Bss::Blu100
     protected
 
 
+    def id_to_array(id, type)
+        data = str_to_array(hex_to_byte(id.to_s(16).rjust(4, '0')))
+        @type_lookup[data] = type
+        data
+    end
+
     def number_to_data(num)
-        str_to_array(hex_to_byte(num.to_s(16).upcase.rjust(8, '0')))
+        str_to_array(hex_to_byte(num.to_s(16).rjust(8, '0')))
     end
 
     def number_to_object(num)
-        str_to_array(hex_to_byte(num.to_s(16).upcase.rjust(6, '0')))
+        str_to_array(hex_to_byte(num.to_s(16).rjust(6, '0')))
     end
 
 
     RESERVED_CHARS = [0x02, 0x03, 0x06, 0x15, 0x1B]
     NODE = [0,0]    # node we are connected to
     VIRTUAL = [3]   # virtual device is always 3 for audio devices
-
-    CONTROLS = {
-        :gain => [0,0],
-        :mute => [0,1]
-    }
-    CONTROLS.merge!(CONTROLS.invert)
 
 
     def check_checksum(data)
