@@ -85,6 +85,7 @@ class Epson::Projector::EscVp21
 		logger.debug "-- epson LCD, requested to switch to: #{input}"
 		
 		self[:input] = input	# for a responsive UI
+		self[:mute] = false
 	end
 	
 	
@@ -178,6 +179,7 @@ class Epson::Projector::EscVp21
 			end
 			if !self[:stable_state] && self[:power_target] == self[:power]
 				self[:stable_state] = true
+				self[:mute] = false if !self[:power]
 			end
 
 		when :MUTE

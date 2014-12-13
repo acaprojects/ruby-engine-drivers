@@ -240,6 +240,8 @@ class Panasonic::Projector::Tcp
 		else
 			send("#{@pass}00#{pj}\r", options)
 		end
+
+		nil
 	end
 end
 
