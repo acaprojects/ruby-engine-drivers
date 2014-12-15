@@ -7,10 +7,11 @@ class ScreenTechnics::Connect
 
 	def on_load
 		defaults({
-            delay_on_receive: 3000,
+            delay_on_receive: 1000,
             keepalive: false,
             inactivity_timeout: 1.5,  # seconds before closing the connection if no response
-            connect_timeout: 2        # max seconds for the initial connection to the device
+            connect_timeout: 2,        # max seconds for the initial connection to the device
+            delay: 1000
         })
 
 		self[:state] = :up
@@ -31,6 +32,7 @@ class ScreenTechnics::Connect
 	end
 
 	def down(index = 1)
+		stop(index)
 		do_send({
 			state: :down,
 			body: "Down#{index}=Down",
@@ -40,6 +42,7 @@ class ScreenTechnics::Connect
 	end
 
 	def up(index = 1)
+		stop(index)
 		do_send({
 			state: :up,
 			body: "Up#{index}=Up",
@@ -49,7 +52,11 @@ class ScreenTechnics::Connect
 	end
 
 	def stop(index = 1)
-		do_send(body: "Stop#{index}=Stop", name: :stop)
+		do_send({
+			body: "Stop#{index}=Stop",
+			name: :stop,
+			priority: 99
+		})
 	end
 
 

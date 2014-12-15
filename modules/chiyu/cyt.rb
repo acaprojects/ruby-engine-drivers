@@ -72,9 +72,11 @@ class Chiyu::Cyt
         }
 
         if time
+            time = time.to_i
             times = Array.new(32, 0)
             times[index] = time
             opts[:data2] = times
+            opts[:delay_on_receive] = time * 1000 + 500
         end
 
         do_send(:trigger, opts)
@@ -123,6 +125,25 @@ class Chiyu::Cyt
             :abort
         end
     end
+
+
+
+    # Pulse Lifter Logic
+    #
+    # Automatically creates a callable function for each command
+    #   http://blog.jayfields.com/2007/10/ruby-defining-class-methods.html
+    #   http://blog.jayfields.com/2008/02/ruby-dynamically-define-method.html
+    #
+    [:up, :down, :left, :right].each do |helper|
+        define_method helper do |*args|
+            index = args[0] || setting(helper) || 1
+            index = index.to_i
+
+            relay(index, true, 2)
+            relay(index, true, 2)
+        end
+    end
+
     
     
     protected
