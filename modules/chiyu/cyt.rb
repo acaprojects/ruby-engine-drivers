@@ -76,7 +76,7 @@ class Chiyu::Cyt
             times = Array.new(32, 0)
             times[index] = time
             opts[:data2] = times
-            opts[:delay_on_receive] = time * 1000 + 500
+            opts[:delay] = time * 1000 + 500
         end
 
         do_send(:trigger, opts)

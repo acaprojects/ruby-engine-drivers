@@ -36,7 +36,7 @@ class ScreenTechnics::Connect
 		do_send({
 			state: :down,
 			body: "Down#{index}=Down",
-			name: :position,
+			name: :"position#{index}",
 			index: index
 		})
 	end
@@ -46,7 +46,7 @@ class ScreenTechnics::Connect
 		do_send({
 			state: :up,
 			body: "Up#{index}=Up",
-			name: :position,
+			name: :"position#{index}",
 			index: index
 		})
 	end
@@ -54,7 +54,7 @@ class ScreenTechnics::Connect
 	def stop(index = 1)
 		do_send({
 			body: "Stop#{index}=Stop",
-			name: :stop,
+			name: :"stop#{index}",
 			priority: 99
 		})
 	end
