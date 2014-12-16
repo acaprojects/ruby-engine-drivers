@@ -31,7 +31,6 @@ class Kramer::Switcher::Protocol3000
 		config({
             tokenize: true,
             delimiter: "\x0D\x0A",
-            indicator: '~',
             encoding: "ASCII-8BIT"
         })
 
