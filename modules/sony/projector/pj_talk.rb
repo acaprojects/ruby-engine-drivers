@@ -28,8 +28,9 @@ class Sony::Projector::PjTalk
             }
         })
 
-		# The projector disconnects 
-		schedule.every('60s', method(:do_poll))
+		defaults({
+			delay_on_receive: 200
+		})
 	end
 
 	def on_update
@@ -39,9 +40,12 @@ class Sony::Projector::PjTalk
 	
 
 	def connected
+		@polling_timer = schedule.every('60s', method(:do_poll))
 	end
 
 	def disconnected
+		@polling_timer.cancel unless @polling_timer.nil?
+        @polling_timer = nil
 	end
 	
 	
@@ -50,10 +54,10 @@ class Sony::Projector::PjTalk
 	#
 	def power(state)
 		if is_affirmative?(state)
-			do_send(:set, :power_on, name: :power)
+			do_send(:set, :power_on, name: :power, delay_on_receive: 3000)
 			logger.debug "-- sony display requested to power on"
 		else
-			do_send(:set, :power_off, name: :power)
+			do_send(:set, :power_off, name: :power, delay_on_receive: 3000)
 			logger.debug "-- sony display requested to power off"
 		end
 
@@ -84,7 +88,7 @@ class Sony::Projector::PjTalk
 		input = input.to_sym
 		return unless INPUTS.has_key? input
 		
-		do_send(:set, :input, INPUTS[input])
+		do_send(:set, :input, INPUTS[input], delay_on_receive: 500)
 		logger.debug "-- sony projector, requested to switch to: #{input}"
 		
 		input?
@@ -102,12 +106,12 @@ class Sony::Projector::PjTalk
 		logger.debug "-- sony projector, requested to mute"
 
 		actual = is_affirmative?(val) ? [0x00, 0x01] : [0x00, 0x00]
-		do_send(:set, :mute, actual)
+		do_send(:set, :mute, actual, delay_on_receive: 500)
 	end
 
 	def unmute
 		logger.debug "-- sony projector, requested to unmute"
-		do_send(:set, :mute, [0x00, 0x00])
+		mute(false)
 	end
 
 	def mute?
