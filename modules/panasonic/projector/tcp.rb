@@ -15,7 +15,7 @@ class Panasonic::Projector::Tcp
 		# Response time is slow
 		defaults({
 			timeout: 2000,
-			delay_on_receive: 200
+			delay_on_receive: 1000
 		})
 
 		config({
@@ -67,12 +67,12 @@ class Panasonic::Projector::Tcp
 		self[:stable_state] = false
 		if is_affirmative?(state)
 			self[:power_target] = On
-			do_send(:power_on, {:retries => 10, :name => :power})
+			do_send(:power_on, {:retries => 10, :name => :power, delay_on_receive: 8000})
 			logger.debug "-- panasonic Proj, requested to power on"
 			do_send(:lamp)
 		else
 			self[:power_target] = Off
-			do_send(:power_off, {:retries => 10, :name => :power})
+			do_send(:power_off, {:retries => 10, :name => :power, delay_on_receive: 8000})
 			logger.debug "-- panasonic Proj, requested to power off"
 			do_send(:lamp)
 		end
@@ -101,14 +101,14 @@ class Panasonic::Projector::Tcp
 	def switch_to(input)
 		input = input.to_sym
 		return unless INPUTS.has_key? input
+
+		# Projector doesn't automatically unmute
+		unmute if self[:mute]
 		
-		do_send(:input, INPUTS[input], {:retries => 10})
+		do_send(:input, INPUTS[input], {:retries => 10, delay_on_receive: 2000})
 		logger.debug "-- panasonic LCD, requested to switch to: #{input}"
 		
 		self[:input] = input	# for a responsive UI
-
-		# Projector doesn't automatically unmute
-		unmute
 	end
 	
 	

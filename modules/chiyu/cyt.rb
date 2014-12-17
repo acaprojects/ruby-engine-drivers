@@ -21,6 +21,10 @@ class Chiyu::Cyt
             min_length: 2, # this will ignore the CRC check byte
             encoding: "ASCII-8BIT"
         })
+
+        defaults({
+            delay_on_receive: 500
+        })
     end
     
     def on_update
@@ -76,7 +80,7 @@ class Chiyu::Cyt
             times = Array.new(32, 0)
             times[index] = time
             opts[:data2] = times
-            opts[:delay] = time * 1000 + 500
+            opts[:delay_on_receive] = time * 1000 + 1200
         end
 
         do_send(:trigger, opts)

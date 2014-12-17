@@ -7,11 +7,10 @@ class ScreenTechnics::Connect
 
 	def on_load
 		defaults({
-            delay_on_receive: 1000,
+            delay_on_receive: 1500,
             keepalive: false,
             inactivity_timeout: 1.5,  # seconds before closing the connection if no response
-            connect_timeout: 2,        # max seconds for the initial connection to the device
-            delay: 1000
+            connect_timeout: 2        # max seconds for the initial connection to the device
         })
 
 		self[:state] = :up
