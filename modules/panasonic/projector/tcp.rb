@@ -106,6 +106,9 @@ class Panasonic::Projector::Tcp
 		logger.debug "-- panasonic LCD, requested to switch to: #{input}"
 		
 		self[:input] = input	# for a responsive UI
+
+		# Projector doesn't automatically unmute
+		unmute
 	end
 	
 	
