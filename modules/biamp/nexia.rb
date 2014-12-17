@@ -68,10 +68,10 @@ class Biamp::Nexia
 
 	def query_fader(fader_id, index = 1)
 		send("GET #{self[:device_id]} FDRLVL #{fader_id} #{index} \n") do |data|
-			if data == "-ERR"
+			if data.start_with?('-ERR')
 				:abort
 			else
-				self[:"fader_#{fader_id}"] = data.to_i
+				self[:"fader#{fader_id}_#{index}"] = data.to_i
 				:success
 			end
 		end
@@ -79,10 +79,10 @@ class Biamp::Nexia
 
 	def query_mute(fader_id, index = 1)
 		send("GET #{self[:device_id]} FDRMUTE #{fader_id} #{index} \n") do |data|
-			if data == "-ERR"
+			if data.start_with?('-ERR')
 				:abort
 			else
-				self[:"fader_#{fader_id}_mute"] = data.to_i == 1
+				self[:"fader#{fader_id}_#{index}_mute"] = data.to_i == 1
 				:success
 			end
 		end
@@ -90,23 +90,21 @@ class Biamp::Nexia
 	
 	
 	def received(data, resolve, command)
-		data = data.split(' ')
-		
-		if data.length == 1
-			if data[-1] == "-ERR"
-				logger.debug "Nexia Invalid Command sent #{command[:data]}" if !!command
-				return :abort
-			end
-			return :success	# data[-1] == "+OK" || data == ""	# Echo off
+		if data.start_with?('-ERR')
+			logger.debug "Nexia returned #{data} for #{command[:data]}" if command
+			return :abort
 		end
 		
+		#--> "#SETD 0 FDRLVL 29 1 0.000000 +OK"
+		data = data.split(' ')
 		unless data[2].nil?
 			case data[2].to_sym
-			when :FDRLVL
-				self[:"fader_#{data[3]}"] = data[-2].to_i
+			when :FDRLVL, :VL
+				self[:"fader#{data[3]}_#{data[4]}"] = data[5].to_i
 			when :FDRMUTE
-				self[:"fader_#{data[3]}_mute"] = data[-2] == "1"
+				self[:"fader#{data[3]}_#{data[4]}_mute"] = data[5] == "1"
 			when :DEVID
+				# "#GETD 0 DEVID 1 "
 				self[:device_id] = data[-2].to_i
 			end
 		end
