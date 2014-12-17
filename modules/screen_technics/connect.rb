@@ -68,6 +68,7 @@ class ScreenTechnics::Connect
 		index = options.delete(:index)
 		post('/ADirectControl.html', options) do
 			self[:"screen#{index}"] = state if state
+			:success
 		end
 	end
 end

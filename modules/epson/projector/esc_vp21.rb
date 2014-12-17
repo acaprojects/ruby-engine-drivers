@@ -14,6 +14,9 @@ class Epson::Projector::EscVp21
 		#	delimiter: ":"
 		#})
 
+		self[:volume_min] = 0
+        self[:volume_max] = 255
+
 		self[:power] = false
 		self[:stable_state] = true  # Stable by default (allows manual on and off)
 		
