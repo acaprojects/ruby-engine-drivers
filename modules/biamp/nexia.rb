@@ -51,6 +51,27 @@ class Biamp::Nexia
 		#
 		do_send('RECALL', 0, 'PRESET', number)
 	end
+
+	# {1 => [2,3,5], 2 => [2,3,6]}, true
+	# Supports Matrix and Automixers
+	def mixer(id, inouts, mute = false)
+		value = is_affirmative?(mute) ? 
+
+		if inouts.is_a? Hash
+			inouts.each_key do |input|
+				outputs = inouts[input]
+				outs = outputs.is_a?(Array) ? outputs : [outputs]
+
+				outs.each do |output|
+					do_send('SETD', self[:device_id], 'MMMUTEXP', id, input, output, value)
+				end
+			end
+		else # assume array (auto-mixer)
+			inouts.each do |input|
+				do_send('SETD', self[:device_id], 'AMMUTEXP', id, input, value)
+			end
+		end
+	end
 	
 	def fader(fader_id, level, index = 1)
 		# value range: -100 ~ 12
