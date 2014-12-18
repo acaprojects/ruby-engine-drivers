@@ -118,7 +118,7 @@ class Biamp::Nexia
 	
 	
 	def do_send(*args)
-		send("#{args.join(' ')}\n")
+		send("#{args.join(' ')} \n")
 	end
 end
 

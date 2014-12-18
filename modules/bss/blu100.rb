@@ -185,12 +185,12 @@ class Bss::Blu100
 
             case OPERATION_CODE[type]
             when :set_state   # This is the mute response
-                # TODO:: we should include the index in the status object?
                 obj = byte_to_hex(array_to_str(obj)).to_i(16)
+                index = byte_to_hex(array_to_str(cntrl)).to_i(16)
                 if @type_lookup[cntrl] == :mute
-                    self[:"fader_#{obj}_mute"] = data == 1
+                    self[:"fader#{obj}_#{index}_mute"] = data == 1
                 else
-                    self[:"fader_#{obj}"] = data
+                    self[:"fader#{obj}_#{index}"] = data
                 end
             when :subscribe_state
             when :unsubscribe_state
@@ -198,7 +198,8 @@ class Bss::Blu100
             when :param_preset
             when :set_percent   # This is the fader response
                 obj = byte_to_hex(array_to_str(obj)).to_i(16)
-                self[:"fader_#{obj}"] = data
+                index = byte_to_hex(array_to_str(cntrl)).to_i(16)
+                self[:"fader#{obj}_#{index}"] = data
             when :subscribe_percent
             when :unsubscribe_percent
             when :set_relative_percent
