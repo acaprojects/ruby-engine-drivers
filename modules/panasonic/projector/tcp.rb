@@ -33,7 +33,7 @@ class Panasonic::Projector::Tcp
 		
 		# The projector drops the connection when there is no activity
 		schedule.every('60s') do
-			power?({:priority => 0})
+			power?({:priority => 0}) if self[:connected]
 		end
 	end
 

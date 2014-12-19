@@ -30,13 +30,18 @@ class Chiyu::Cyt
     def on_update
     end
     
-    # No keep alive required as the device polls us
     def connected
         do_send(:state)
         do_send(:auto_report)
+
+        @polling_timer = schedule.every('60s') do
+            do_send(:state)
+        end
     end
     
     def disconnected
+        @polling_timer.cancel unless @polling_timer.nil?
+        @polling_timer = nil
     end
 
 
