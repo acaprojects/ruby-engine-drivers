@@ -55,7 +55,7 @@ class Biamp::Nexia
 	# {1 => [2,3,5], 2 => [2,3,6]}, true
 	# Supports Matrix and Automixers
 	def mixer(id, inouts, mute = false)
-		value = is_affirmative?(mute) ? 
+		value = is_affirmative?(mute) ? 1 : 0
 
 		if inouts.is_a? Hash
 			inouts.each_key do |input|
