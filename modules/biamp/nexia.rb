@@ -75,12 +75,18 @@ class Biamp::Nexia
 	
 	def fader(fader_id, level, index = 1)
 		# value range: -100 ~ 12
-		do_send('SETD', self[:device_id], 'FDRLVL', fader_id, index, level)
+		faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
+		faders.each do |fad|
+			do_send('SETD', self[:device_id], 'FDRLVL', fad, index, level)
+		end
 	end
 	
 	def mute(fader_id, val = true, index = 1)
 		actual = val ? 1 : 0
-		do_send('SETD', self[:device_id], 'FDRMUTE', fader_id, index, actual)
+		faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
+		faders.each do |fad|
+			do_send('SETD', self[:device_id], 'FDRMUTE', fad, index, actual)
+		end
 	end
 	
 	def unmute(fader_id, index = 1)
@@ -88,22 +94,26 @@ class Biamp::Nexia
 	end
 
 	def query_fader(fader_id, index = 1)
-		send("GET #{self[:device_id]} FDRLVL #{fader_id} #{index} \n") do |data|
+		fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+
+		send("GET #{self[:device_id]} FDRLVL #{fad} #{index} \n") do |data|
 			if data.start_with?('-ERR')
 				:abort
 			else
-				self[:"fader#{fader_id}_#{index}"] = data.to_i
+				self[:"fader#{fad}_#{index}"] = data.to_i
 				:success
 			end
 		end
 	end
 
 	def query_mute(fader_id, index = 1)
-		send("GET #{self[:device_id]} FDRMUTE #{fader_id} #{index} \n") do |data|
+		fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+		
+		send("GET #{self[:device_id]} FDRMUTE #{fad} #{index} \n") do |data|
 			if data.start_with?('-ERR')
 				:abort
 			else
-				self[:"fader#{fader_id}_#{index}_mute"] = data.to_i == 1
+				self[:"fader#{fad}_#{index}_mute"] = data.to_i == 1
 				:success
 			end
 		end
