@@ -35,7 +35,8 @@ class Kramer::Switcher::VsHdmi
 		self[:limits_known] = false
 		
 		defaults({
-			:wait => false
+			:wait => false,
+			:delay => 200
 		})
 
 		config = ({
