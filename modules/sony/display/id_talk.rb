@@ -120,14 +120,14 @@ class Sony::Display::IdTalk
 		do_send(:mute, {:priority => 0})
 	end
 
-	def audio_mute
-		logger.debug "-- sony display, requested to mute"
+	def mute_audio
+		logger.debug "-- sony display, requested to mute audio"
 		do_send(:audio_mute, 1)
 		audio_mute?
 	end
 
-	def audio_unmute
-		logger.debug "-- sony display, requested to unmute"
+	def unmute_audio
+		logger.debug "-- sony display, requested to unmute audio"
 		do_send(:audio_mute, 0)
 		audio_mute?
 	end

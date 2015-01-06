@@ -143,15 +143,19 @@ class Samsung::Displays::MdSeries
 
     #
     # Emulate mute
-    def mute
-        if not self[:audio_mute]
-            self[:audio_mute] = true
-            self[:previous_volume] = self[:volume] || 50
-            volume 0
+    def mute_audio(val = true)
+        if is_affirmative? val
+            if not self[:audio_mute]
+                self[:audio_mute] = true
+                self[:previous_volume] = self[:volume] || 50
+                volume 0
+            end
+        else
+            unmute_audio
         end
     end
 
-    def unmute
+    def unmute_audio
         if self[:audio_mute]
             self[:audio_mute] = false
             volume self[:previous_volume]
