@@ -356,7 +356,7 @@ class Nec::Projector::NpSeries
 	#
 	def do_poll
 		power?({:priority => 0})
-		status_input
+		status_input if self[:power]
 		#projector_information
 		#status_error
 	end
