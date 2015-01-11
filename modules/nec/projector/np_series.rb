@@ -196,7 +196,7 @@ class Nec::Projector::NpSeries
 		self[:power_stable] = false
 
 		command = [0x02, 0x00, 0x00, 0x00, 0x00, 0x02]
-		if is_affirmative?(power)
+		if is_negatory?(power)
 			command[1] += 1		# power off
 			command[-1] += 1	# checksum
 			self[:power_target] = Off
@@ -204,7 +204,7 @@ class Nec::Projector::NpSeries
 			self[:power_target] = On
 		end
 		
-		send(command, :name => :power)
+		send(command, :name => :power, :timeout => 15000)
 	end
 	
 	def power?(options = {}, &block)
@@ -231,6 +231,7 @@ class Nec::Projector::NpSeries
 		:hdmi =>		0x1A,	# \
 		:dvi =>			0x1A,	# | - These are the same
 		:hdmi2 =>		0x1B,
+		:display_port => 0x1B,
 
 		:lan =>			0x20,
 		:viewer =>		0x1F
@@ -258,9 +259,9 @@ class Nec::Projector::NpSeries
 	def received(data, resolve, command)
 		response = data
 		data = str_to_array(data)
-		command[:data] = str_to_array(command[:data]) unless command[:data].nil?
+		req = str_to_array(command[:data]) if command && command[:data]
 		
-		logger.info "NEC projector sent: 0x#{byte_to_hex(response)}"
+		logger.debug "NEC projector sent: 0x#{byte_to_hex(response)}"
 		
 		#
 		# Command failed
@@ -269,13 +270,13 @@ class Nec::Projector::NpSeries
 			#
 			# We were changing power state at time of failure we should keep trying
 			#
-			if [0x00, 0x01].include?(command[:data][1])
-				command[:delay_on_receive] = 6
+			if req && [0x00, 0x01].include?(req[1])
+				command[:delay_on_receive] = 6000
 				power?
 				return true
 			end
-			logger.info "-- NEC projector, sent fail code for command: 0x#{byte_to_hex(command[:data])}"
-			logger.info "-- NEC projector, response was: 0x#{byte_to_hex(response)}"
+			logger.warn "-- NEC projector, sent fail code for command: 0x#{byte_to_hex(req)}"
+			logger.warn "-- NEC projector, response was: 0x#{byte_to_hex(response)}"
 			return false
 		end
 
@@ -283,7 +284,7 @@ class Nec::Projector::NpSeries
 		# Check checksum
 		#
 		if !check_checksum(data)
-			logger.debug "-- NEC projector, checksum failed for command: 0x#{byte_to_hex(command[:data])}"
+			logger.debug "-- NEC projector, checksum failed for command: 0x#{byte_to_hex(req)}"
 			return false
 		end
 
@@ -302,21 +303,24 @@ class Nec::Projector::NpSeries
 					process_error_status(data, command)
 					return true
 				when 0x85
-					case command[:data][-2]
+					# Return if we can't work out what was requested initially
+					return true unless req
+
+					case req[-2]
 						when 0x02
 							process_input_state(data, command)
 							return true
 						when 0x03
-							process_mute_state(data, command)
+							process_mute_state(data, req)
 							return true
 					end
 			end
 		when 0x22
 			case data[1]
 				when 0x03
-					return process_input_switch(data, command)
+					return process_input_switch(data, req)
 				when 0x00, 0x01
-					process_lamp_command(data, command)
+					process_lamp_command(data, req)
 					return true
 				when 0x10, 0x11, 0x12, 0x13, 0x14, 0x15
 					status_mute	# update mute status's (dry)
@@ -333,13 +337,13 @@ class Nec::Projector::NpSeries
 					#
 					return true
 				when 0x8A
-					process_projector_information(data, command)
+					process_projector_information(data, req)
 					return true
 			end
 		end
 
-		logger.warn "-- NEC projector, no status updates defined for response: #{byte_to_hex(response)}"
-		logger.warn "-- NEC projector, command was: 0x#{byte_to_hex(command[:data])}"
+		logger.info "-- NEC projector, no status updates defined for response: #{byte_to_hex(response)}"
+		logger.info "-- NEC projector, command was: 0x#{byte_to_hex(req)}"
 		return true											# to prevent retries on commands we were not expecting
 	end
 
@@ -352,7 +356,7 @@ class Nec::Projector::NpSeries
 	#
 	def do_poll
 		power?({:priority => 0})
-		#status_input
+		status_input
 		#projector_information
 		#status_error
 	end
@@ -361,18 +365,15 @@ class Nec::Projector::NpSeries
 	#
 	# Process the lamp on/off command response
 	#
-	def process_lamp_command(data, command)
+	def process_lamp_command(data, req)
 		logger.debug "-- NEC projector sent a response to a power command"
 
 		#
 		# Ensure a change of power state was the last command sent
 		#
 		#self[:power] = data[1] == 0x00
-		if command.present?
-			last = command[:data]
-			if [0x00, 0x01].include?(last[1])
-				power?	# Queues the status power command
-			end
+		if req.present? && [0x00, 0x01].include?(req[1])
+			power?	# Queues the status power command
 		end
 	end
 
@@ -404,14 +405,16 @@ class Nec::Projector::NpSeries
 			end
 			
 			
-			command[:delay_on_receive] = 4
-			power?	# Then re-queue this command
-						
+			# recheck in 3 seconds
+			schedule.in(3000) do
+				power?
+			end
 
 			#	Signal processing
 		elsif (data[-2] & 0b1000000) > 0
-			command[:delay_on_receive] = 3
-			power?	# Then re-queue this command
+			schedule.in(3000) do
+				power?
+			end
 		else
 			#
 			# We are in a stable state!
@@ -426,11 +429,6 @@ class Nec::Projector::NpSeries
 					#
 					logger.debug "NEC projector in an undesirable power state... (Correcting)"
 					power(self[:power_target])
-					
-					#
-					# ensures lamp targets are set in case of disconnect
-					#
-					command[:delay_on_receive] = 15
 				end
 			else
 				logger.debug "NEC projector is in a good power state..."
@@ -445,6 +443,9 @@ class Nec::Projector::NpSeries
 				status_input unless self[:power] == Off 	# calls status mute
 			end
 		end
+
+
+		logger.debug "Current state {power: #{self[:power]}, warming: #{self[:warming]}, cooling: #{self[:cooling]}}"
 	end
 
 
@@ -462,7 +463,7 @@ class Nec::Projector::NpSeries
 		0x02 => {
 			0x01 => [:vga2, :dvi_a, :rgbhv],
 			0x04 => [:component2],
-			0x06 => [:hdmi2],
+			0x06 => [:display_port, :hdmi2],
 			0x07 => [:lan]
 		},
 		0x03 => {
@@ -478,11 +479,13 @@ class Nec::Projector::NpSeries
 		self[:input_selected] = INPUT_MAP[data[-15]][data[-14]]
 		self[:input] = self[:input_selected].nil? ? :unknown : self[:input_selected][0]
 		if data[-17] == 0x01
-			command[:delay_on_receive] = 3		# still processing signal
+			command[:delay_on_receive] = 3000		# still processing signal
 			status_input
 		else
 			status_mute							# get mute status one signal has settled
 		end
+
+		logger.debug "The input selected was: #{self[:input_selected][0]}"
 
 		#
 		# Notify of bad input selection for debugging
@@ -505,7 +508,7 @@ class Nec::Projector::NpSeries
 	#
 	# Check the input switching command was successful
 	#
-	def process_input_switch(data, command)
+	def process_input_switch(data, req)
 		logger.debug "-- NEC projector responded to switch input command"	
 
 		if data[-2] != 0xFF
@@ -513,7 +516,7 @@ class Nec::Projector::NpSeries
 			return true
 		end
 
-		logger.debug "-- NEC projector failed to switch input with command: #{byte_to_hex(command[:data])}"
+		logger.debug "-- NEC projector failed to switch input with command: #{byte_to_hex(req)}"
 		return false	# retry the command
 	end
 
@@ -628,7 +631,7 @@ class Nec::Projector::NpSeries
 		#
 		# Prepare command for sending
 		#
-		command = str_to_array(hex_to_byte(command)) unless command.class == Array
+		command = str_to_array(hex_to_byte(command)) unless command.is_a?(Array)
 		check = 0
 		command.each do |byte|	# Loop through the first to second last element
 			check = (check + byte) & 0xFF
