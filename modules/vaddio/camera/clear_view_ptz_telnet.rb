@@ -105,7 +105,11 @@ class Vaddio::Camera::ClearViewPtzTelnet
     def reboot(from_now = 0)
         # Not named so it won't be stored in the queue when not connected
         # -> Named commands persist disconnect and will execute in order on connect
-        send "reboot #{from_now}\r"
+        if from_now > 0
+            send "reboot #{from_now}\r"
+        else
+            send "reboot\r"
+        end
     end
 
     def version
