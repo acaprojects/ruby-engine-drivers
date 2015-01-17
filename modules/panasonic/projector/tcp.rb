@@ -2,6 +2,11 @@ module Panasonic; end
 module Panasonic::Projector; end
 
 
+# Default Web UI Access
+# Username: admin1
+# Password: panasonic
+
+
 require 'digest/md5'
 
 #
