@@ -50,10 +50,12 @@ class Nec::Display::All
 		self[:brightness_min] = 0
 		self[:contrast_min] = 0
 		#self[:error] = []		TODO!!
-	end
-	
-	def response_delimiter	# Function required if device could contacts us first
-		0x0D
+
+		config({
+            tokenize: true,
+            delimiter: "\x0D",
+            encoding: "ASCII-8BIT"
+        })
 	end
 
 	def connected
@@ -81,9 +83,10 @@ class Nec::Display::All
 	def power(state)
 		message = "C203D6"
 
-		power? do |result|
+		power? do
+			current = self[:power]
 			if is_affirmative?(state)
-				if result == Off
+				if current == Off
 					message += "0001"	# Power On
 					send_checksum(:command, message, {:name => :power})
 					self[:warming] = true
@@ -95,7 +98,7 @@ class Nec::Display::All
 					volume_status(0)
 				end
 			else
-				if result == On
+				if current == On
 					message += "0004"	# Power Off
 					send_checksum(:command, message, {:name => :power})
 
@@ -188,9 +191,7 @@ class Nec::Display::All
 	# Value based set parameter
 	#
 	def brightness(val)
-		val = val.to_i if val.is_a? String
-		val = 100 if val > 100
-		val = 0 if val < 0
+		val = in_range(val.to_i, 100)
 
 		message = OPERATION_CODE[:brightness_status]
 		message += val.to_s(16).upcase.rjust(4, '0')	# Value of input as a hex string
@@ -201,9 +202,7 @@ class Nec::Display::All
 	end
 
 	def contrast(val)
-		val = val.to_i if val.is_a? String
-		val = 100 if val > 100
-		val = 0 if val < 0
+		val = in_range(val.to_i, 100)
 
 		message = OPERATION_CODE[:contrast_status]
 		message += val.to_s(16).upcase.rjust(4, '0')	# Value of input as a hex string
@@ -214,9 +213,7 @@ class Nec::Display::All
 	end
 
 	def volume(val)
-		val = val.to_i if val.is_a? String
-		val = 100 if val > 100
-		val = 0 if val < 0
+		val = in_range(val.to_i, 100)
 
 		message = OPERATION_CODE[:volume_status]
 		message += val.to_s(16).upcase.rjust(4, '0')	# Value of input as a hex string
@@ -316,8 +313,8 @@ class Nec::Display::All
 
 
 	def do_poll
-		power?({:priority => 99}) do |result|
-			if result == On
+		power?({:priority => 0}) do
+			if self[:power] == On
 				power_on_delay
 				mute_status
 				volume_status

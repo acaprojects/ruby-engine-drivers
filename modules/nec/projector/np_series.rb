@@ -200,11 +200,12 @@ class Nec::Projector::NpSeries
 			command[1] += 1		# power off
 			command[-1] += 1	# checksum
 			self[:power_target] = Off
+
+			send(command, :name => :power, :timeout => 15000, :delay => 15000)
 		else
 			self[:power_target] = On
+			send(command, :name => :power, :timeout => 15000)
 		end
-		
-		send(command, :name => :power, :timeout => 15000)
 	end
 	
 	def power?(options = {}, &block)
