@@ -63,7 +63,9 @@ class GlobalCache::Gc100
     def relay_status?(index, &block)
         if index < self[:num_relays]
             connector = self[:config][:relay][index]
-            do_send("getstate,#{connector}", {:emit => {"relay#{index}".to_sym => block}})
+            options = {}
+            options[:emit] = block if block_given?
+            do_send("getstate,#{connector}", options)
         else
             logger.warn "Attempted to check IO on GlobalCache that does not exist: #{index}"
         end
@@ -72,7 +74,9 @@ class GlobalCache::Gc100
     def io_status?(index, &block)
         if index < self[:num_ir]
             connector = self[:config][:ir][index]
-            do_send("getstate,#{connector}", {:emit => {"ir#{index}".to_sym => block}})
+            options = {}
+            options[:emit] = block if block_given?
+            do_send("getstate,#{connector}", options)
         else
             logger.warn "Attempted to check IO on GlobalCache that does not exist: #{index}"
         end

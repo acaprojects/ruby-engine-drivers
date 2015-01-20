@@ -84,8 +84,14 @@ class Axis::Camera::Vapix
         end
 
         options = {}
-        options[:retries] = is_centered ? 1 : 0
         options[:name] = :joystick
+
+        if is_centered
+            options[:clear_queue] = true
+        else
+            options[:priority] = 10
+            options[:retries] = 0
+        end
 
         logger.debug("Sending camera: #{pan_speed}#{tilt_speed}")
 

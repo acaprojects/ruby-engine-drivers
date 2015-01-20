@@ -12,7 +12,7 @@ class Panasonic::Camera::He50
 
     def on_update
         defaults({
-            delay: 130,         # As per the manual page 8
+            delay: 150,         # As per the manual page 8
             keepalive: false,
             inactivity_timeout: 1.5,  # seconds before closing the connection if no response
             connect_timeout: 2        # max seconds for the initial connection to the device
