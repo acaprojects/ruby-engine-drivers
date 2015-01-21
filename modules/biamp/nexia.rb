@@ -72,12 +72,21 @@ class Biamp::Nexia
             end
         end
     end
+
+    FADERS = {
+        fader: 'FDRLVL',
+        matrix_in: 'MMLVLIN',
+        matrix_out: 'MMLVLOUT',
+        matrix_crosspoint: 'MMLVLXP'
+    }
     
-    def fader(fader_id, level, index = 1)
+    def fader(fader_id, level, index = 1, type = :level_fader)
+        fad_type = FADERS[type.to_sym]
+
         # value range: -100 ~ 12
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
-            do_send('SETD', self[:device_id], 'FDRLVL', fad, index, level)
+            do_send('SETD', self[:device_id], fad_type, fad, index, level)
         end
     end
     
@@ -137,6 +146,8 @@ class Biamp::Nexia
             when :DEVID
                 # "#GETD 0 DEVID 1 "
                 self[:device_id] = data[-2].to_i
+            when :MMLVLIN
+                self[:"matrix_in#{data[3]}_#{data[4]}"] = data[5].to_i
             end
         end
         
