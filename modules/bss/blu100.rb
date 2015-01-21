@@ -6,7 +6,7 @@ class Bss::Blu100
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
     
-	def on_load
+    def on_load
         defaults({
             :wait => false
         })
@@ -17,14 +17,14 @@ class Bss::Blu100
         })
 
         on_update
-	end
-	
-	def on_unload
-	end
-	
-	def on_update
+    end
+    
+    def on_unload
+    end
+    
+    def on_update
         @type_lookup ||= {}
-	end
+    end
 
     def connected
         subscribe_percent(1, 60000)

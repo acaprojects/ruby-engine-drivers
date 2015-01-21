@@ -8,7 +8,7 @@ class Samsung::Displays::MdSeries
 
     #
     # Control system events
-	def on_load
+    def on_load
         on_update
         
         self[:volume_min] = 0
@@ -27,14 +27,14 @@ class Samsung::Displays::MdSeries
         # Meta data for inquiring interfaces
         self[:type] = :lcd
         self[:input_stable] = true
-	end
-	
-	def on_unload
-	end
-	
-	def on_update
+    end
+    
+    def on_unload
+    end
+    
+    def on_update
         @id = setting(:display_id) || 0xFF
-	end
+    end
 
 
     #
