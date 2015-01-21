@@ -73,10 +73,9 @@ class Philips::Dynalite
         # Levels
         #0x01 == 100%
         #0xFF == 0%
-        level = 100 - level                    # Inverse
+        level = 100 - level                     # Inverse
         level = (level / 100.0 * 255.0).to_i    # Move into 255 range
-        level = 1 if level <= 0                 # 1 == 100%
-        level = 255 if level > 255                # 255 == 0%
+        level = in_range(level, 255, 1)
 
         command = [0x1c, area & 0xFF, channel & 0xFF, 0x71, level, fade & 0xFF, 0xFF]
         do_send(command)
