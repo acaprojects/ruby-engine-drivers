@@ -11,8 +11,14 @@ class Philips::Dynalite
         # Setup constants
         #
         defaults({
-            :wait => false,
-            :delay => 0.4
+            wait: false,
+            delay: 0.4
+        })
+
+        config({
+            tokenize: true,
+            indicator: "\x1C",
+            msg_length: 7      # length - indicator
         })
     end
 
@@ -34,21 +40,19 @@ class Philips::Dynalite
     
     
     #
-    # Arguments: preset_number, area_number, fade_time in 50 millisecond increments
+    # Arguments: preset_number, area_number, fade_time in millisecond
     #    Trigger for CBUS module compatibility
     #
-    def trigger(area, number, fade = 2)
+    def trigger(area, number, fade = 1000)
         # 0,1,2,3 then a,b,c,d for 4,5,6,7
         self[:"area#{area}"] = number
         area = area.to_i
         number = number.to_i
-        fade = fade.to_i
+        fade = (fade / 10).to_i
 
         number = number - 1
         bank = number / 8
         number = number - (bank * 8)
-
-        fade *= 50
 
         if number > 3
             number = number - 4 + 0x0A
@@ -58,41 +62,68 @@ class Philips::Dynalite
 
         do_send(command)
     end
-    # 200 trigger 1 == join, 200 trigger 4 == unjoin
+    # Seems to be an undocument trigger command with opcode 65
+    # -- not sure how fade works with it..
 
-
-    def get_current_preset(area)                    # channel number
+    def get_current_preset(area)
         command = [0x1c, area.to_i & 0xFF, 0, 0x63, 0, 0, 0xFF]
         do_send(command)
     end
 
-
-    def light_level(area, level, fade = 0.1, channel = 255)
-        fade = (fade * 100).to_i
-
-        # Levels
-        #0x01 == 100%
-        #0xFF == 0%
-        level = 255 - level.to_i          # Inverse
-        level = in_range(level, 255, 1)
-
-        command = [0x1c, area & 0xFF, channel & 0xFF, 0x71, level, fade & 0xFF, 0xFF]
+    def save_preset(area)
+        command = [0x1c, area.to_i & 0xFF, 0, 0x66, 0, 0, 0xFF]
         do_send(command)
     end
 
 
-    def get_light_level(area)
-        do_send([0x1c, area.to_i & 0xFF, 0xFF, 0x61, 0, 0, 0xFF])
+    def light_level(area, level, channel = 0xFF, fade = 1000)
+        cmd = 0x71
+
+        # Command changes based on the length of the fade time
+        if fade <= 25500
+            fade = (fade / 100).to_i
+        elsif fade < 255000
+            cmd = 0x72
+            fade = (fade / 1000).to_i
+        else
+            cmd = 0x73
+            fade = in_range((fade / 60000).to_i, 22, 1)
+        end
+
+        # Levels
+        #0x01 == 100%
+        #0xFF == 0%
+        level = 0xFF - level.to_i          # Inverse
+        level = in_range(level, 0xFF, 1)
+
+        command = [0x1c, area & 0xFF, channel & 0xFF, cmd, level, fade & 0xFF, 0xFF]
+        do_send(command)
+    end
+
+    def stop_fading(area, channel = 0xFF)
+        command = [0x1c, area.to_i & 0xFF, channel.to_i & 0xFF, 0x76, 0, 0, 0xFF]
+        do_send(command)
+    end
+
+    def stop_all_fading(area)
+        command = [0x1c, area.to_i & 0xFF, 0, 0x7A, 0, 0, 0xFF]
+        do_send(command)
     end
 
 
-    def increment_level(area)
-        do_send([0x1c, area.to_i & 0xFF, 100, 6, 0, 0, 0xFF])
+    def get_light_level(area, channel = 0xFF)
+                       # area,            channel,            cmd,        join
+        do_send([0x1c, area.to_i & 0xFF, channel.to_i & 0xFF, 0x61, 0, 0, 0xFF])
     end
 
 
-    def decrement_level(area)
-        do_send([0x1c, area.to_i & 0xFF, 100, 5, 0, 0, 0xFF])
+    def increment_area_level(area)
+        do_send([0x1c, area.to_i & 0xFF, 0x64, 6, 0, 0, 0xFF])
+    end
+
+
+    def decrement_area_level(area)
+        do_send([0x1c, area.to_i & 0xFF, 0x64, 5, 0, 0, 0xFF])
     end
     
     
@@ -102,19 +133,32 @@ class Philips::Dynalite
         
         data = str_to_array(data)
 
-        if data[0] == 0x1c
-            # 0-3, A-D
-            if [0, 1, 2, 3, 10, 11, 12, 13].include?(data[3])
-                number = data[3]
-                number -= 0x0A + 4 if number > 3
-                number += data[5] * 8 + 1
-                self[:"area#{data[1]}"] = number
+        case data[2]
+        # current preset selected response
+        when 0, 1, 2, 3, 10, 11, 12, 13
 
-            elsif data[3] == 0x60
-                level = data[4]
-                level = 0 if level <= 1
-                level = 255 - level  # Inverse
-                self[:"area#{data[1]}_level"] = level
+            # 0-3, A-D == preset 1..8
+            number = data[2]
+            number -= 0x0A + 4 if number > 3
+
+            # Data 4 represets the preset offset or bank
+            number += data[4] * 8 + 1
+            self[:"area#{data[0]}"] = number
+
+        # alternative preset response
+        when 0x62
+            self[:"area#{data[0]}"] = data[1] + 1
+
+        # level response (area or channel)
+        when 0x60
+            level = data[3]
+            level = 0 if level <= 1
+            level = 0xFF - level  # Inverse
+
+            if data[1] == 0xFF # Area (all channels)
+                self[:"area#{data[0]}_level"] = level
+            else
+                self[:"area#{data[0]}_chan#{data[1]}_level"] = level
             end
         end
 
