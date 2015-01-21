@@ -73,8 +73,7 @@ class Philips::Dynalite
         # Levels
         #0x01 == 100%
         #0xFF == 0%
-        level = 100 - level                     # Inverse
-        level = (level / 100.0 * 255.0).to_i    # Move into 255 range
+        level = 255 - level.to_i          # Inverse
         level = in_range(level, 255, 1)
 
         command = [0x1c, area & 0xFF, channel & 0xFF, 0x71, level, fade & 0xFF, 0xFF]
@@ -114,10 +113,7 @@ class Philips::Dynalite
             elsif data[3] == 0x60
                 level = data[4]
                 level = 0 if level <= 1
-
-                level = (level / 255.0 * 100.0).to_i    # Move into 0..100 range
-
-                level = 100 - level
+                level = 255 - level  # Inverse
                 self[:"area#{data[1]}_level"] = level
             end
         end
