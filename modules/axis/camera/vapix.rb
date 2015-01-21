@@ -28,8 +28,9 @@ class Axis::Camera::Vapix
         self[:tilt_min] = -180.0
         self[:tilt_center] = 0.0
 
-        self[:joy_left] = -100
-        self[:joy_right] = 100
+        # Actual limits are -100 to 100 this just improves usability
+        self[:joy_left] =  -50
+        self[:joy_right] = 50
         self[:joy_center] = 0
 
         self[:zoom_max] = 9999
