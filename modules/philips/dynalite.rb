@@ -1,7 +1,11 @@
 module Philips; end
 
 
-class Philips::Dynalite < AutomateEm::Device
+class Philips::Dynalite
+	include ::Orchestrator::Constants
+    include ::Orchestrator::Transcoder
+    
+
 	def on_load
 		#
 		# Setup constants
