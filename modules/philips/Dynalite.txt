@@ -1,0 +1,334 @@
+http://www.lighting.philips.com/main/subsites/dynalite/library_support/technical_support/integration/dynet_opcodes.wpd
+
+Interface
+Use RS485, 9600, 8 bit data, 1 start bit, 1 stop bit, no parity. Idle between Bytes to be < 1ms. Delay between Packets to be > 10ms.
+
+Logical Message Protocol
+8Byte packet, Checksum = Negative 8 bit 2’s complement sum of Bytes 1-7. All numbers in hexadecimal:
+
+Select Current Preset
+Byte 0: 1C hex 
+Byte 1: Area 
+Byte 2: Fade Rate low Byte (usually 100) 
+Byte 3: Preset: 0 = P1, 1 = P2, 2 = P3, 3 = P4, A = P5, B = P6, C = P7, D = P8 
+Byte 4: Fade Rate high Byte (usually 0) 
+Byte 5: Preset Bank: 0 = P1 – P8, 1 = P9 – P16, 2 = P17 – P24 etc. 
+Byte 6: Join 
+Byte 7: Checksum 
+Example: Select Preset 4 in Area 1: 
+[1C] [01] [20] [03] [00] [00] [FF] [C1] 
+
+Set to Off
+Byte 0 1C hex 
+Byte 1 Area 
+Byte 2 Fade Rate low Byte (usually 100) 
+Byte 3 4 
+Byte 4 Fade Rate high Byte (usually 0) 
+Byte 5 Unused (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Turn Area 1 Off: 
+[1C] [03] [0A] [04] [00] [00] [FF] [D4] 
+
+Decrement Level (sent to dimmers)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Fade Rate low Byte (usually 100) 
+Byte 3 5 
+Byte 4 Fade Rate high Byte (usually 0) 
+Byte 5 Unused (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Decrease the level of Area 3: 
+[1C] [03] [1F] [05] [00] [00] [FF] [BE] 
+
+Increment Level (sent to dimmers)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Fade Rate low Byte (usually 100) 
+Byte 3 6 
+Byte 4 Fade Rate high Byte (usually 0) 
+Byte 5 Unused (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Decrease the level of Area 3: 
+[1C] [03] [1F] [06] [00] [00] [FF] [BD] 
+
+Save Current Preset
+Byte 0 - 1C 
+Byte 1 - Area 
+Byte 2 - Not used 
+Byte 3 - Opcode $66 
+Byte 4 - Not used 
+Byte 5 - Not used 
+Byte 6 - Join or Domain 
+Byte 7 - Checksum 
+Example: Save Current Preset in Area 1: 
+[1C] [01] [00] [66] [00] [00] [FF] [7E]
+Restore Saved Preset
+Byte 0 - 1C 
+Byte 1 - Area 
+Byte 2 - Fade - low Byte 
+Byte 3 - Opcode 67 
+Byte 4 - Fade - high Byte 
+Byte 5 - Not used 
+Byte 6 - Join or Domain 
+Byte 7 - Checksum 
+Example: Restore Saved Preset in Area 1: 
+[1C] [01] [FA] [67] [00] [00] [FF] [83] 
+
+Preset Offset
+Byte 0 - 1C 
+Byte 1 - Area 
+Byte 2 - Data - Offset value plus Bit 8 set, to distinguish Preset Offset from Swap Bank 
+Byte 3 - Opcode $64 
+Byte 4 - Not used 
+Byte 5 - Not used 
+Byte 6 - Join or Domain 
+Byte 7 - Checksum 
+Example: Preset Offset of 15 in Area 1: 
+[1C] [01] [8F] [64] [00] [00] [FF] [F1]
+
+Reset Preset
+Byte 0 - 1C
+Byte 1 - Area 
+Byte 2 - Fade - low Byte 
+Byte 3 - Opcode $0F 
+Byte 4 - Fade - high Byte 
+Byte 5 - Not used 
+Byte 6 - Join or Domain 
+Byte 7 - Checksum 
+Example: Reset Preset in Area 1 over 5 seconds: 
+[1C] [01] [FA] [0F] [00] [00] [FF] [DB]
+
+Area Linking
+The Base Area acts like an Area 0 for all Channels that have that Base Area defined, and is useful as a global control for a block of Areas. The following is for the 24 Areas directly above the Base Area, as used by the Set Area Links and Clear Area Links messages: 
+Byte 2 Bit 7 is the 1st Area, and Bit 0 is 8th 
+Byte 4 Bit 7 is the 9th, and Bit 0 is the 16th 
+Byte 5 Bit 7 is the 17th, and Bit 0 is the 24th
+
+Set Area Links:
+Byte 0 - 1C 
+Byte 1 - Area 
+Byte 2 - Data - Areas to Link 
+Byte 3 - Opcode $20 
+Byte 4 - Data - Areas to Link 
+Byte 5 - Data - Areas to Link 
+Byte 6 - Join 
+Byte 7 - Checksum 
+Example: Link Areas 4 & 5 (assumes Base Area = 3): 
+[1C] [04] [80] [20] [00] [00] [FF] [C0]
+Clear Area Links
+Byte 0 - 1C 
+Byte 1 - Area 
+Byte 2 - Data - Areas to Unlink 
+Byte 3 - Opcode $21 
+Byte 4 - Data - Areas to Unlink 
+Byte 5 - Data - Areas to Unlink 
+Byte 6 - Join 
+Byte 7 - Checksum 
+Example: Separate Areas 4 & 5 (assumes Base Area = 3): 
+[1C] [04] [80] [21] [00] [00] [FF] [C0]
+
+Un Panic
+Clears panic condition (Unlocks Smart Panels & restores previous dimmer Preset) 
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Unused(usually 0) 
+Byte 3 18 hex 
+Byte 4 Unused(usually 0) 
+Byte 5 Unused(usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Restore normal operation in Area 2: 
+[1C] [02] [F0] [18] [00] [00] [FF] [DB]
+
+Panic
+Sets panic condition (Locks Smart Panels & selects dimmer Panic Preset) 
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Unused(usually 0) 
+Byte 3 17 hex 
+Byte 4 Unused(usually 0) 
+Byte 5 Unused(usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Select Panic Mode in Area 2: 
+[1C] [02] [F0] [17] [00] [00] [FF] [DC]
+
+Request Channel Level (sent to dimmer)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 CHANNEL NUMBER (0 origin) 
+Byte 3 61 hex 
+Byte 4 Unused(usually 0) 
+Byte 5 Unused(usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Request Level of Channel 5 (Area 2): 
+[1C] [02] [04] [61] [00] [00] [FF] [7E]
+
+Report Channel Level (reply from dimmer)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 CHANNEL NUMBER (0 origin) 
+Byte 3 60 hex 
+Byte 4 Target LEVEL (01 = 100%, FF = 0%) 
+Byte 5 Current LEVEL (01 = 100%, FF = 0%) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Report that Channel 5 (Area 2) Target Level is 58% & Current Level is 58%: 
+[1C] [02] [04] [60] [70] [70] [FF] [9F]
+Start Fading To A Level (0.1 sec to 25.5 sec)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 CHANNEL NUMBER (0 origin) 
+Byte 3 71 hex 
+Byte 4 CHANNEL LEVEL (01 = 100%, FF = 0%) 
+Byte 5 Fade Rate (0.1 sec INTERVAL) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Area 2 Channel 3 Fade to 50% over 5 seconds: 
+[1C] [02] [02] [71] [82] [32] [FF] [BC]
+
+Start Fading to a Level (1 sec to 255 sec)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 CHANNEL NUMBER (0 origin) 
+Byte 3 72 hex 
+Byte 4 CHANNEL LEVEL (01 = 100%, FF = 0%) 
+Byte 5 Fade Rate (1 sec INTERVAL) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Area 2 Channel 3 Fade to 50% over 50 seconds: 
+[1C] [02] [02] [72] [82] [32] [FF] [BB]
+
+Start Fading to a Level (1 min to 22 min)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 CHANNEL NUMBER (0 origin) 
+Byte 3 73 hex 
+Byte 4 CHANNEL LEVEL (01 = 100%, FF = 0%) 
+Byte 5 Fade Rate (1 min INTERVAL, max of 22) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Area 2 Channel 3 Fade to 50% over 15 minutes: 
+[1C] [02] [02] [73] [82] [0f] [FF] [DD]
+
+Stop Fading
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 CHANNEL NUMBER (0 origin) 
+Byte 3 76 hex 
+Byte 4 Unused (usually 0) 
+Byte 5 Unused (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Area 4 Channel 6 Stop Fading: 
+[1C] [04] [05] [76] [00] [00] [FF] [66]
+
+Report Preset (reply from dimmers - response from 63 message)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 PRESET NUMBER (0 origin) 
+Byte 3 62 hex 
+Byte 4 Unused(usually 0) 
+Byte 5 Unused(usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Area 4 is currently in Preset 6: 
+ [1C] [04] [05] [62] [00] [00] [FF] [7A]
+Request Preset (sent to dimmers)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Unused(usually 0) 
+Byte 3 63 hex 
+Byte 4 Unused(usually 0) 
+Byte 5 Unused(usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Request Current Preset of Area 4: 
+ [1C] [04] [00] [63] [00] [00] [FF] [7E]
+
+Start Fading to A Level (All Channels in an Area)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 LEVEL (01 = 100%, FF = 0%) 
+Byte 3 79 hex 
+Byte 4 Fade Rate low Byte (usually 100) 
+Byte 5 Fade Rate high Byte (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Fade Area 4 to 50% over 2 sec: 
+[1C] [04] [82] [79] [64] [00] [FF] [82]
+
+Stop Fading (All Channels In An Area)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Unused (usually 0) 
+Byte 3 7A hex 
+Byte 4 Unused (usually 0) 
+Byte 5 Unused (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Halt the Fade in Area 4 at the current level: 
+[1C] [04] [00] [7A] [00] [00] [FF] [67]
+
+Toggle Channel State(Preset • Off or Off • Preset)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 CHANNEL NUMBER (0 origin) 
+Byte 3 70 hex 
+Byte 4 UNUSED (usually 0) 
+Byte 5 UNUSED (usually 0) 
+Byte 6 TBAR (usually FF hex) 
+Byte 7 CHECKSUM 
+Example: Toggle Channel State of Area 4 CH8: 
+[1C] [07] [09] [70] [00] [00] [FF] [65]
+
+Program Toggle Preset (sent to dimmer)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Channel Number (0 origin) 
+Byte 3 7D hex 
+Byte 4 LEVEL 
+Byte 5 Unused (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Save the Level of Area 4 CH8 to the Toggle Preset: 
+[1C] [07] [09] [70] [00] [00] [FF] [65]
+Leave Program Mode - Saves light level to the current Preset (sent to dimmers)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Unused (usually 0) 
+Byte 3 8 
+Byte 4 Unused (usually 0) 
+Byte 5 Unused (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Save the Current Channel Levels of Area 4 to the Current Preset: 
+[1C] [04] [00] [08] [00] [00] [FF] [D9]
+
+Lock Control Panels (sent to dimmers with Keyboard inputs and Smart Panels)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Unused (usually 0) 
+Byte 3 15 
+Byte 4 Unused (usually 0) 
+Byte 5 Unused (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Lock All Control Panels in Area 6: 
+[1C] [06] [00] [15] [00] [00] [FF] [CA]
+
+Unlock Control Panels (sent to dimmers with Keyboard inputs and Smart Panels)
+Byte 0 1C hex 
+Byte 1 AREA 
+Byte 2 Unused (usually 0) 
+Byte 3 15 
+Byte 4 Unused (usually 0) 
+Byte 5 Unused (usually 0) 
+Byte 6 Join (usually FF hex) 
+Byte 7 Checksum 
+Example: Lock All Control Panels in Area 6: 
+[1C] [06] [00] [16] [00] [00] [FF] [C9]
