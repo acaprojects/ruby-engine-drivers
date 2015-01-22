@@ -19,7 +19,7 @@ class Samsung::Displays::MdSeries
             tokenize: proc {
                 ::UV::AbstractTokenizer.new({
                     indicator: "\xAA",
-                    callback: method(:check_checksum)
+                    callback: method(:check_length)
                 })
             }
         })
@@ -224,7 +224,7 @@ class Samsung::Displays::MdSeries
         end
     end
 
-    # Called by the Abstract Tokenizer
+    # Currently not used. We could check it if we like :)
     def check_checksum(byte_str)
         response = str_to_array(byte_str)
         check = 0
@@ -232,6 +232,20 @@ class Samsung::Displays::MdSeries
             check = (check + byte) & 0xFF
         end
         response[-1] == check
+    end
+
+    # Called by the Abstract Tokenizer
+    def check_length(byte_str)
+        response = str_to_array(byte_str)
+        return false if response.length <= 3
+
+        len = response[2] + 4 # (data length + header and checksum)
+
+        if response.length >= len
+            return len
+        else
+            return false
+        end
     end
 
     # Called by do_send to create a checksum
