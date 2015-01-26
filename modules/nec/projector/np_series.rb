@@ -276,7 +276,7 @@ class Nec::Projector::NpSeries
                 power?
                 return true
             end
-            logger.warn "-- NEC projector, sent fail code for command: 0x#{byte_to_hex(req)}"
+            logger.warn "-- NEC projector, sent fail code for command: 0x#{byte_to_hex(req)}" if req
             logger.warn "-- NEC projector, response was: 0x#{byte_to_hex(response)}"
             return false
         end
@@ -285,7 +285,7 @@ class Nec::Projector::NpSeries
         # Check checksum
         #
         if !check_checksum(data)
-            logger.debug "-- NEC projector, checksum failed for command: 0x#{byte_to_hex(req)}"
+            logger.debug "-- NEC projector, checksum failed for command: 0x#{byte_to_hex(req)}" if req
             return false
         end
 
@@ -344,7 +344,7 @@ class Nec::Projector::NpSeries
         end
 
         logger.info "-- NEC projector, no status updates defined for response: #{byte_to_hex(response)}"
-        logger.info "-- NEC projector, command was: 0x#{byte_to_hex(req)}"
+        logger.info "-- NEC projector, command was: 0x#{byte_to_hex(req)}" if req
         return true                                            # to prevent retries on commands we were not expecting
     end
 
