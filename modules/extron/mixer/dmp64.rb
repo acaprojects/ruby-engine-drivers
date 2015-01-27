@@ -94,19 +94,21 @@ class Extron::Mixer::Dmp64
     #
     # Output control
     #
-    def mute(group, value = true)
+    def mute(group, value = true, index = nil)
+        group = index if index
+
         val = is_affirmative?(value) ? 1 : 0
         do_send("\eD#{group}*#{val}GRPM", :group_type => :mute)
         # Response:  GrpmD#{group}*+00001
     end
 
-    def unmute(group)
-        mute(group, false)
+    def unmute(group, index = nil)
+        mute(group, false, index)
         #do_send("\eD#{group}*0GRPM", :group_type => :mute)
         # Response:  GrpmD#{group}*+00000
     end
 
-    def fader(group, value)    # \e == 0x1B == ESC key
+    def fader(group, value, index = nil)    # \e == 0x1B == ESC key
         do_send("\eD#{group}*#{value}GRPM", :group_type => :volume)
         # Response: GrpmD#{group}*#{value}*GRPM
     end
