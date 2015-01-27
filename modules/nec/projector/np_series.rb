@@ -101,6 +101,10 @@ class Nec::Projector::NpSeries
         #
         @polling_timer.cancel unless @polling_timer.nil?
         @polling_timer = nil
+
+        # Disconnect often occurs on power off
+        # We may have not received a status response before the disconnect occurs
+        self[:power] = false
     end
 
 
