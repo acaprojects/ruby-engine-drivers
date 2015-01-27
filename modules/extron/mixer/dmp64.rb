@@ -160,9 +160,9 @@ class Extron::Mixer::Dmp64
             when :Grp    # Mute or Volume
                 data = data.split('*')
                 if command.present? && command[:group_type] == :mute
-                    self["ouput#{data[0][5..-1].to_i}_mute"] = data[1][-1] == '1'    # 1 == true
+                    self["fader#{data[0][5..-1].to_i}_mute"] = data[1][-1] == '1'    # 1 == true
                 elsif command.present? && command[:group_type] == :volume
-                    self["ouput#{data[0][5..-1].to_i}_volume"] = data[1].to_i
+                    self["fader#{data[0][5..-1].to_i}"] = data[1].to_i
                 else
                     return :failed
                 end
