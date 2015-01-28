@@ -27,7 +27,8 @@ class Clipsal::CBus
     
     def on_load
         defaults({
-            :wait => false
+            wait: false,
+            delay: 100    # NOTE:: maybe too much?
         })
 
         config({
@@ -45,10 +46,10 @@ class Clipsal::CBus
     
     
     def connected
-        send("|||\r", :wait => false)    # Ensure we are in smart mode
+        send("|||\r", priority: 99)    # Ensure we are in smart mode
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling CBUS"
-            send("|||\r", :wait => false)    # Ensure we are in smart mode
+            send("|||\r", priority: 99)    # Ensure we are in smart mode
         end
     end
     
@@ -124,11 +125,8 @@ class Clipsal::CBus
     
     
     def trigger(group, action)
-        action = action.to_i
-        group = group.to_i
-        
-        group = group & 0xFF
-        action = action & 0xFF
+        group = group.to_i & 0xFF
+        action = action.to_i & 0xFF
         command = [0x05, 0xCA, 0x00, 0x02, group, action]
         
         self["trigger_group_#{group}"] = action
@@ -248,7 +246,7 @@ class Clipsal::CBus
     
     
     def do_send(command, options = {})
-        string = byte_to_hex(array_to_str(command << checksum(command))).upcase
+        string = byte_to_hex(command << checksum(command)).upcase
         send("\\#{string}\r", options)
         #logger.debug "CBus module sent #{string}"
     end
