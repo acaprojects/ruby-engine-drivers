@@ -21,7 +21,8 @@ class Lumens::Dc265
 		config({
 			tokenize: true,
 			delimiter: "\xAF",
-			indicator: "\xA0"
+			indicator: "\xA0",
+            encoding: "ASCII-8BIT"
 		})
 		
 		self[:zoom_max] = 620
