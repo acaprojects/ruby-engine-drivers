@@ -80,7 +80,7 @@ class Biamp::Nexia
         matrix_crosspoint: 'MMLVLXP'
     }
     
-    def fader(fader_id, level, index = 1, type = :level_fader)
+    def fader(fader_id, level, index = 1, type = :fader)
         fad_type = FADERS[type.to_sym]
 
         # value range: -100 ~ 12
