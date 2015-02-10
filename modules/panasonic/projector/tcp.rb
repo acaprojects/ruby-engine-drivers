@@ -243,13 +243,11 @@ class Panasonic::Projector::Tcp
             pj = "#{COMMANDS[command]}:#{param}"
         end
 
-        if @mode == '0'
-            send("00#{pj}\r", options)
-        else
-            send("#{@pass}00#{pj}\r", options)
-        end
+        str = @mode == '0' ? "00#{pj}\r" : "#{@pass}00#{pj}\r"
 
-        nil
+        logger.debug "requesting #{command}: #{str}"
+
+        send(str, options)
     end
 end
 
