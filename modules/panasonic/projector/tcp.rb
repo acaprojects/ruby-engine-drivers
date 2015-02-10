@@ -154,6 +154,7 @@ class Panasonic::Projector::Tcp
                 @pass = "#{setting(:username) || 'admin1'}:#{setting(:password) || 'panasonic'}:#{data[3..-1]}"
                 @pass = Digest::MD5.hexdigest(@pass)
             end
+            return :retry if command
 
         else
             # Error Response
