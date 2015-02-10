@@ -145,19 +145,17 @@ class Panasonic::Projector::Tcp
     
 
     def received(data, resolve, command)        # Data is default received as a string
-        logger.debug "panasonic Proj sent: #{data}"
+        logger.debug "sent \"#{data}\""
 
         # This is the ready response 
         if data[0] == ' '
             @mode = data[1]
             if @mode == '1'
-                @pass = "#{setting(:username) || 'admin1'}:#{setting(:password) || 'panasonic'}:#{data.strip.split(/\s+/)[-1]}"
+                @pass = "#{setting(:username) || 'admin1'}:#{setting(:password) || 'panasonic'}:#{data[3..-1]}"
                 @pass = Digest::MD5.hexdigest(@pass)
             end
 
         else
-            data = data[2..-1]
-
             # Error Response
             if data[0] == 'E'
                 error = data.to_sym
@@ -173,7 +171,8 @@ class Panasonic::Projector::Tcp
                 end
             end
 
-                        resp = data.split(':')
+            data = data[2..-1]
+            resp = data.split(':')
             cmd = COMMANDS[resp[0].to_sym]
             val = resp[1]
                 
