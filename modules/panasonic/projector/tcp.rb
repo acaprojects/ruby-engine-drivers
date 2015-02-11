@@ -20,13 +20,16 @@ class Panasonic::Projector::Tcp
         # Response time is slow
         defaults({
             timeout: 2000,
-            delay_on_receive: 1000
+            delay_on_receive: 200
         })
 
+        # Projector will provide us with a password
+        # Which is applied in before_transmit
         config({
             tokenize: true,
             delimiter: "\r",
-            wait_ready: 'NTCONTROL'
+            wait_ready: 'NTCONTROL',
+            before_transmit: method(:apply_password)
         })
 
         @check_scheduled = false
@@ -145,17 +148,18 @@ class Panasonic::Projector::Tcp
     
 
     def received(data, resolve, command)        # Data is default received as a string
-        logger.debug "sent \"#{data}\""
+        logger.debug "sent \"#{data}\" for #{command ? command[:data] : 'unknown'}"
 
-        # This is the ready response 
+        # This is the ready response
         if data[0] == ' '
             @mode = data[1]
             if @mode == '1'
                 @pass = "#{setting(:username) || 'admin1'}:#{setting(:password) || 'panasonic'}:#{data[3..-1]}"
                 @pass = Digest::MD5.hexdigest(@pass)
             end
-            return :retry if command
 
+            # Ignore this as it is not a response
+            return :ignore
         else
             # Error Response
             if data[0] == 'E'
@@ -176,7 +180,7 @@ class Panasonic::Projector::Tcp
             resp = data.split(':')
             cmd = COMMANDS[resp[0].to_sym]
             val = resp[1]
-                
+
             case cmd
             when :power_on
                 self[:power] = true
@@ -238,16 +242,21 @@ class Panasonic::Projector::Tcp
         options[:name] = command unless options[:name]
 
         if param.nil?
-            pj = "#{COMMANDS[command]}"
+            cmd = "00#{COMMANDS[command]}\r"
         else
-            pj = "#{COMMANDS[command]}:#{param}"
+            cmd = "00#{COMMANDS[command]}:#{param}\r"
         end
 
-        str = @mode == '0' ? "00#{pj}\r" : "#{@pass}00#{pj}\r"
+        send(cmd, options)
+    end
 
-        logger.debug "requesting #{command}: #{str}"
+    # Apply the password hash to the command if a password is required
+    def apply_password(data, command)
+        if @mode == '1'
+            data = "#{@pass}#{data}"
+        end
 
-        send(str, options)
+        return data
     end
 end
 
