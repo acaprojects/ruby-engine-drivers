@@ -18,9 +18,12 @@ class Panasonic::Projector::Tcp
 
     def on_load
         # Response time is slow
+        # and as a make break device it may take time
+        # to acctually setup the connection with the projector
         defaults({
-            timeout: 2000,
-            delay_on_receive: 200
+            timeout: 5000,
+            delay_on_receive: 200,
+            retries: 3
         })
 
         # Projector will provide us with a password
