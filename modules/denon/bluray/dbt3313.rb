@@ -63,6 +63,7 @@ class Denon::Bluray::Dbt3313
 		:angle		=> 'K',
 		:home		=> 'P'
 	}
+	CMD_LOOKUP = COMMANDS.inverse
 
 	#
 	# Automatically creates a callable function for each command
@@ -91,21 +92,21 @@ class Denon::Bluray::Dbt3313
 
 
 
-	RESPONSES = {
-		0x30	=> :standby,
-		0x31	=> :disc_loading,
-		0x33	=> :tray_open,
-		0x34	=> :tray_close,
-		0x41	=> :no_disc,
-		0x42	=> :stop,
-		0x43	=> :play,
-		0x44	=> :pause,
-		0x45	=> :scan_play,
-		0x46	=> :slow_scan,
-		0x47	=> :setup_mode,
-		0x49	=> :resume_stop,
-		0x4A	=> :menu,
-		0x4B	=> :home_menu
+	STATUS_CODES = {
+		'0'	=> :standby,
+		'1'	=> :disc_loading,
+		'3'	=> :tray_open,
+		'4'	=> :tray_close,
+		'A'	=> :no_disc,
+		'B'	=> :stop,
+		'C'	=> :play,
+		'D'	=> :pause,
+		'E'	=> :scan_play,
+		'F'	=> :slow_scan,
+		'G'	=> :setup_mode,
+		'I'	=> :resume_stop,
+		'J' => :menu,
+		'K'	=> :home_menu
 	}
 
 	protected
@@ -133,7 +134,64 @@ class Denon::Bluray::Dbt3313
 
 	# Example power response:  Bluray_1: 0 66>;;00100000001000000 
 	def received(data, resolve, command)	
-		logger.debug data
+		logger.debug "Denon Bluray sent ASCII:#{data}"
+		
+		# Check for invalid command
+		return :abort if data[1] == '0'
+
+		# Command was valid
+		case CMD_LOOKUP[data[0]]
+		when :power_on
+			self[:power] = true
+			self[:model] = data[2..15]
+		when :power_off
+			self[:power] = false
+		when :play
+			self[:playing] = true
+			self[:paused] = false
+		when :stop
+			self[:playing] = false
+			self[:paused] = false
+		when :pause
+			self[:playing] = true
+			self[:paused] = true
+		when :eject
+			self[:ejected] = !self[:ejected]
+		when :status
+			case STATUS_CODES[data[8]]
+			when :standby
+				self[:power] = false
+				self[:playing] = false
+				self[:paused] = false
+				self[:ejected] = false
+				self[:loading] = false
+			when :tray_open
+				self[:power] = true
+				self[:playing] = false
+				self[:paused] = false
+				self[:ejected] = true
+				self[:loading] = false
+			when :tray_close
+				self[:power] = true
+				self[:playing] = false
+				self[:paused] = false
+				self[:ejected] = true
+				self[:loading] = false
+			when :disc_loading
+				self[:power] = true
+				self[:playing] = false
+				self[:paused] = false
+				self[:ejected] = false
+				self[:loading] = true
+			when :no_disc
+				self[:power] = true
+				self[:playing] = false
+				self[:paused] = false
+				self[:ejected] = false
+				self[:loading] = false
+			end
+		end
+
 		return :success
 	end
 end
