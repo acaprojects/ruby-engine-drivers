@@ -61,9 +61,10 @@ class Denon::Bluray::Dbt3313
 		:audio		=> 'I',
 		:subtitle	=> 'J',
 		:angle		=> 'K',
-		:home		=> 'P'
+		:home		=> 'P',
+		:enter		=> 'N'
 	}
-	CMD_LOOKUP = COMMANDS.inverse
+	CMD_LOOKUP = COMMANDS.invert
 
 	#
 	# Automatically creates a callable function for each command
@@ -81,7 +82,7 @@ class Denon::Bluray::Dbt3313
 	def power(state, options = {})
 		state = is_affirmative?(state)
 		options.merge!({
-			delay: 5500
+			delay: 5500   # Delay at least 5 seconds according to manual
 		})
 		if state == On
 			do_send(COMMANDS[:power_on], options)
@@ -91,25 +92,20 @@ class Denon::Bluray::Dbt3313
 	end
 
 
-
-	STATUS_CODES = {
-		'0'	=> :standby,
-		'1'	=> :disc_loading,
-		'3'	=> :tray_open,
-		'4'	=> :tray_close,
-		'A'	=> :no_disc,
-		'B'	=> :stop,
-		'C'	=> :play,
-		'D'	=> :pause,
-		'E'	=> :scan_play,
-		'F'	=> :slow_scan,
-		'G'	=> :setup_mode,
-		'I'	=> :resume_stop,
-		'J' => :menu,
-		'K'	=> :home_menu
+	DIRECTIONS = {
+		left: '1',
+		up: '2',
+		right: '3',
+		down: '4'
 	}
+	def cursor(direction, options = {})
+		val = DIRECTIONS[direction.to_sym]
+		do_send("M#{val}", options)
+	end
+
 
 	protected
+
 		
 	def do_send(cmd, options = {})
 		cmd = "\x02#{cmd.ljust(6, "\x00")}\x03"
@@ -132,7 +128,25 @@ class Denon::Bluray::Dbt3313
 		status(:priority => 0) 
 	end
 
-	# Example power response:  Bluray_1: 0 66>;;00100000001000000 
+
+	STATUS_CODES = {
+		'0'	=> :standby,
+		'1'	=> :disc_loading,
+		'3'	=> :tray_open,
+		'4'	=> :tray_close,
+		'A'	=> :no_disc,
+		'B'	=> :stop,
+		'C'	=> :play,
+		'D'	=> :pause,
+		'E'	=> :scan_play,
+		'F'	=> :slow_scan,
+		'G'	=> :setup_mode,
+		'I'	=> :resume_stop,
+		'J' => :menu,
+		'K'	=> :home_menu
+	}
+
+	# Example status response:  Bluray_1: 0 66>;;00100000001000000 
 	def received(data, resolve, command)	
 		logger.debug "Denon Bluray sent ASCII:#{data}"
 		

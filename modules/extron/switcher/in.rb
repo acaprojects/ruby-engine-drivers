@@ -1,8 +1,9 @@
 module Extron; end
-module Extron::Mixer; end
+module Extron::Switcher; end
 
 
-# :title:Extron DSP
+# :title:Extron Digital Matrix Switchers
+# NOTE:: Very similar to the XTP!! Update both
 #
 # Status information avaliable:
 # -----------------------------
@@ -11,40 +12,47 @@ module Extron::Mixer; end
 # connected
 #
 # (module defined)
+# video_inputs
+# video_outputs
+# audio_inputs
+# audio_outputs
 #
+# video1 => input (video)
+# video2
+# video3
+# video1_muted => true
 #
+# audio1 => input
+# audio1_muted => true
+# 
 #
-# Volume outputs
-# 60000 == volume 1
-# 60003 == volume 4
-#
-# Pre-mix gain inputs
-# 40100 == Mic1
-# 40105 == Mic6
+# (Settings)
+# password
 #
 
 
-class Extron::Mixer::Dmp64
+class Extron::Switcher::In
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
-    
+
     def on_load
         #
         # Setup constants
         #
-        self[:output_volume_max] = 2168
-        self[:output_volume_min] = 1048
-        self[:mic_gain_max] = 2298
-        self[:mic_gain_min] = 1698
-
+        defaults({
+            :wait => false
+        })
         config({
             :clear_queue_on_disconnect => true    # Clear the queue as we may need to send login
         })
     end
 
     def connected
-
+        @polling_timer = schedule.every('2m') do
+            logger.debug "-- Extron Maintaining Connection"
+            send('Q', :priority => 0)    # Low priority poll to maintain connection
+        end
     end
 
     def disconnected
@@ -57,14 +65,59 @@ class Extron::Mixer::Dmp64
     end
 
 
-    def call_preset(number)
-        if number < 0 || number > 32
-            number = 0    # Current configuration
-        end
-        send("#{number}.")    # No Carriage return for presents
-        # Response: Rpr#{number}
+    def direct(string)
+        send(string, :wait => false)
     end
 
+
+    # nil as these functions can be used to request state too
+    def switch(input = nil)
+        send("#{input}!")
+    end
+
+    def switch_video(input = nil)
+        send("#{input}&")
+    end
+
+    def switch_audio(input = nil)
+        send("#{input}$")
+    end
+
+
+
+    def mute_video(state = true)
+        val = is_affirmative?(state) ? 1 : 0
+        send("#{val}B")
+    end
+
+    def unmute_video
+        mute_video(false)
+    end
+
+
+    #def mute_audio(state = true)
+    #    val = is_affirmative?(state) ? 1 : 0
+    #    send("#{val}B")
+    #end
+
+    #def unmute_audio
+    #    mute_audio(false)
+    #end
+
+
+    def set_preset(number)
+        send("#{number},")
+    end
+
+    def recall_preset(number)
+        send("#{number}.")
+    end
+
+
+    
+
+
+    # AUDIO Controls
     #
     # Input control
     #
@@ -94,7 +147,7 @@ class Extron::Mixer::Dmp64
     #
     # Output control
     #
-    def mute(group, value = true, index = nil)
+    def mute_audio(group, value = true, index = nil)
         group = index if index
         val = is_affirmative?(value) ? 1 : 0
 
@@ -105,7 +158,7 @@ class Extron::Mixer::Dmp64
         # Response:  GrpmD#{group}*+00001
     end
 
-    def unmute(group, index = nil)
+    def unmute_audio(group, index = nil)
         mute(group, false, index)
         #do_send("\eD#{group}*0GRPM", :group_type => :mute)
         # Response:  GrpmD#{group}*+00000
@@ -134,12 +187,15 @@ class Extron::Mixer::Dmp64
         # Response: GrpmD#{group}*#{value}*GRPM
     end
 
+
+
+
     #
     # Sends copyright information
     # Then sends password prompt
     #
     def received(data, resolve, command)
-        logger.debug "Extron DSP sent #{data}"
+        logger.debug "Extron Matrix sent #{data}"
 
         if command.nil? && data =~ /Copyright/i
             pass = setting(:password)
@@ -151,29 +207,52 @@ class Extron::Mixer::Dmp64
         elsif data =~ /Login/i
             device_ready
         else
-            case data[0..2].to_sym
-            when :Grp    # Mute or Volume
-                data = data.split('*')
-                if command.present? && command[:group_type] == :mute
-                    self["fader#{data[0][5..-1].to_i}_mute"] = data[1][-1] == '1'    # 1 == true
-                elsif command.present? && command[:group_type] == :volume
-                    self["fader#{data[0][5..-1].to_i}"] = data[1].to_i
-                else
-                    return :failed
+            case data[0..1].to_sym
+            when :Am    # Audio mute
+                data = data[3..-1].split('*')
+                self["audio_muted"] = data[1] == '1'
+            when :Vm    # Video mute
+                self["video_muted"] = data[3] == '1'
+            when :In    # Input to all outputs
+                data = data[2..-1].split(' ')
+                input = data[0].to_i
+                if data[1] =~ /(All|RGB|Vid)/
+                    self["video"] = input
                 end
-            when :DsG    # Mic gain
-                self["mic#{data[7]}_gain"] = data[9..-1].to_i
-            when :DsM    # Mic Mute
-                self["mic#{data[7]}_mute"] = data[-1] == '1'    # 1 == true
-            when :Rpr    # Preset called
-                logger.debug "Extron DSP called preset #{data[3..-1]}"
+                if data[1] =~ /(All|Aud)/
+                    self["audio"] = input
+                end
             else
                 if data == 'E22'    # Busy! We should retry this one
                     command[:delay_on_receive] = 1 unless command.nil?
                     return :failed
-                elsif data[0] == 'E'
-                    logger.info "Extron Error #{ERRORS[data[1..2].to_i]}"
-                    logger.info "- for command #{command[:data]}" unless command.nil?
+                end
+
+                # Check for Audio responses
+                case data[0..2].to_sym
+                when :Grp    # Mute or Volume
+                    data = data.split('*')
+                    if command.present? && command[:group_type] == :mute
+                        self["fader#{data[0][5..-1].to_i}_mute"] = data[1][-1] == '1'    # 1 == true
+                    elsif command.present? && command[:group_type] == :volume
+                        self["fader#{data[0][5..-1].to_i}"] = data[1].to_i
+                    else
+                        return :failed
+                    end
+                when :DsG    # Mic gain
+                    self["mic#{data[7]}_gain"] = data[9..-1].to_i
+                when :DsM    # Mic Mute
+                    self["mic#{data[7]}_mute"] = data[-1] == '1'    # 1 == true
+                when :Rpr    # Preset called
+                    logger.debug "Extron DSP called preset #{data[3..-1]}"
+                else
+                    if data == 'E22'    # Busy! We should retry this one
+                        command[:delay_on_receive] = 1 unless command.nil?
+                        return :failed
+                    elsif data[0] == 'E'
+                        logger.info "Extron Error #{ERRORS[data[1..2].to_i]}"
+                        logger.info "- for command #{command[:data]}" unless command.nil?
+                    end
                 end
             end
         end
@@ -201,15 +280,9 @@ class Extron::Mixer::Dmp64
 
 
     def device_ready
-        do_send("\e3CV")    # Verbose mode and tagged responses
-        @polling_timer = schedule.every('2m') do
-            logger.debug "-- Extron Maintaining Connection"
-            send('Q', :priority => 0)    # Low priority poll to maintain connection
-        end
+        #send("I", :wait => true, :command => :information)
+        do_send("\e3CV", :wait => true)    # Verbose mode and tagged responses
     end
-
-
-
 
     def do_send(data, options = {})
         send(data << 0x0D, options)
