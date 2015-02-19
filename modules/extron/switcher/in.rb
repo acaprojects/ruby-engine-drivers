@@ -114,6 +114,17 @@ class Extron::Switcher::In
     end
 
 
+    TYPES = {
+        analog: 1,
+        digital: 2,
+        multi: 3
+    }
+    def configure_audio(input, type = :analog)
+        val = TYPES[type]
+        send("\x1BI#{input}*#{val}AFMT\r") if val
+    end
+
+
     
 
 

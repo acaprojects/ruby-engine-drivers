@@ -203,6 +203,24 @@ class Denon::Bluray::Dbt3313
 				self[:paused] = false
 				self[:ejected] = false
 				self[:loading] = false
+			when :play
+				self[:power] = true
+				self[:playing] = true
+				self[:paused] = false
+				self[:ejected] = false
+				self[:loading] = false
+			when :pause
+				self[:power] = true
+				self[:playing] = true
+				self[:paused] = true
+				self[:ejected] = false
+				self[:loading] = false
+			when :stop
+				self[:power] = true
+				self[:playing] = false
+				self[:paused] = false
+				self[:ejected] = false
+				self[:loading] = false
 			end
 		end
 
