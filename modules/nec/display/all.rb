@@ -230,23 +230,18 @@ class Nec::Display::All
     end
 
     
-    def mute_audio
+    def mute_audio(state = true)
         message = OPERATION_CODE[:mute_status]
-        message += "0001"    # Value of input as a hex string
+        message += is_affirmative?(state) ? "0001" : "0000"    # Value of input as a hex string
 
         send_checksum(:set_parameter, message)
 
-        logger.debug "-- NEC LCD, requested to mute audio"
+        logger.debug "requested to update mute to #{state}"
     end
     alias_method :mute, :mute_audio
 
     def unmute_audio
-        message = OPERATION_CODE[:mute_status]
-        message += "0000"    # Value of input as a hex string
-
-        send_checksum(:set_parameter, message)
-
-        logger.debug "-- NEC LCD, requested to unmute audio"
+        mute_audio(false)
     end
     alias_method :unmute, :unmute_audio
 
