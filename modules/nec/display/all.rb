@@ -46,16 +46,20 @@ class Nec::Display::All
         #
         # Setup constants
         #
-        self[:volume_min] = 0
-        self[:brightness_min] = 0
-        self[:contrast_min] = 0
-        #self[:error] = []        TODO!!
-
         config({
             tokenize: true,
             delimiter: "\x0D",
             encoding: "ASCII-8BIT"
         })
+
+        on_update
+    end
+
+    def on_update
+        self[:volume_min] = setting(:volume_min) || 0
+        self[:volume_max] = setting(:volume_max) || 100
+        self[:brightness_min] = 0
+        self[:contrast_min] = 0
     end
 
     def connected
