@@ -178,8 +178,12 @@ class Symetrix::Composer
 
 
     def process_reponse(id, value, *args)
-        type = @type_lookup[id.to_i]
+        id = id.gsub('#', '').to_i if id.is_a? String
+
+        type = @type_lookup[id]
         return unless type
+
+        value = value.to_i
 
         if type == :mute
             self[:"fader#{id}_mute"] = value == 65535
