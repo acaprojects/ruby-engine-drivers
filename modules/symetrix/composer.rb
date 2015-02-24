@@ -3,7 +3,7 @@
 module Symetrix; end
 
 # Protocol 2 - supports both TCP and UDP operations
-# TELNET port 48631
+# port 48631
 
 class Symetrix::Composer
     include ::Orchestrator::Constants
