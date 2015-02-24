@@ -66,7 +66,7 @@ class Symetrix::Composer
     end
 
     def nop(options = {})
-        do_send('NOP')
+        do_send('NOP', options)
     end
 
     # Val == milliseconds
