@@ -178,11 +178,11 @@ class Samsung::Displays::MdSeries
     protected
 
 
-    def wake(broadcast)
+    def wake(broadcast = nil)
         mac = setting(:mac_address)
         if mac
             # config is the database model representing this device
-            wake_device(mac, broadcast || '<broadcast>')
+            wake_device(mac, broadcast)
         end
     end
 

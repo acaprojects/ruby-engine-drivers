@@ -92,6 +92,7 @@ class Vaddio::Camera::ClearViewPtzTelnet
     end
 
     # number 1->6 inclusive
+    # save command: store
     def preset(number, command = :recall)
         send "camera #{command} #{number}\r", name: :preset
     end

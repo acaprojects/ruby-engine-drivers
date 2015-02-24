@@ -16,6 +16,8 @@ class Bss::Blu100
             indicator: "\x02"
         })
 
+        @type_lookup = {}
+
         on_update
     end
     
@@ -23,7 +25,6 @@ class Bss::Blu100
     end
     
     def on_update
-        @type_lookup ||= {}
     end
 
     def connected
