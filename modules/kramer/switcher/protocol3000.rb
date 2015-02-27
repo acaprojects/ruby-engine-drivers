@@ -67,17 +67,19 @@ class Kramer::Switcher::Protocol3000
     
     #
     # Starting at input 1, input 0 == disconnect
+    # Haven't seen a device support this command yet
     #
-    def switch(map, out = nil)
-        map = {map => out} if out
-        do_send(CMDS[:switch], build_switch_data(map))
-    end
+    #def switch(map, out = nil)
+    #    map = {map => out} if out
+    #    do_send(CMDS[:switch], build_switch_data(map))
+    #end
 
 
     def switch_video(map, out = nil)
         map = {map => out} if out
         do_send(CMDS[:switch_video], build_switch_data(map))
     end
+    alias_method :switch, :switch_video
 
 
     def switch_audio(map, out = nil)

@@ -360,11 +360,12 @@ class Nec::Projector::NpSeries
     # The polling routine for the projector
     #
     def do_poll
-        power?({:priority => 0})
-        if self[:power]
-            status_input
-            status_mute
-            background_black
+        power?({:priority => 0}) do
+            if self[:power]
+                status_input
+                status_mute
+                background_black
+            end
         end
         #projector_information
         #status_error
