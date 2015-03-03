@@ -57,7 +57,8 @@ class Sharp::Displays::PnSeries
         config({
             tokenize: true,
             delimiter: "\x0D\x0A",
-            encoding: "ASCII-8BIT"
+            encoding: "ASCII-8BIT",
+            wait_ready: "login:"
         })
 
         on_update
@@ -73,9 +74,9 @@ class Sharp::Displays::PnSeries
     end
 
     def connected
-        schedule.in('1s') do
-            do_send(setting(:username) || '')
-        end
+        # Will be sent after login is requested (config - wait ready)
+        send_credentials
+
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling Display"
             do_poll
@@ -258,15 +259,13 @@ class Sharp::Displays::PnSeries
 
         value = nil
 
-
-        if data == "Login:"
-            do_send((setting(:password) || ''), :delay_on_receive => 5000, :priority => 100)
-            return true
-        elsif data == "Password:OK"
+        if data == "Password:OK"
             do_poll
         elsif data == "Password:Login incorrect"
             logger.info "Sharp LCD, bad login or logged off. Attempting login.."
-            do_send(setting(:username) || '')
+            schedule.in('5s') do
+                send_credentials
+            end
             return true
         elsif data == "OK"
             return true
@@ -339,6 +338,12 @@ class Sharp::Displays::PnSeries
 
 
     private
+
+
+    def send_credentials
+        do_send(setting(:username) || '',  { delay: 500, wait: false, priority: 100 })
+        do_send((setting(:password) || ''), { delay_on_receive: 1000, priority: 100 })
+    end
 
 
     OPERATION_CODE = {
