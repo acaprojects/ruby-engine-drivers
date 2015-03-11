@@ -146,7 +146,8 @@ class GlobalCache::Gc100
                 when 23 then 'Command sent is not supported by this type of module'
                 else 'Unknown error'
             end
-            logger.warn "GlobalCache error: #{error}\nFor command: #{command[:data]}"
+            logger.warn "GlobalCache error: #{error}"
+            logger.warn "For command: #{command[:data]}" if command
             return :failed
         end
         
