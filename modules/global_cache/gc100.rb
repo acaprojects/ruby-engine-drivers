@@ -40,7 +40,7 @@ class GlobalCache::Gc100
     
     
     
-    def relay(index, state)
+    def relay(index, state, options = {})
         if index < self[:num_relays]
             connector = self[:config][:relay][index]
             if is_affirmative?(state)
@@ -49,7 +49,7 @@ class GlobalCache::Gc100
                 state = 0
             end
             
-            do_send("setstate,#{connector},#{state}")
+            do_send("setstate,#{connector},#{state}", options)
         else
             logger.warn "Attempted to set relay on GlobalCache that does not exist: #{index}"
         end
@@ -58,12 +58,20 @@ class GlobalCache::Gc100
     def ir(index, command, options = {})
         do_send("sendir,1:#{index},#{command}", options)
     end
+
+    def set_ir(index, mode, options = {})
+        if index < self[:num_ir]
+            connector = self[:config][:ir][index]
+            do_send("set_IR,#{connector},#{mode}", options)
+        else
+            logger.warn "Attempted to set IR mode on GlobalCache that does not exist: #{index}"
+        end
+    end
     
     
-    def relay_status?(index, &block)
+    def relay_status?(index, options = {}, &block)
         if index < self[:num_relays]
             connector = self[:config][:relay][index]
-            options = {}
             options[:emit] = block if block_given?
             do_send("getstate,#{connector}", options)
         else
@@ -71,10 +79,9 @@ class GlobalCache::Gc100
         end
     end
     
-    def io_status?(index, &block)
+    def io_status?(index, options = {}, &block)
         if index < self[:num_ir]
             connector = self[:config][:ir][index]
-            options = {}
             options[:emit] = block if block_given?
             do_send("getstate,#{connector}", options)
         else
