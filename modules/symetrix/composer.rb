@@ -117,16 +117,19 @@ class Symetrix::Composer
         # Inline response processing is easiest
         do_send('CS', id, value) do |data, resolve, command|
             if data == 'ACK'
-                logger.debug "control #{id} = #{value}"
-                process_reponse(id, value)
-                return :success
+                if type == :mute
+                    self[:"fader#{id}_mute"] = value == 65535
+                else
+                    self[:"fader#{id}"] = value
+                end
+                :success
+            else
+                # Delegate if the reponse wasn't for us
+                received(data, resolve, command)
+
+                # and ignore
+                :ignore
             end
-
-            # Delegate if the reponse wasn't for us
-            received(data, resolve, command)
-
-            # and ignore
-            return :ignore
         end
     end
 
