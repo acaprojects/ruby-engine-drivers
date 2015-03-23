@@ -134,12 +134,19 @@ class Symetrix::Composer
 
     # For compatibility with other modules
     def fader(fader_id, level)
-        set_control_value(fader_id, level, :fader)
+        faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
+        faders.each do |fad|
+            set_control_value(fad, level, :fader)
+        end
     end
     
     def mute(fader_id, val = true)
         actual = val ? 65535 : 0
-        set_control_value(fader_id, actual, :mute)
+
+        faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
+        faders.each do |fad|
+            set_control_value(fad, actual, :mute)
+        end
     end
     
     def unmute(fader_id)
@@ -147,11 +154,15 @@ class Symetrix::Composer
     end
 
     def query_fader(fader_id)
-        get_control_value(fader_id, :fader)
+        fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+
+        get_control_value(fad, :fader)
     end
 
     def query_mute(fader_id)
-        get_control_value(fader_id, :mute)
+        fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+        
+        get_control_value(fad, :mute)
     end
     
     
