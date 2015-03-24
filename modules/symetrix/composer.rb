@@ -206,9 +206,9 @@ class Symetrix::Composer
         end
     end
     
-    def do_send(*args)
+    def do_send(*args, &block)
         options = args[-1].is_a?(Hash) ? args.pop : {}
-        send("#{args.join(' ')}\r", options)
+        send("#{args.join(' ')}\r", options, &block)
     end
 end
 
