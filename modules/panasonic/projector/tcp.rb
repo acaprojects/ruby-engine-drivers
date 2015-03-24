@@ -104,7 +104,11 @@ class Panasonic::Projector::Tcp
         :hdmi2 => :HD2,
         :vga => :RG1,
         :vga2 => :RG2,
-        :miracast => :MC1
+        :miracast => :MC1,
+        :dvi => :DVI,
+        :displayport => :DP1,
+        :hdbaset => :DL1,
+        :composite => :VID
     }
     INPUTS.merge!(INPUTS.invert)
     
