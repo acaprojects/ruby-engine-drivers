@@ -129,7 +129,7 @@ class Philips::Dynalite
     
     
     def received(data, resolve, command)
-        logger.debug "from dynalite 0x#{byte_to_hex(data)}--"
+        logger.debug { "received 0x#{byte_to_hex(data)}" }
         
         data = str_to_array(data)
 
@@ -187,10 +187,12 @@ class Philips::Dynalite
         # Add checksum to command
         command << check
         command = array_to_str(command)
+
+        # The block prevents the byte_to_hex code being run when
+        # we are not in debug mode
+        logger.debug { "sent: 0x#{byte_to_hex(command)}" }
         
         send(command, options)
-
-        logger.debug "to dynalite: 0x#{byte_to_hex(command)}--"
     end
 end
 
