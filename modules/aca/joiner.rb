@@ -159,7 +159,6 @@ class Aca::Joiner
         end
 
         self[:joined] = setting(:joined)
-        system[:System].update_join(self[:joined])
     end
 
     # Inform the other systems of this systems details

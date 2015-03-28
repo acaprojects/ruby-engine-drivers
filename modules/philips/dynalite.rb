@@ -60,7 +60,7 @@ class Philips::Dynalite
                                                        #high fade   #join (currently all in group)
         command = [0x1c, area & 0xFF, fade & 0xFF, number & 0xFF, (fade >> 8) & 0xFF, bank, 0xFF]
 
-        do_send(command)
+        do_send(command, {name: :"preset_#{area}_#{number}"})
     end
     # Seems to be an undocument trigger command with opcode 65
     # -- not sure how fade works with it..
@@ -97,12 +97,12 @@ class Philips::Dynalite
         level = in_range(level, 0xFF, 1)
 
         command = [0x1c, area & 0xFF, channel & 0xFF, cmd, level, fade & 0xFF, 0xFF]
-        do_send(command)
+        do_send(command, {name: :"level_#{area}_#{channel}"})
     end
 
     def stop_fading(area, channel = 0xFF)
         command = [0x1c, area.to_i & 0xFF, channel.to_i & 0xFF, 0x76, 0, 0, 0xFF]
-        do_send(command)
+        do_send(command, {name: :"level_#{area}_#{channel}"})
     end
 
     def stop_all_fading(area)
