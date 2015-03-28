@@ -12,7 +12,7 @@ class Philips::Dynalite
         #
         defaults({
             wait: false,
-            delay: 0.4
+            delay: 40
         })
 
         config({
