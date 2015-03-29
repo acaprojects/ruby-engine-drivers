@@ -67,19 +67,20 @@ class Aca::Joiner
 
         if rms.nil? || rms.empty?
             logger.debug "No room joining settings provided"
-            build_room_list(system_proxies) # Just so the data structures exist
-        else
-            rooms = Set.new(rms)
-            rooms.each do |lookup|
-                system_proxies << systems(lookup)
-            end
-            promise = thread.all(*system_proxies).then do |proxies|
-                logger.debug "Room joining init success"
-                build_room_list(proxies)
-            end
-            promise.catch do |err|
-                logger.error "Failed to load joining systems with #{err.inspect}"
-            end
+            rms = []
+        end
+        rms << @system_id.to_s
+
+        rooms = Set.new(rms)
+        rooms.each do |lookup|
+            system_proxies << systems(lookup)
+        end
+        promise = thread.all(*system_proxies).then do |proxies|
+            logger.debug "Room joining init success"
+            build_room_list(proxies)
+        end
+        promise.catch do |err|
+            logger.error "Failed to load joining systems with #{err.inspect}"
         end
     end
 
