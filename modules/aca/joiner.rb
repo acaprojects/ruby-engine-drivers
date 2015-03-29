@@ -61,8 +61,9 @@ class Aca::Joiner
         @system_id = system.id
 
         # System lookup occurs on a seperate thread returning a promise
+        # Seems the database won't store an empty array and we don't want duplicates
         system_proxies = []
-        setting(:rooms).each do |lookup|
+        Set.new(setting(:rooms) || []).each do |lookup|
             system_proxies << systems(lookup)
         end
         promise = thread.all(*system_proxies).then do |proxies|
