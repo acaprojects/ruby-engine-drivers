@@ -152,7 +152,10 @@ class Aca::Joiner
         @rooms = Set.new(room_ids)
 
         # Load any existing join settings from the database
-        self[:joined] = setting(:joined)
+        self[:joined] = setting(:joined) || {
+            initiator: @system_id,
+            rooms: [@system_id]
+        }
     end
 
 
@@ -179,7 +182,11 @@ class Aca::Joiner
                 rooms: rooms
             })
         else
-            define_setting(:joined, nil)
+            # Always joined to ones self
+            define_setting(:joined, {
+                initiator: @system_id,
+                rooms: [@system_id]
+            })
         end
 
         self[:joined] = setting(:joined)
