@@ -63,15 +63,23 @@ class Aca::Joiner
         # System lookup occurs on a seperate thread returning a promise
         # Seems the database won't store an empty array and we don't want duplicates
         system_proxies = []
-        Set.new(setting(:rooms) || []).each do |lookup|
-            system_proxies << systems(lookup)
-        end
-        promise = thread.all(*system_proxies).then do |proxies|
-            logger.debug "Room joing init success"
-            build_room_list(proxies)
-        end
-        promise.catch do |err|
-            logger.error "Failed to load joining systems with #{err.inspect}"
+        rms = setting(:rooms)
+
+        if rms.nil? || rms.empty?
+            logger.debug "No room joining settings provided"
+            build_room_list(system_proxies) # Just so the data structures exist
+        else
+            rooms = Set.new(rms)
+            rooms.each do |lookup|
+                system_proxies << systems(lookup)
+            end
+            promise = thread.all(*system_proxies).then do |proxies|
+                logger.debug "Room joining init success"
+                build_room_list(proxies)
+            end
+            promise.catch do |err|
+                logger.error "Failed to load joining systems with #{err.inspect}"
+            end
         end
     end
 
