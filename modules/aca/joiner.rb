@@ -94,11 +94,14 @@ class Aca::Joiner
 
         start_joining
 
+        # Ensure all id's are symbols
+        ids.map! {|id| id.to_sym}
+
         # Grab only valid IDs
         rooms = Set.new(ids) & @rooms
         rooms << @system_id  # Add the current system to room joins list
 
-        logger.debug { "Joining #{rooms}" }
+        logger.debug { "Joining #{rooms.to_a}" }
 
         # Inform the remote systems
         inform(:join, rooms).finally do
@@ -190,6 +193,7 @@ class Aca::Joiner
         end
 
         self[:joined] = setting(:joined)
+        true
     end
 
     # Inform the other systems of this systems details
