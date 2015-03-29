@@ -50,6 +50,9 @@ class Philips::Dynalite
         number = number.to_i
         fade = (fade / 10).to_i
 
+        # No response so we should update status here
+        self[:"area#{area}"] = number
+
         number = number - 1
         bank = number / 8
         number = number - (bank * 8)
@@ -61,9 +64,6 @@ class Philips::Dynalite
         command = [0x1c, area & 0xFF, fade & 0xFF, number & 0xFF, (fade >> 8) & 0xFF, bank, 0xFF]
 
         do_send(command, {name: :"preset_#{area}_#{number}"})
-
-        # No response so we should update status here
-        self[:"area#{area}"] = number
     end
     # Seems to be an undocument trigger command with opcode 65
     # -- not sure how fade works with it..
@@ -93,6 +93,13 @@ class Philips::Dynalite
             fade = in_range((fade / 60000).to_i, 22, 1)
         end
 
+        # Ensure status values are valid
+        if channel == 0xFF # Area (all channels)
+            self[:"area#{area}_level"] = level
+        else
+            self[:"area#{area}_chan#{channel}_level"] = level
+        end
+
         # Levels
         #0x01 == 100%
         #0xFF == 0%
@@ -101,13 +108,6 @@ class Philips::Dynalite
 
         command = [0x1c, area & 0xFF, channel & 0xFF, cmd, level, fade & 0xFF, 0xFF]
         do_send(command, {name: :"level_#{area}_#{channel}"})
-
-        # Ensure status values are valid
-        if channel == 0xFF # Area (all channels)
-            self[:"area#{area}_level"] = level
-        else
-            self[:"area#{area}_chan#{channel}_level"] = level
-        end
     end
 
     def stop_fading(area, channel = 0xFF)
