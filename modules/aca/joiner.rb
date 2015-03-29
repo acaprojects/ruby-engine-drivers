@@ -6,23 +6,8 @@ require 'set'
 # It just updates the System module with new inputs and outputs..
 
 # Interface can connect to multiple systems!
-# Inputs can be shared (VGA Removed)
+# Inputs can be shared (VGA Removed?)
 # Remote systems are communicated with directly
-
-
-=begin
-    
-        # Grab the settings
-        self[:sources] = setting(:sources)
-        self[:outputs] = setting(:outputs)
-        @join_presets = setting(:join_presets)
-
-        # Grab the current state
-        self[:state] = setting(:state) # Shutdown, Online
-        self[:mode] = setting(:mode)   # Basic, User, Tech
-        self[:tab] = setting(:tab)     # Current tab in that state
-
-=end
 
 
 # Two types of room joining:
@@ -129,6 +114,24 @@ class Aca::Joiner
             finish_joining
         end
     end
+
+
+    def perform_action(mod:, func:, index: 1, args: [], skipMe: false)
+        promises = []
+
+        # TODO:: Should warn people not to send arguments that might be modified
+        # As multiple threads will be recieving these data structures
+        rooms = self[:joined][:rooms]
+        logger.debug { "Calling #{mod}->#{func} on #{rooms}" }
+        rooms.each do |id|
+            next if skipMe && id == @system_id
+            promises << @systems[id].get(mod, index).send(func.to_sym, *args)
+        end
+
+        # Allows you to perform an action after this has been processed on all systems
+        thread.finally(*promises)
+    end
+
 
     def notify_join(initiator, rooms)
         commit_join(:join, initiator, rooms)
