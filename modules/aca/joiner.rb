@@ -72,20 +72,21 @@ class Aca::Joiner
 
     def on_update
         # Grab the list of rooms and room details
-        room_ids = []       # Provides ordering
-        room_names = {}     # Provides simple name lookup
         @systems = {}       # Provides system proxy lookup
-        setting(:rooms).each do |key, val|
-            sys_proxy = systems(val)
-            @systems[key] = sys_proxy
-            room_ids << key
-            room_names[key] = sys_proxy.name
-        end
-        self[:room_ids] = rooms
-        self[:rooms] = room_names
-        @rooms = Set.new(rooms)
-
         @system_id = system.id
+
+        # System lookup occurs on a seperate thread returning a promise
+        system_proxies = []
+        setting(:rooms).each do |lookup|
+            system_proxies << systems(lookup)
+        end
+        promise = thread.all(*system_proxies).then do |proxies|
+            logger.debug "Room joing init success"
+            build_room_list(proxies)
+        end
+        promise.catch do |err|
+            logger.error "Failed to load joining systems with #{err.inspect}"
+        end
     end
 
     def join(*ids)
@@ -96,6 +97,8 @@ class Aca::Joiner
         # Grab only valid IDs
         rooms = Set.new(ids) & @rooms
         rooms << @system_id  # Add the current system to room joins list
+
+        logger.debug { "Joining #{rooms}" }
 
         # Inform the remote systems
         inform(:join, rooms).finally do
@@ -112,6 +115,8 @@ class Aca::Joiner
         # Grab only valid IDs
         rooms = Set.new(ids) & @rooms
         rooms << @system_id
+
+        logger.debug { "Unjoining #{rooms}" }
 
         # Inform the remote systems
         inform(:unjoin, rooms).finally do
@@ -130,6 +135,25 @@ class Aca::Joiner
 
 
     protected
+
+
+    def build_room_list(proxies)
+        room_ids = []       # Provides ordering
+        room_names = {}     # Provides simple name lookup
+
+        proxies.each do |sys_proxy|
+            @systems[sys_proxy.id] = sys_proxy
+            room_ids << sys_proxy.id
+            room_names[sys_proxy.id] = sys_proxy.name
+        end
+
+        self[:room_ids] = room_ids
+        self[:rooms] = room_names
+        @rooms = Set.new(room_ids)
+
+        # Load any existing join settings from the database
+        self[:joined] = setting(:joined)
+    end
 
 
     def start_joining
@@ -177,7 +201,7 @@ class Aca::Joiner
             end
         end
 
-        ::Libuv::Q.finally(thread, *promises)
+        thread.finally(*promises)
     end
 end
 
