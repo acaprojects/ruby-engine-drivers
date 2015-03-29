@@ -98,10 +98,11 @@ class Aca::Joiner
         ids.map! {|id| id.to_sym}
 
         # Grab only valid IDs
-        rooms = Set.new(ids) & @rooms
-        rooms << @system_id  # Add the current system to room joins list
+        rmset = Set.new(ids) & @rooms
+        rmset << @system_id  # Add the current system to room joins list
+        rooms = rmset.to_a
 
-        logger.debug { "Joining #{rooms.to_a}" }
+        logger.debug { "Joining #{rooms}" }
 
         # Inform the remote systems
         inform(:join, rooms).finally do
@@ -110,14 +111,15 @@ class Aca::Joiner
         end
     end
 
-    def unjoin(ids)
+    def unjoin
         return if joining?
 
         start_joining
 
         # Grab only valid IDs
-        rooms = Set.new(ids) & @rooms
-        rooms << @system_id
+        rmset = Set.new(self[:joined][:rooms]) & @rooms
+        rmset << @system_id
+        rooms = rmset.to_a
 
         logger.debug { "Unjoining #{rooms}" }
 
@@ -132,7 +134,7 @@ class Aca::Joiner
         commit_join(:join, initiator, rooms)
     end
 
-    def unjoin
+    def notify_unjoin
         commit_join(:unjoin)
     end
 
@@ -180,19 +182,20 @@ class Aca::Joiner
     def commit_join(join, init_id = nil, rooms = nil)
         # Commit these settings to the database
         if join == :join
-            define_setting(:joined, {
+            logger.debug { "Join on #{rooms} by #{init_id}" }
+            self[:joined] = {
                 initiator: init_id,
                 rooms: rooms
-            })
+            }
         else
-            # Always joined to ones self
-            define_setting(:joined, {
+            logger.debug 'Unjoining'
+            self[:joined] = {
                 initiator: @system_id,
                 rooms: [@system_id]
-            })
+            }
         end
 
-        self[:joined] = setting(:joined)
+        define_setting(:joined, self[:joined])
         true
     end
 
@@ -203,12 +206,14 @@ class Aca::Joiner
         if join == :join
             rooms.each do |id|
                 next if id == @system_id
+                logger.debug "Notifying system #{id} of join"
                 promises << @systems[id][:Joiner].notify_join(@system_id, rooms)
             end
         else
             rooms.each do |id|
                 next if id == @system_id
-                promises << @systems[id][:Joiner].unjoin
+                logger.debug "Notifying system #{id} of unjoin"
+                promises << @systems[id][:Joiner].notify_unjoin
             end
         end
 
