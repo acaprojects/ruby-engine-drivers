@@ -66,12 +66,12 @@ class Biamp::Nexia
                 outs = outputs.is_a?(Array) ? outputs : [outputs]
 
                 outs.each do |output|
-                    do_send('SETD', self[:device_id], req, id, input, output, value)
+                    do_send('SET', self[:device_id], req, id, input, output, value)
                 end
             end
         else # assume array (auto-mixer)
             inouts.each do |input|
-                do_send('SETD', self[:device_id], 'AMMUTEXP', id, input, value)
+                do_send('SET', self[:device_id], 'AMMUTEXP', id, input, value)
             end
         end
     end
@@ -81,8 +81,10 @@ class Biamp::Nexia
         matrix_in: 'MMLVLIN',
         matrix_out: 'MMLVLOUT',
         matrix_crosspoint: 'MMLVLXP',
-        stdmatrix_in: 'MMLVLIN',
-        stdmatrix_out: 'MMLVLOUT'
+        stdmatrix_in: 'SMLVLIN',
+        stdmatrix_out: 'SMLVLOUT',
+        auto_in: 'AMLVLIN',
+        auto_out: 'AMLVLOUT'
     }
     def fader(fader_id, level, index = 1, type = :fader)
         fad_type = FADERS[type.to_sym]
@@ -90,7 +92,11 @@ class Biamp::Nexia
         # value range: -100 ~ 12
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
-            do_send('SETD', self[:device_id], fad_type, fad, index, level)
+            do_send('SET', self[:device_id], fad_type, fad, index, level) do |data, resolve, command|
+                check_response(data, command) do
+                    self[:"#{type}#{fad}_#{index}"] = level
+                end
+            end
         end
     end
     
@@ -109,7 +115,11 @@ class Biamp::Nexia
 
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
-            do_send('SETD', self[:device_id], mute_type, fad, index, actual)
+            do_send('SET', self[:device_id], mute_type, fad, index, actual) do |data, resolve, command|
+                check_response(data, command) do
+                    self[:"#{type}#{fad}_#{index}_mute"] = level
+                end
+            end
         end
     end
     
@@ -121,12 +131,9 @@ class Biamp::Nexia
         fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
         fad_type = FADERS[type.to_sym]
 
-        send("GET #{self[:device_id]} #{fad_type} #{fad} #{index} \n") do |data|
-            if data.start_with?('-ERR')
-                :abort
-            else
+        do_send('GET', self[:device_id], fad_type, fad, index) do |data, resolve, command|
+            check_response(data, command) do
                 self[:"#{type}#{fad}_#{index}"] = data.to_i
-                :success
             end
         end
     end
@@ -135,38 +142,29 @@ class Biamp::Nexia
         fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
         mute_type = MUTES[type.to_sym]
         
-        send("GET #{self[:device_id]} #{mute_type} #{fad} #{index} \n") do |data|
-            if data.start_with?('-ERR')
-                :abort
-            else
+        do_send('GET', self[:device_id], mute_type, fad, index) do |data, resolve, command|
+            check_response(data, command) do
                 self[:"#{mute_type}#{fad}_#{index}_mute"] = data.to_i == 1
-                :success
             end
         end
     end
     
     
     def received(data, resolve, command)
-        logger.debug { "From biamp #{data}" }
-
         if data =~ /-ERR/
             logger.warn "Nexia returned #{data} for #{command[:data]}" if command
             return :abort
+        else
+            logger.debug { "From biamp #{data}" }
         end
         
         #--> "#SETD 0 FDRLVL 29 1 0.000000 +OK"
         data = data.split(' ')
         unless data[2].nil?
             case data[2].to_sym
-            when :FDRLVL, :VL
-                self[:"fader#{data[3]}_#{data[4]}"] = data[5].to_i
-            when :FDRMUTE
-                self[:"fader#{data[3]}_#{data[4]}_mute"] = data[5] == "1"
             when :DEVID
                 # "#GETD 0 DEVID 1 "
                 self[:device_id] = data[-1].to_i
-            when :MMLVLIN
-                self[:"matrix_in#{data[3]}_#{data[4]}"] = data[5].to_i
             end
         end
         
@@ -176,10 +174,27 @@ class Biamp::Nexia
     
     
     private
+
+
+    def check_response(data, command)
+        if data.start_with?('-ERR')
+            logger.warn "Nexia returned #{data} for #{command[:data]}" if command
+            :abort
+        else
+            logger.debug { "Nexia responded #{data}" }
+            yield
+            :success
+        end
+    end
     
     
-    def do_send(*args)
-        send("#{args.join(' ')} \n")
+    def do_send(*args, &block)
+        if args[-1].is_a? Hash
+            options = args.pop
+        else
+            options = {}
+        end
+        send("#{args.join(' ')} \n", options, &block)
     end
 end
 
