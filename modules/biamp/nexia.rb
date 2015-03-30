@@ -54,16 +54,18 @@ class Biamp::Nexia
 
     # {1 => [2,3,5], 2 => [2,3,6]}, true
     # Supports Matrix and Automixers
-    def mixer(id, inouts, mute = false)
-        value = is_affirmative?(mute) ? 1 : 0
+    def mixer(id, inouts, mute = false, type = :matrix)
+        value = is_affirmative?(mute) ? 0 : 1
 
         if inouts.is_a? Hash
+            req = type == :matrix ? 'MMMUTEXP'.freeze : 'SMMUTEXP'.freeze
+            
             inouts.each_key do |input|
                 outputs = inouts[input]
                 outs = outputs.is_a?(Array) ? outputs : [outputs]
 
                 outs.each do |output|
-                    do_send('SETD', self[:device_id], 'MMMUTEXP', id, input, output, value)
+                    do_send('SETD', self[:device_id], req, id, input, output, value)
                 end
             end
         else # assume array (auto-mixer)
@@ -77,7 +79,9 @@ class Biamp::Nexia
         fader: 'FDRLVL',
         matrix_in: 'MMLVLIN',
         matrix_out: 'MMLVLOUT',
-        matrix_crosspoint: 'MMLVLXP'
+        matrix_crosspoint: 'MMLVLXP',
+        stdmatrix_in: 'MMLVLIN',
+        stdmatrix_out: 'MMLVLOUT'
     }
     
     def fader(fader_id, level, index = 1, type = :fader)
@@ -130,8 +134,10 @@ class Biamp::Nexia
     
     
     def received(data, resolve, command)
-        if data.start_with?('-ERR')
-            logger.debug "Nexia returned #{data} for #{command[:data]}" if command
+        logger.debug { "From biamp #{data}" }
+
+        if data =~ /-ERR/
+            logger.warn "Nexia returned #{data} for #{command[:data]}" if command
             return :abort
         end
         
@@ -145,7 +151,7 @@ class Biamp::Nexia
                 self[:"fader#{data[3]}_#{data[4]}_mute"] = data[5] == "1"
             when :DEVID
                 # "#GETD 0 DEVID 1 "
-                self[:device_id] = data[-2].to_i
+                self[:device_id] = data[-1].to_i
             when :MMLVLIN
                 self[:"matrix_in#{data[3]}_#{data[4]}"] = data[5].to_i
             end
