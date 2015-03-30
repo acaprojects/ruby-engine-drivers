@@ -53,7 +53,8 @@ class Biamp::Nexia
     end
 
     # {1 => [2,3,5], 2 => [2,3,6]}, true
-    # Supports Matrix and Automixers
+    # Supports Standard, Matrix and Automixers
+    # Who thought having 3 different types was a good idea? FFS
     def mixer(id, inouts, mute = false, type = :matrix)
         value = is_affirmative?(mute) ? 0 : 1
 
@@ -83,7 +84,6 @@ class Biamp::Nexia
         stdmatrix_in: 'MMLVLIN',
         stdmatrix_out: 'MMLVLOUT'
     }
-    
     def fader(fader_id, level, index = 1, type = :fader)
         fad_type = FADERS[type.to_sym]
 
@@ -94,39 +94,52 @@ class Biamp::Nexia
         end
     end
     
-    def mute(fader_id, val = true, index = 1)
+    MUTES = {
+        fader: 'FDRMUTE',
+        matrix_in: 'MMMUTEIN',
+        matrix_out: 'MMMUTEOUT',
+        auto_in: 'AMMUTEIN',
+        auto_out: 'AMMUTEOUT',
+        stdmatrix_in: 'SMMUTEIN',
+        stdmatrix_out: 'SMOUTMUTE'
+    }
+    def mute(fader_id, val = true, index = 1, type = :fader)
         actual = val ? 1 : 0
+        mute_type = MUTES[type.to_sym]
+
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
-            do_send('SETD', self[:device_id], 'FDRMUTE', fad, index, actual)
+            do_send('SETD', self[:device_id], mute_type, fad, index, actual)
         end
     end
     
-    def unmute(fader_id, index = 1)
-        mute(fader_id, false, index)
+    def unmute(fader_id, index = 1, type = :fader)
+        mute(fader_id, false, index, type)
     end
 
-    def query_fader(fader_id, index = 1)
+    def query_fader(fader_id, index = 1, type = :fader)
         fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+        fad_type = FADERS[type.to_sym]
 
-        send("GET #{self[:device_id]} FDRLVL #{fad} #{index} \n") do |data|
+        send("GET #{self[:device_id]} #{fad_type} #{fad} #{index} \n") do |data|
             if data.start_with?('-ERR')
                 :abort
             else
-                self[:"fader#{fad}_#{index}"] = data.to_i
+                self[:"#{type}#{fad}_#{index}"] = data.to_i
                 :success
             end
         end
     end
 
-    def query_mute(fader_id, index = 1)
+    def query_mute(fader_id, index = 1, type = :fader)
         fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+        mute_type = MUTES[type.to_sym]
         
-        send("GET #{self[:device_id]} FDRMUTE #{fad} #{index} \n") do |data|
+        send("GET #{self[:device_id]} #{mute_type} #{fad} #{index} \n") do |data|
             if data.start_with?('-ERR')
                 :abort
             else
-                self[:"fader#{fad}_#{index}_mute"] = data.to_i == 1
+                self[:"#{mute_type}#{fad}_#{index}_mute"] = data.to_i == 1
                 :success
             end
         end
