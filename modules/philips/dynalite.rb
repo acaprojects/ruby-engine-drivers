@@ -74,7 +74,9 @@ class Philips::Dynalite
     end
 
     def save_preset(area, preset)
-        command = [0x1c, area.to_i & 0xFF, preset.to_i & 0xFF, 0x09, 0, 0, 0xFF]
+        num = preset.to_i - 1
+        num = in_range(num, 0xFF, 0)
+        command = [0x1c, area.to_i & 0xFF, num, 0x09, 0, 0, 0xFF]
         do_send(command)
     end
 
