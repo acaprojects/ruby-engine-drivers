@@ -110,14 +110,15 @@ class Biamp::Nexia
         stdmatrix_out: 'SMOUTMUTE'
     }
     def mute(fader_id, val = true, index = 1, type = :fader)
-        actual = val ? 1 : 0
+        value = is_affirmative?(val)
+        actual = value ? 1 : 0
         mute_type = MUTES[type.to_sym]
 
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
             do_send('SET', self[:device_id], mute_type, fad, index, actual) do |data, resolve, command|
                 check_response(data, command) do
-                    self[:"#{type}#{fad}_#{index}_mute"] = level
+                    self[:"#{type}#{fad}_#{index}_mute"] = value
                 end
             end
         end
