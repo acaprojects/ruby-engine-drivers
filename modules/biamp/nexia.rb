@@ -77,38 +77,36 @@ class Biamp::Nexia
     end
 
     FADERS = {
-        fader: 'FDRLVL',
-        matrix_in: 'MMLVLIN',
-        matrix_out: 'MMLVLOUT',
-        matrix_crosspoint: 'MMLVLXP',
-        stdmatrix_in: 'SMLVLIN',
-        stdmatrix_out: 'SMLVLOUT',
-        auto_in: 'AMLVLIN',
-        auto_out: 'AMLVLOUT'
+        fader: :FDRLVL,
+        matrix_in: :MMLVLIN,
+        matrix_out: :MMLVLOUT,
+        matrix_crosspoint: :MMLVLXP,
+        stdmatrix_in: :SMLVLIN,
+        stdmatrix_out: :SMLVLOUT,
+        auto_in: :AMLVLIN,
+        auto_out: :AMLVLOUT
     }
+    FADERS.merge!(FADERS.invert)
     def fader(fader_id, level, index = 1, type = :fader)
         fad_type = FADERS[type.to_sym]
 
         # value range: -100 ~ 12
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
-            do_send('SET', self[:device_id], fad_type, fad, index, level) do |data, resolve, command|
-                check_response(data, command) do
-                    self[:"#{type}#{fad}_#{index}"] = level
-                end
-            end
+            do_send('SETD', self[:device_id], fad_type, fad, index, level)
         end
     end
     
     MUTES = {
-        fader: 'FDRMUTE',
-        matrix_in: 'MMMUTEIN',
-        matrix_out: 'MMMUTEOUT',
-        auto_in: 'AMMUTEIN',
-        auto_out: 'AMMUTEOUT',
-        stdmatrix_in: 'SMMUTEIN',
-        stdmatrix_out: 'SMOUTMUTE'
+        fader: :FDRMUTE,
+        matrix_in: :MMMUTEIN,
+        matrix_out: :MMMUTEOUT,
+        auto_in: :AMMUTEIN,
+        auto_out: :AMMUTEOUT,
+        stdmatrix_in: :SMMUTEIN,
+        stdmatrix_out: :SMOUTMUTE
     }
+    MUTES.merge!(MUTES.invert)
     def mute(fader_id, val = true, index = 1, type = :fader)
         value = is_affirmative?(val)
         actual = value ? 1 : 0
@@ -116,11 +114,7 @@ class Biamp::Nexia
 
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
-            do_send('SET', self[:device_id], mute_type, fad, index, actual) do |data, resolve, command|
-                check_response(data, command) do
-                    self[:"#{type}#{fad}_#{index}_mute"] = value
-                end
-            end
+            do_send('SETD', self[:device_id], mute_type, fad, index, actual)
         end
     end
     
@@ -132,40 +126,43 @@ class Biamp::Nexia
         fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
         fad_type = FADERS[type.to_sym]
 
-        do_send('GET', self[:device_id], fad_type, fad, index) do |data, resolve, command|
-            check_response(data, command) do
-                self[:"#{type}#{fad}_#{index}"] = data.to_i
-            end
-        end
+        do_send('GETD', self[:device_id], fad_type, fad, index)
     end
 
     def query_mute(fader_id, index = 1, type = :fader)
         fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
         mute_type = MUTES[type.to_sym]
         
-        do_send('GET', self[:device_id], mute_type, fad, index) do |data, resolve, command|
-            check_response(data, command) do
-                self[:"#{mute_type}#{fad}_#{index}_mute"] = data.to_i == 1
-            end
-        end
+        do_send('GETD', self[:device_id], mute_type, fad, index)
     end
     
     
     def received(data, resolve, command)
         if data =~ /-ERR/
-            logger.warn "Nexia returned #{data} for #{command[:data]}" if command
+            if command
+                logger.warn "Nexia returned #{data} for #{command[:data]}"
+            else
+                logger.debug { "Nexia responded #{data}" }
+            end
             return :abort
         else
-            logger.debug { "From biamp #{data}" }
+            logger.debug { "Nexia responded #{data}" }
         end
         
         #--> "#SETD 0 FDRLVL 29 1 0.000000 +OK"
         data = data.split(' ')
         unless data[2].nil?
-            case data[2].to_sym
-            when :DEVID
+            resp_type = data[2].to_sym
+
+            if resp_type == :DEVID
                 # "#GETD 0 DEVID 1 "
                 self[:device_id] = data[-1].to_i
+            elsif MUTES.has_key?(resp_type)
+                type = MUTES[resp_type]
+                self[:"#{type}#{data[3]}_#{data[4]}_mute"] = data[5] == '1'
+            elsif FADERS.has_key?(resp_type)
+                type = FADERS[resp_type]
+                self[:"#{type}#{data[3]}_#{data[4]}"] = data[5].to_i
             end
         end
         
@@ -173,20 +170,7 @@ class Biamp::Nexia
     end
     
     
-    
     private
-
-
-    def check_response(data, command)
-        if data.start_with?('-ERR')
-            logger.warn "Nexia returned #{data} for #{command[:data]}" if command
-            :abort
-        else
-            logger.debug { "Nexia responded #{data}" }
-            yield
-            :success
-        end
-    end
     
     
     def do_send(*args, &block)
