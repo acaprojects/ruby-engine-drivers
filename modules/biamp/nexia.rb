@@ -15,6 +15,11 @@ class Biamp::Nexia
         # max +12
         # min -100
 
+        # Nexia requires some breathing room
+        defaults({
+            delay_on_receive: 17
+        })
+
         config({
             tokenize: true,
             delimiter: /\xFF\xFE\x01|\r\n/
