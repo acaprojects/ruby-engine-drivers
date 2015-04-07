@@ -73,8 +73,10 @@ class Philips::Dynalite
         do_send(command)
     end
 
-    def save_preset(area)
-        command = [0x1c, area.to_i & 0xFF, 0, 0x66, 0, 0, 0xFF]
+    def save_preset(area, preset)
+        num = preset.to_i - 1
+        num = in_range(num, 0xFF, 0)
+        command = [0x1c, area.to_i & 0xFF, num, 0x09, 0, 0, 0xFF]
         do_send(command)
     end
 
@@ -138,8 +140,8 @@ class Philips::Dynalite
 
 
     def unlink_area(area)
-               # 0x1c, area, unlink_bitmap, 0x20, unlink_bitmap, unlink_bitmap, join (0xFF)
-        do_send([0x1c, area.to_i & 0xFF, 0, 0x20, 0, 0, 0xFF])
+               # 0x1c, area, unlink_bitmap, 0x21, unlink_bitmap, unlink_bitmap, join (0xFF)
+        do_send([0x1c, area.to_i & 0xFF, 0xFF, 0x21, 0xFF, 0xFF, 0xFF])
     end
     
     

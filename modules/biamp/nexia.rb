@@ -15,6 +15,11 @@ class Biamp::Nexia
         # max +12
         # min -100
 
+        # Nexia requires some breathing room
+        defaults({
+            delay_on_receive: 17
+        })
+
         config({
             tokenize: true,
             delimiter: /\xFF\xFE\x01|\r\n/
@@ -53,33 +58,40 @@ class Biamp::Nexia
     end
 
     # {1 => [2,3,5], 2 => [2,3,6]}, true
-    # Supports Matrix and Automixers
-    def mixer(id, inouts, mute = false)
-        value = is_affirmative?(mute) ? 1 : 0
+    # Supports Standard, Matrix and Automixers
+    # Who thought having 3 different types was a good idea? FFS
+    def mixer(id, inouts, mute = false, type = :matrix)
+        value = is_affirmative?(mute) ? 0 : 1
 
         if inouts.is_a? Hash
+            req = type == :matrix ? 'MMMUTEXP'.freeze : 'SMMUTEXP'.freeze
+            
             inouts.each_key do |input|
                 outputs = inouts[input]
                 outs = outputs.is_a?(Array) ? outputs : [outputs]
 
                 outs.each do |output|
-                    do_send('SETD', self[:device_id], 'MMMUTEXP', id, input, output, value)
+                    do_send('SET', self[:device_id], req, id, input, output, value)
                 end
             end
         else # assume array (auto-mixer)
             inouts.each do |input|
-                do_send('SETD', self[:device_id], 'AMMUTEXP', id, input, value)
+                do_send('SET', self[:device_id], 'AMMUTEXP', id, input, value)
             end
         end
     end
 
     FADERS = {
-        fader: 'FDRLVL',
-        matrix_in: 'MMLVLIN',
-        matrix_out: 'MMLVLOUT',
-        matrix_crosspoint: 'MMLVLXP'
+        fader: :FDRLVL,
+        matrix_in: :MMLVLIN,
+        matrix_out: :MMLVLOUT,
+        matrix_crosspoint: :MMLVLXP,
+        stdmatrix_in: :SMLVLIN,
+        stdmatrix_out: :SMLVLOUT,
+        auto_in: :AMLVLIN,
+        auto_out: :AMLVLOUT
     }
-    
+    FADERS.merge!(FADERS.invert)
     def fader(fader_id, level, index = 1, type = :fader)
         fad_type = FADERS[type.to_sym]
 
@@ -90,64 +102,72 @@ class Biamp::Nexia
         end
     end
     
-    def mute(fader_id, val = true, index = 1)
-        actual = val ? 1 : 0
+    MUTES = {
+        fader: :FDRMUTE,
+        matrix_in: :MMMUTEIN,
+        matrix_out: :MMMUTEOUT,
+        auto_in: :AMMUTEIN,
+        auto_out: :AMMUTEOUT,
+        stdmatrix_in: :SMMUTEIN,
+        stdmatrix_out: :SMOUTMUTE
+    }
+    MUTES.merge!(MUTES.invert)
+    def mute(fader_id, val = true, index = 1, type = :fader)
+        value = is_affirmative?(val)
+        actual = value ? 1 : 0
+        mute_type = MUTES[type.to_sym]
+
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
-            do_send('SETD', self[:device_id], 'FDRMUTE', fad, index, actual)
+            do_send('SETD', self[:device_id], mute_type, fad, index, actual)
         end
     end
     
-    def unmute(fader_id, index = 1)
-        mute(fader_id, false, index)
+    def unmute(fader_id, index = 1, type = :fader)
+        mute(fader_id, false, index, type)
     end
 
-    def query_fader(fader_id, index = 1)
+    def query_fader(fader_id, index = 1, type = :fader)
         fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+        fad_type = FADERS[type.to_sym]
 
-        send("GET #{self[:device_id]} FDRLVL #{fad} #{index} \n") do |data|
-            if data.start_with?('-ERR')
-                :abort
-            else
-                self[:"fader#{fad}_#{index}"] = data.to_i
-                :success
-            end
-        end
+        do_send('GETD', self[:device_id], fad_type, fad, index)
     end
 
-    def query_mute(fader_id, index = 1)
+    def query_mute(fader_id, index = 1, type = :fader)
         fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+        mute_type = MUTES[type.to_sym]
         
-        send("GET #{self[:device_id]} FDRMUTE #{fad} #{index} \n") do |data|
-            if data.start_with?('-ERR')
-                :abort
-            else
-                self[:"fader#{fad}_#{index}_mute"] = data.to_i == 1
-                :success
-            end
-        end
+        do_send('GETD', self[:device_id], mute_type, fad, index)
     end
     
     
     def received(data, resolve, command)
-        if data.start_with?('-ERR')
-            logger.debug "Nexia returned #{data} for #{command[:data]}" if command
+        if data =~ /-ERR/
+            if command
+                logger.warn "Nexia returned #{data} for #{command[:data]}"
+            else
+                logger.debug { "Nexia responded #{data}" }
+            end
             return :abort
+        else
+            logger.debug { "Nexia responded #{data}" }
         end
         
         #--> "#SETD 0 FDRLVL 29 1 0.000000 +OK"
         data = data.split(' ')
         unless data[2].nil?
-            case data[2].to_sym
-            when :FDRLVL, :VL
-                self[:"fader#{data[3]}_#{data[4]}"] = data[5].to_i
-            when :FDRMUTE
-                self[:"fader#{data[3]}_#{data[4]}_mute"] = data[5] == "1"
-            when :DEVID
+            resp_type = data[2].to_sym
+
+            if resp_type == :DEVID
                 # "#GETD 0 DEVID 1 "
-                self[:device_id] = data[-2].to_i
-            when :MMLVLIN
-                self[:"matrix_in#{data[3]}_#{data[4]}"] = data[5].to_i
+                self[:device_id] = data[-1].to_i
+            elsif MUTES.has_key?(resp_type)
+                type = MUTES[resp_type]
+                self[:"#{type}#{data[3]}_#{data[4]}_mute"] = data[5] == '1'
+            elsif FADERS.has_key?(resp_type)
+                type = FADERS[resp_type]
+                self[:"#{type}#{data[3]}_#{data[4]}"] = data[5].to_i
             end
         end
         
@@ -155,12 +175,16 @@ class Biamp::Nexia
     end
     
     
-    
     private
     
     
-    def do_send(*args)
-        send("#{args.join(' ')} \n")
+    def do_send(*args, &block)
+        if args[-1].is_a? Hash
+            options = args.pop
+        else
+            options = {}
+        end
+        send("#{args.join(' ')} \n", options, &block)
     end
 end
 
