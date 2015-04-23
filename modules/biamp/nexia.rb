@@ -17,7 +17,7 @@ class Biamp::Nexia
 
         # Nexia requires some breathing room
         defaults({
-            delay_on_receive: 17
+            delay_on_receive: 20
         })
 
         config({
