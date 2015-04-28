@@ -100,7 +100,18 @@ class Aca::Joiner
         logger.debug { "Joining #{rooms}" }
 
         # Inform the remote systems
-        inform(:join, rooms).finally do
+        promise = inform(:join, rooms)
+        promise.then do |to_inform|
+            rms = Set.new
+            to_inform.each do |room_list|
+                rms += room_list
+            end
+            rms.each do |id|
+                logger.debug "Notifying system #{id} of unjoin due to new join"
+                @systems[id][:Joiner].notify_unjoin
+            end
+        end
+        promise.finally do
             commit_join(:join, @system_id, rooms)
             finish_joining
         end
@@ -119,10 +130,11 @@ class Aca::Joiner
         logger.debug { "Unjoining #{rooms}" }
 
         # Inform the remote systems
-        inform(:unjoin, rooms).finally do
+        promise = inform(:unjoin, rooms).finally do
             commit_join(:unjoin)
             finish_joining
         end
+        promise
     end
 
 
@@ -146,7 +158,17 @@ class Aca::Joiner
 
 
     def notify_join(initiator, rooms)
-        commit_join(:join, initiator, rooms)
+        joined_to = self[:joined][:rooms]
+
+        # Grab a list of rooms that need to be unjoined due to a new join
+        if joined_to.size > 1
+            remaining = joined_to - rooms
+        else
+            remaining = []
+        end
+
+        # Commit the newly joined rooms
+        commit_join(:join, initiator, rooms, remaining)
     end
 
     def notify_unjoin
@@ -172,10 +194,20 @@ class Aca::Joiner
         @rooms = Set.new(room_ids)
 
         # Load any existing join settings from the database
-        self[:joined] = setting(:joined) || {
-            initiator: @system_id,
-            rooms: [@system_id]
-        }
+        # Need to ensure everything is a symbol (database stores strings)
+        dbVal = setting(:joined)
+        if dbVal
+            joined_to = dbVal[:rooms].map { |rm| rm.to_sym }
+            self[:joined] = {
+                initiator: dbVal[:initiator].to_sym,
+                rooms: joined_to
+            }
+        else
+            self[:joined] = {
+                initiator: @system_id,
+                rooms: [@system_id]
+            }
+        end
     end
 
 
@@ -194,7 +226,7 @@ class Aca::Joiner
 
     # Updates the join settings for the interface
     # Saves the current joins to the database
-    def commit_join(join, init_id = nil, rooms = nil)
+    def commit_join(join, init_id = nil, rooms = nil, remaining = nil)
         # Commit these settings to the database
         if join == :join
             logger.debug { "Join on #{rooms} by #{init_id}" }
@@ -211,7 +243,9 @@ class Aca::Joiner
         end
 
         define_setting(:joined, self[:joined])
-        true
+
+        # Return the list of rooms that need to be unjoined
+        remaining
     end
 
     # Inform the other systems of this systems details
