@@ -104,11 +104,14 @@ class Aca::Joiner
         promise.then do |to_inform|
             rms = Set.new
             to_inform.each do |room_list|
-                rms += room_list
+                # Finally returns results like [[result, success_bool],[result, success_bool]]
+                rms += room_list[0]
             end
+
+            # Warning as the UI should try to prevent this happening
             rms.each do |id|
-                logger.debug "Notifying system #{id} of unjoin due to new join"
-                @systems[id][:Joiner].notify_unjoin
+                logger.warn "Notifying system #{id} of unjoin due to new join"
+                @systems[id.to_sym][:Joiner].notify_unjoin
             end
         end
         promise.finally do
