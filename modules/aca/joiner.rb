@@ -152,7 +152,7 @@ class Aca::Joiner
             # Might have been pulled from the database
             id = id_str.to_sym
             next if skipMe && id == @system_id
-            promises << @systems[id].get(mod, index).send(func.to_sym, *args)
+            promises << @systems[id].get(mod, index).method_missing(func.to_sym, *args)
         end
 
         # Allows you to perform an action after this has been processed on all systems
