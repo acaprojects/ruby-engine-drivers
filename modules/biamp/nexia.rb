@@ -17,7 +17,8 @@ class Biamp::Nexia
 
         # Nexia requires some breathing room
         defaults({
-            delay_on_receive: 17
+            delay_on_receive: 30,
+            delay: 30
         })
 
         config({
@@ -89,7 +90,9 @@ class Biamp::Nexia
         stdmatrix_in: :SMLVLIN,
         stdmatrix_out: :SMLVLOUT,
         auto_in: :AMLVLIN,
-        auto_out: :AMLVLOUT
+        auto_out: :AMLVLOUT,
+        io_in: :INPLVL,
+        io_out: :OUTLVL
     }
     FADERS.merge!(FADERS.invert)
     def fader(fader_id, level, index = 1, type = :fader)
@@ -109,7 +112,9 @@ class Biamp::Nexia
         auto_in: :AMMUTEIN,
         auto_out: :AMMUTEOUT,
         stdmatrix_in: :SMMUTEIN,
-        stdmatrix_out: :SMOUTMUTE
+        stdmatrix_out: :SMOUTMUTE,
+        io_in: :INPMUTE,
+        io_out: :OUTMUTE
     }
     MUTES.merge!(MUTES.invert)
     def mute(fader_id, val = true, index = 1, type = :fader)
