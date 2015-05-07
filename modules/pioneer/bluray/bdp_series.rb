@@ -218,6 +218,7 @@ class Pioneer::Bluray::BdpSeries
 			when :scan_forward, :scan_reverse
 				set_state(8)
 			when :power_off
+				self[:power] = false
 				set_state(-1)
 			when :power_on
 				power?
