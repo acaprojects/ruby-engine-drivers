@@ -210,7 +210,7 @@ class Extron::Switcher::Dtp
 
         faders = group.is_a?(Array) ? group : [group]
         faders.each do |fad|
-            do_send("\eD#{fad}*#{val}GRPM", :group_type => :mute)
+            do_send("\eD#{fad}*#{val}GRPM", group_type: :mute, wait: true)
         end
         # Response:  GrpmD#{group}*+00001
     end
@@ -224,22 +224,22 @@ class Extron::Switcher::Dtp
     def fader(group, value, index = nil)    # \e == 0x1B == ESC key
         faders = group.is_a?(Array) ? group : [group]
         faders.each do |fad|
-            do_send("\eD#{fad}*#{value}GRPM", :group_type => :volume)
+            do_send("\eD#{fad}*#{value}GRPM", group_type: :volume, wait: true)
         end
         
         # Response: GrpmD#{group}*#{value}*GRPM
     end
     
     def fader_status(group, type)
-        do_send("\eD#{group}GRPM", :group_type => type)
+        do_send("\eD#{group}GRPM", group_type: type, wait: true)
     end
     
     def fader_relative(group, value)    # \e == 0x1B == ESC key
         if value < 0
             value = -value
-            do_send("\eD#{group}*#{value}-GRPM")
+            do_send("\eD#{group}*#{value}-GRPM", wait: true)
         else
-            do_send("\eD#{group}*#{value}+GRPM")
+            do_send("\eD#{group}*#{value}+GRPM", wait: true)
         end
         # Response: GrpmD#{group}*#{value}*GRPM
     end
@@ -314,10 +314,14 @@ class Extron::Switcher::Dtp
                 case data[0..2].to_sym
                 when :Grp    # Mute or Volume
                     data = data.split('*')
+                    fader = data[0][5..-1].to_i
+                    value = data[1].to_i
+                    logger.debug { "fader #{fader} and value #{value}, command present #{command.present?}" }
+
                     if command.present? && command[:group_type] == :mute
-                        self["fader#{data[0][5..-1].to_i}_mute"] = data[1][-1] == '1'    # 1 == true
+                        self["fader#{fader}_mute"] = value == 1    # 1 == true
                     elsif command.present? && command[:group_type] == :volume
-                        self["fader#{data[0][5..-1].to_i}"] = data[1].to_i
+                        self["fader#{fader}"] = value
                     else
                         return :failed
                     end
@@ -344,6 +348,21 @@ class Extron::Switcher::Dtp
 
 
     private
+
+
+    ERRORS = {
+        1 => 'Invalid input number (number is too large)',
+        12 => 'Invalid port number',
+        13 => 'Invalid parameter (number is out of range)',
+        14 => 'Not valid for this configuration',
+        17 => 'System timed out',
+        23 => 'Checksum error (for file uploads)',
+        24 => 'Privilege violation',
+        25 => 'Device is not present',
+        26 => 'Maximum connections exceeded',
+        27 => 'Invalid event number',
+        28 => 'Bad filename or file not found'
+    }
 
 
     def device_ready
