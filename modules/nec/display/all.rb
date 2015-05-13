@@ -98,8 +98,8 @@ class Nec::Display::All
                     logger.debug "-- NEC LCD, requested to power on"
 
                     power_on_delay
-                    mute_status(0)
-                    volume_status(0)
+                    mute_status(99)
+                    volume_status(99)
                 end
             else
                 if current == On
@@ -150,8 +150,8 @@ class Nec::Display::All
         message += INPUTS[input].to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
         send_checksum(type, message, {:name => :input})
-        brightness_status(60)        # higher status than polling commands - lower than input switching
-        contrast_status(60)
+        brightness_status(20)        # higher status than polling commands - lower than input switching
+        contrast_status(20)
 
         logger.debug "-- NEC LCD, requested to switch to: #{input}"
     end
@@ -173,8 +173,8 @@ class Nec::Display::All
         message += AUDIO[input].to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
         send_checksum(type, message, :name => :audio)
-        mute_status(60)        # higher status than polling commands - lower than input switching
-        volume_status(60)
+        mute_status(20)        # higher status than polling commands - lower than input switching
+        volume_status(20)
 
         logger.debug "-- NEC LCD, requested to switch audio to: #{input}"
     end
@@ -200,9 +200,9 @@ class Nec::Display::All
         message = OPERATION_CODE[:brightness_status]
         message += val.to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
-        brightness_status
         send_checksum(:set_parameter, message)
         send_checksum(:command, '0C')    # Save the settings
+        brightness_status
     end
 
     def contrast(val)
@@ -211,9 +211,9 @@ class Nec::Display::All
         message = OPERATION_CODE[:contrast_status]
         message += val.to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
-        contrast_status
         send_checksum(:set_parameter, message)
         send_checksum(:command, '0C')    # Save the settings
+        contrast_status
     end
 
     def volume(val)
@@ -222,9 +222,9 @@ class Nec::Display::All
         message = OPERATION_CODE[:volume_status]
         message += val.to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
-        volume_status
         send_checksum(:set_parameter, message)
         send_checksum(:command, '0C')    # Save the settings
+        volume_status
 
         self[:audio_mute] = false    # audio is unmuted when the volume is set
     end
@@ -253,12 +253,12 @@ class Nec::Display::All
         # Check for valid response
         #
         if !check_checksum(data)
-            logger.debug "-- NEC LCD, checksum failed for command: #{command[:data]}"
+            logger.debug "-- NEC LCD, checksum failed for command: #{command[:data]}" if command
             logger.debug "-- NEC LCD, response was: #{data}"
             return false
         end
 
-        #data = array_to_str(data)    # Convert bytes to a string (received like this)
+        logger.debug { "NEC LCD responded #{data}" }
 
         case MSG_TYPE[data[4]]    # Check the MSG_TYPE (B, D or F)
             when :command_reply
@@ -267,7 +267,7 @@ class Nec::Display::All
                 #    8..9 == "00" means no error 
                 if data[10..15] == "C203D6"    # Means power comamnd
                     if data[8..9] == "00"
-                        power_on_delay(0)    # wait until the screen has turned on before sending commands (0 == high priority)
+                        power_on_delay(99)    # wait until the screen has turned on before sending commands (99 == high priority)
                     else
                         logger.info "-- NEC LCD, command failed: #{command[:data]}"
                         logger.info "-- NEC LCD, response was: #{data}"
@@ -281,11 +281,6 @@ class Nec::Display::All
                             self[:power] = Off
                             self[:warming] = false
                         end
-                        #if self[:power_target].nil?
-                        #    self[:power_target] = self[:power]
-                        #elsif self[:power_target] != self[:power]
-                        #    power(self[:power_target])
-                        #end
                     else
                         logger.info "-- NEC LCD, command failed: #{command[:data]}"
                         logger.info "-- NEC LCD, response was: #{data}"
@@ -312,7 +307,7 @@ class Nec::Display::All
 
 
     def do_poll
-        power?({:priority => 0}) do
+        power?({:priority => 99}) do
             if self[:power] == On
                 power_on_delay
                 mute_status
@@ -420,7 +415,7 @@ class Nec::Display::All
     #
     OPERATION_CODE.each_key do |command|
         define_method command do |*args|
-            priority = 99
+            priority = 0
             if args.length > 0
                 priority = args[0]
             end
