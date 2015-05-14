@@ -52,6 +52,11 @@ class Nec::Display::All
             encoding: "ASCII-8BIT"
         })
 
+        defaults({
+            timeout: 5000,
+            delay: 100
+        })
+
         on_update
     end
 
@@ -87,28 +92,26 @@ class Nec::Display::All
     def power(state)
         message = "C203D6"
 
-        power? do
-            current = self[:power]
-            if is_affirmative?(state)
-                if current == Off
-                    message += "0001"    # Power On
-                    send_checksum(:command, message, {:name => :power})
-                    self[:warming] = true
-                    self[:power] = On
-                    logger.debug "-- NEC LCD, requested to power on"
+        current = self[:power]
+        if is_affirmative?(state)
+            if current == Off
+                message += "0001"    # Power On
+                send_checksum(:command, message, {:name => :power, :delay => 5000})
+                self[:warming] = true
+                self[:power] = On
+                logger.debug "-- NEC LCD, requested to power on"
 
-                    power_on_delay
-                    mute_status(99)
-                    volume_status(99)
-                end
-            else
-                if current == On
-                    message += "0004"    # Power Off
-                    send_checksum(:command, message, {:name => :power})
+                power_on_delay
+                mute_status(99)
+                volume_status(99)
+            end
+        else
+            if current == On
+                message += "0004"    # Power Off
+                send_checksum(:command, message, {:name => :power, :delay => 10000, :timeout => 10000})
 
-                    self[:power] = Off
-                    logger.debug "-- NEC LCD, requested to power off"
-                end
+                self[:power] = Off
+                logger.debug "-- NEC LCD, requested to power off"
             end
         end
     end
@@ -269,7 +272,7 @@ class Nec::Display::All
                     if data[8..9] == "00"
                         power_on_delay(99)    # wait until the screen has turned on before sending commands (99 == high priority)
                     else
-                        logger.info "-- NEC LCD, command failed: #{command[:data]}"
+                        logger.info "-- NEC LCD, command failed: #{command[:data]}" if command
                         logger.info "-- NEC LCD, response was: #{data}"
                         return false    # command failed
                     end
@@ -282,7 +285,7 @@ class Nec::Display::All
                             self[:warming] = false
                         end
                     else
-                        logger.info "-- NEC LCD, command failed: #{command[:data]}"
+                        logger.info "-- NEC LCD, command failed: #{command[:data]}" if command
                         logger.info "-- NEC LCD, response was: #{data}"
                         return false    # command failed
                     end
@@ -296,7 +299,7 @@ class Nec::Display::All
                     send(command[:data])    # checksum already added
                     logger.debug "-- NEC LCD, response was a wait command"
                 else
-                    logger.info "-- NEC LCD, get or set failed: #{command[:data]}"
+                    logger.info "-- NEC LCD, get or set failed: #{command[:data]}" if command
                     logger.info "-- NEC LCD, response was: #{data}"
                     return false
                 end
@@ -307,7 +310,9 @@ class Nec::Display::All
 
 
     def do_poll
-        power?({:priority => 99}) do
+        power?({:priority => 0}) do
+            logger.debug { "Polling, power = #{self[:power]}" }
+
             if self[:power] == On
                 power_on_delay
                 mute_status
@@ -379,7 +384,7 @@ class Nec::Display::All
                 # nothing needed to do here (we are delaying the next command by 4 seconds)
             else
                 logger.info "-- NEC LCD, unknown response: #{data[10..13]}"
-                logger.info "-- NEC LCD, for command: #{command[:data]}"
+                logger.info "-- NEC LCD, for command: #{command[:data]}" if command
                 logger.info "-- NEC LCD, full response was: #{data}"
         end
     end
@@ -419,6 +424,9 @@ class Nec::Display::All
             if args.length > 0
                 priority = args[0]
             end
+
+            logger.debug { "NEC requesting #{command}" }
+
             message = OPERATION_CODE[command]
             send_checksum(:get_parameter, message, {:priority => priority})    # Status polling is a low priority
         end
