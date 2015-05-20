@@ -184,6 +184,8 @@ class Extron::Switcher::Dxp
             device_ready
         elsif command.present? && command[:command] == :information
             data = data.split(' ')
+            return :ignore unless data.length > 1
+
             video = data[0][1..-1].split('X')
             self[:video_inputs] = video[0].to_i
             self[:video_outputs] = video[1].to_i
