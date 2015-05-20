@@ -62,6 +62,9 @@ class Nec::Projector::NpSeries
     # Sets up any constants 
     #
     def on_load
+        defaults({
+            delay: 100
+        })
 
         #
         # Setup constants
