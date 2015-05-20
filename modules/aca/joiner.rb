@@ -68,7 +68,7 @@ class Aca::Joiner
         rms = setting(:rooms)
 
         if rms.nil? || rms.empty?
-            logger.debug "No room joining settings provided"
+            logger.warn "No room joining settings provided"
             rms = []
         end
         rms << @system_id.to_s

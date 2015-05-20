@@ -76,7 +76,7 @@ class Aca::LifterLogicManual
     protected
 
 
-    def pulse(mod, relay, state, time = nil)
+    def pulse(mod, relay, state, time = nil, delay = nil)
 
         if time.nil?
             # On == up and Off == down etc
@@ -88,7 +88,11 @@ class Aca::LifterLogicManual
 
             @pulsing[relay] = schedule.in("#{time}s") do
                 @pulsing.delete(relay)
-                mod.relay relay, !state
+                if delay
+                    mod.relay relay, !state, delay: (delay * 1000)
+                else
+                    mod.relay relay, !state
+                end
 
                 if @next[relay]
                     args = @next[relay]
