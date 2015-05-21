@@ -1,4 +1,4 @@
-module Extron; end
+load File.expand_path('../base.rb', File.dirname(__FILE__))
 module Extron::Mixer; end
 
 
@@ -24,12 +24,11 @@ module Extron::Mixer; end
 #
 
 
-class Extron::Mixer::Dmp64
-    include ::Orchestrator::Constants
-    include ::Orchestrator::Transcoder
+class Extron::Mixer::Dmp64 < Extron::Base
 
-    
     def on_load
+        super
+        
         #
         # Setup constants
         #
@@ -37,25 +36,7 @@ class Extron::Mixer::Dmp64
         self[:output_volume_min] = 1048
         self[:mic_gain_max] = 2298
         self[:mic_gain_min] = 1698
-
-        config({
-            :clear_queue_on_disconnect => true    # Clear the queue as we may need to send login
-        })
     end
-
-    def connected
-
-    end
-
-    def disconnected
-        #
-        # Disconnected may be called without calling connected
-        #    Hence the check if timer is nil here
-        #
-        @polling_timer.cancel unless @polling_timer.nil?
-        @polling_timer = nil
-    end
-
 
     def call_preset(number)
         if number < 0 || number > 32
@@ -139,16 +120,9 @@ class Extron::Mixer::Dmp64
     # Then sends password prompt
     #
     def received(data, resolve, command)
-        logger.debug "Extron DSP sent #{data}"
+        logger.debug { "Extron DSP sent #{data}" }
 
-        if command.nil? && data =~ /Copyright/i
-            pass = setting(:password)
-            if pass.nil?
-                device_ready
-            else
-                do_send(pass)        # Password set
-            end
-        elsif data =~ /Login/i
+        if data =~ /Login/i
             device_ready
         else
             case data[0..2].to_sym
@@ -198,21 +172,5 @@ class Extron::Mixer::Dmp64
         27 => 'Invalid event number',
         28 => 'Bad filename or file not found'
     }
-
-
-    def device_ready
-        do_send("\e3CV")    # Verbose mode and tagged responses
-        @polling_timer = schedule.every('2m') do
-            logger.debug "-- Extron Maintaining Connection"
-            send('Q', :priority => 0)    # Low priority poll to maintain connection
-        end
-    end
-
-
-
-
-    def do_send(data, options = {})
-        send(data << 0x0D, options)
-    end
 end
 
