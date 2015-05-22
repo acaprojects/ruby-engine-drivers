@@ -226,7 +226,7 @@ class Kramer::Switcher::Protocol3000
     CMDS.merge!(CMDS.invert)
     
     
-    private
+    protected
 
 
     def build_switch_data(map)
