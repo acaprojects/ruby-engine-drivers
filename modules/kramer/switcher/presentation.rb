@@ -14,5 +14,6 @@ class Kramer::Switcher::Presentation < Kramer::Switcher::Protocol3000
         map = {map => out} if out
         route(map, @default_type)
     end
+    alias_method :switch_video, :switch
 
 end
