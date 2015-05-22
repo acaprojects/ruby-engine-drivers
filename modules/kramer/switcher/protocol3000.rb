@@ -171,36 +171,39 @@ class Kramer::Switcher::Protocol3000
             return :abort
         end
 
+        logger.debug { "Kramer cmd: #{cmd}, args: #{args}" }
+
         case CMDS[cmd.to_sym]
         when :info
             self[:video_inputs] = args[1].to_i
             self[:video_outputs] = args[3].to_i
         when :route
             # response looks like ~01@ROUTE 12,1,4 OK
-            inout = args[0].split(',')
-            layer = inout[0].to_i
-            dest = inout[1].to_i
-            src = inout[2].to_i
+            layer = args[0].to_i
+            dest = args[1].to_i
+            src = args[2].to_i
             self[:"#{ROUTE_TYPES[layer]}#{dest}"] = src
-            
+
         when :switch, :switch_audio, :switch_video
-            # return string like "in>out,in>out,in>out"
+            # return string like "in>out,in>out,in>out OK"
 
             type = :av
             type = :audio if CMDS[cmd] == :switch_audio
             type = :video if CMDS[cmd] == :switch_video
 
-            mappings = args[0].split(',')
+            mappings = args[0..-2]
             mappings.each do |map|
                 inout = map.split('>')
                 self[:"#{type}#{inout[1]}"] = inout[0].to_i
             end
         when :audio_mute
             # Response looks like: ~01@VMUTE 1,0 OK
-            output, mute = args[0].split(',')
+            output = args[0]
+            mute = args[1]
             self[:"audio#{output}_muted"] = mute[0] == '1'
         when :video_mute
-            output, mute = args[0].split(',')
+            output = args[0]
+            mute = args[1]
             self[:"video#{output}_muted"] = mute[0] == '1'
         end
         
