@@ -88,6 +88,29 @@ class Kramer::Switcher::Protocol3000
     end
 
 
+    ROUTE_TYPES = {
+        video: 1,
+        audio: 2,
+        usb: 3,
+        audio_video: 12,
+        video_usb: 13,
+        audio_video_usb: 123
+    }
+    ROUTE_TYPES.merge!(ROUTE_TYPES.invert)
+
+    def route(map, type = :audio_video)
+        map.each do |input, outputs|
+            input = input.to_s if input.is_a?(Symbol)
+            input = input.to_i if input.is_a?(String)
+
+            outputs = [outputs] unless outputs.is_a?(Array)
+            outputs.each do |output|
+                do_send(CMDS[:route], ROUTE_TYPES[type], output, input)
+            end
+        end
+    end
+
+
     def mute_video(out, state = true)
         data = is_affirmative?(state) ? 1 : 0
         do_send(CMDS[:video_mute], out, data)
@@ -153,11 +176,13 @@ class Kramer::Switcher::Protocol3000
             self[:video_inputs] = args[1].to_i
             self[:video_outputs] = args[3].to_i
         when :route
+            # response looks like ~01@ROUTE 12,1,4 OK
             inout = args[0].split(',')
             layer = inout[0].to_i
             dest = inout[1].to_i
             src = inout[2].to_i
-            self[:"#{LAYERS[layer]}#{dest}"] = src
+            self[:"#{ROUTE_TYPES[layer]}#{dest}"] = src
+            
         when :switch, :switch_audio, :switch_video
             # return string like "in>out,in>out,in>out"
 
@@ -196,12 +221,6 @@ class Kramer::Switcher::Protocol3000
         model: :"MODEL?"
     }
     CMDS.merge!(CMDS.invert)
-
-    LAYERS = {
-        1 => :video,
-        2 => :audio,
-        2 => :data
-    }
     
     
     private
