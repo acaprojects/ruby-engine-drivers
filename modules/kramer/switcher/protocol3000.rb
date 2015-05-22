@@ -116,7 +116,7 @@ class Kramer::Switcher::Protocol3000
     
 
     def received(data, resolve, command)
-        logger.debug "Kramer sent #{data}"
+        logger.debug { "Kramer sent #{data}" }
         
         # Extract and check the machine number if we've defined it
         components = data.split('@')
@@ -251,6 +251,7 @@ class Kramer::Switcher::Protocol3000
         end
         cmd << "\r"
 
+        logger.debug { "requesting: #{cmd}" }
         send(cmd, options)
     end
 end
