@@ -53,7 +53,7 @@ class Kramer::Switcher::Protocol3000
         login
         get_machine_info
 
-        @polling_timer = schedule.every('2m') do
+        @polling_timer = schedule.every('1m') do
             logger.debug "-- Kramer Maintaining Connection"
             do_send('MODEL?', {:priority => 0})    # Low priority poll to maintain connection
         end
@@ -155,6 +155,7 @@ class Kramer::Switcher::Protocol3000
 
         cmd = components[0]
         args = components[1..-1]
+        args.pop if args[-1] == 'OK'
 
         if cmd == 'OK'
             return :success
@@ -191,8 +192,7 @@ class Kramer::Switcher::Protocol3000
             type = :audio if CMDS[cmd] == :switch_audio
             type = :video if CMDS[cmd] == :switch_video
 
-            mappings = args[0..-2]
-            mappings.each do |map|
+            args.each do |map|
                 inout = map.split('>')
                 self[:"#{type}#{inout[1]}"] = inout[0].to_i
             end
