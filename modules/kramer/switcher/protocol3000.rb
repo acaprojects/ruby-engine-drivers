@@ -105,6 +105,14 @@ class Kramer::Switcher::Protocol3000
     def unmute_audio(out)
         mute_audio out, false
     end
+
+    def help
+        do_send(CMDS[:help])
+    end
+
+    def model
+        do_send(CMDS[:model])
+    end
     
 
     def received(data, resolve, command)
@@ -163,11 +171,12 @@ class Kramer::Switcher::Protocol3000
                 self[:"#{type}#{inout[1]}"] = inout[0].to_i
             end
         when :audio_mute
+            # Response looks like: ~01@VMUTE 1,0 OK
             output, mute = args[0].split(',')
-            self[:"audio#{output}_muted"] = mute == '1'
+            self[:"audio#{output}_muted"] = mute[0] == '1'
         when :video_mute
             output, mute = args[0].split(',')
-            self[:"video#{output}_muted"] = mute == '1'
+            self[:"video#{output}_muted"] = mute[0] == '1'
         end
         
         return :success
@@ -182,7 +191,9 @@ class Kramer::Switcher::Protocol3000
         switch_audio: :"AUD",
         switch_video: :"VID",
         audio_mute: :"MUTE",
-        video_mute: :"VMUTE"
+        video_mute: :"VMUTE",
+        help: :HELP,
+        model: :"MODEL?"
     }
     CMDS.merge!(CMDS.invert)
 
