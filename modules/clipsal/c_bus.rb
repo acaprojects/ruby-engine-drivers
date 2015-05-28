@@ -41,7 +41,6 @@ class Clipsal::CBus
     end
     
     def on_update
-        
     end
     
     
@@ -49,7 +48,7 @@ class Clipsal::CBus
         send("|||\r", priority: 99)    # Ensure we are in smart mode
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling CBUS"
-            send("|||\r", priority: 99)    # Ensure we are in smart mode
+            send("|||\r", priority: 0)    # Ensure we are in smart mode
         end
     end
     
@@ -147,17 +146,20 @@ class Clipsal::CBus
     def received(data, resolve, command)
         # Debug here will sometimes have the \n char
         # This is removed by the hex_to_byte function
-        logger.debug "CBus sent #{data}"
+        logger.debug { "CBus sent #{data}" }
         
         data = str_to_array(hex_to_byte(data))
         
         if !check_checksum(data)
-            logger.debug "CBus checksum failed"
+            logger.warn "CBus checksum failed"
             return :failed
         end
 
         # We are only looking at Point -> MultiPoint commands
-        return if data[0] != 0x05
+        if data[0] != 0x05
+            logger.debug { "was not a Point -> MultiPoint response: type 0x#{data[0].to_s(16)}" }
+            return
+        end
         # 0x03 == Point -> Point -> MultiPoint
         # 0x06 == Point -> Point
         
@@ -177,8 +179,10 @@ class Clipsal::CBus
                 when 0x79            # Trigger Max
                     self["trigger_group_#{commands.shift}"] = 0xFF
                 when 0x09            # Indicator Kill (ex: 0504CA00 0901 23)
+                    logger.debug { "trigger kill request: grp 0x#{commands[0].to_s(16)}" }
                     commands.shift        # Group (turns off indicators of all scenes triggered by this group)
                 else
+                    logger.debug { "unknown trigger group request 0x#{current.to_s(16)}" }
                     break    # We don't know what data is here
                 end
             when 0x30..0x5F        # Lighting group
@@ -200,15 +204,19 @@ class Clipsal::CBus
                     value = commands.shift
                     self["blinds_group_#{group}"] = Down if value == 0x00
                 when 0x09            # Terminate Ramp
+                    logger.debug { "terminate ramp request: grp 0x#{commands[0].to_s(16)}" }
                     commands.shift        # Group address
                 else
                     if (current & 0b10000101) == 0    # Ramp to level (ex: 05013800 0205FF BC)
+                        logger.debug { "ramp request: grp 0x#{commands[0].to_s(16)} - level 0x#{commands[1].to_s(16)}" }
                         commands.shift(2)    # Group address, level
                     else
+                        logger.debug { "unknown lighting request 0x#{current.to_s(16)}" }
                         break    # We don't know what data is here
                     end
                 end
             else
+                logger.debug { "unknown application request app 0x#{application.to_s(16)}" }
                 break    # We haven't programmed this application
             end
         end
@@ -247,8 +255,8 @@ class Clipsal::CBus
     
     def do_send(command, options = {})
         string = byte_to_hex(command << checksum(command)).upcase
+        logger.debug { "Requesting CBus: #{string}" }
         send("\\#{string}\r", options)
-        #logger.debug "CBus module sent #{string}"
     end
 end
 

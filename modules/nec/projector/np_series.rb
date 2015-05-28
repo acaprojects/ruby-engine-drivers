@@ -316,8 +316,7 @@ class Nec::Projector::NpSeries
 
                     case req[-2]
                         when 0x02
-                            process_input_state(data, command)
-                            return true
+                            return process_input_state(data, command)
                         when 0x03
                             process_mute_state(data, req)
                             return true
@@ -488,8 +487,10 @@ class Nec::Projector::NpSeries
 
 
         return if self[:power] == Off        # no point doing anything here if the projector is off
+        first = INPUT_MAP[data[-15]]
+        return :ignore unless first
 
-        self[:input_selected] = INPUT_MAP[data[-15]][data[-14]]
+        self[:input_selected] = first[data[-14]]
         self[:input] = self[:input_selected].nil? ? :unknown : self[:input_selected][0]
         if data[-17] == 0x01
             command[:delay_on_receive] = 3000        # still processing signal
@@ -515,6 +516,8 @@ class Nec::Projector::NpSeries
         else
             self[:input_stable] = true
         end
+
+        true
     end
 
 
