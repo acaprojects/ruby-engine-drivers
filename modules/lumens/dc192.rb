@@ -1,7 +1,7 @@
 module Lumens; end
 
 
-class Lumens::Dc265
+class Lumens::Dc192
 	include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
@@ -24,7 +24,7 @@ class Lumens::Dc265
             encoding: "ASCII-8BIT"
 		})
 		
-		self[:zoom_max] = 620
+		self[:zoom_max] = 855
 		self[:zoom_min] = 0
 		self[:stable_state] = true
 	end
@@ -119,8 +119,8 @@ class Lumens::Dc265
 		cancel_focus
 		position = position.to_i
 		
-		position = 620 if position > 620
-		position = 0 if position < 0
+		position = in_range(position, self[:zoom_max])
+
 		
 		low = position & 0xFF
 		high = (position >> 8) & 0xFF
@@ -131,7 +131,7 @@ class Lumens::Dc265
 	
 	def lamp(power)
 		return if self[:frozen]
-		power = [true, 1, :on, 'on'].include?(power) ? true : false
+		power = is_affirmative?(power)
 		
 		if power
 			do_send([COMMANDS[:lamp], 0x01], {:name => :lamp})
@@ -143,7 +143,7 @@ class Lumens::Dc265
 	
 	def sharp(state)
 		return if self[:frozen]
-		state = [true, 1, :on, 'on'].include?(state) ? true : false
+		state = is_affirmative?(state)
 		
 		if state
 			do_send([COMMANDS[:sharp], 0x01], {:name => :sharp})
@@ -154,7 +154,7 @@ class Lumens::Dc265
 	
 	
 	def frozen(state)
-		state = [true, 1, :on, 'on'].include?(state) ? true : false
+		state = is_affirmative?(state)
 		
 		if state
 			do_send([COMMANDS[:frozen], 0x01], {:name => :frozen})
@@ -265,6 +265,7 @@ class Lumens::Dc265
 	end
 	
 	
+	
 	private
 	
 	
@@ -285,17 +286,17 @@ class Lumens::Dc265
 		:OSD => [0x4B, 0x00],			# p1 (00/01:Off/On)	on screen display
 		:digital_zoom => [0x40, 0x00],	# p1 (00/01:Disable/Enable)
 		:language => [0x38, 0x00],		# p1 == 00 (english)
-		:colour => [0x37, 0x00],		# p1 (00/01:Photo/Gray)
-		:negative => [0x36, 0x00],		# p1 (00/01:Off/On)
+		:colour => [0xA7, 0x00],		# p1 (00/01:Photo/Gray)
+		:mode => [0xA9, 0x00],		    # P1 (00/01/02/03:Normal/Slide/Film/Microscope)
 		:logo => [0x47, 0x00],			# p1 (00/01:Off/On)
-		:source => [0x3A, 0x01],		# p1 (00/01:PC/Live) used for reset
+		:source => [0x3A, 0x00],		# p1 (00/01:Live/PC) used for reset
 		:slideshow => [0x04, 0x00]		# p1 (00/01:Off/On) -- NAKs
 	}
 	
 	
 	STATUS_CODE = {
 		:frozen_status => 0x78,		# p1 = 0x00
-		:sharp_status => 0x51,	# p1 = 0x00
+		:sharp_status => 0x51,	    # p1 = 0x00
 		:lamp_status => 0x50,		# p1 = 0x00
 		:zoom_status => 0x60,		# p1 = 0x00
 		:system_status => 0xB7
