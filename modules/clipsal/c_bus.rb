@@ -78,7 +78,7 @@ class Clipsal::CBus
     end
     
     
-    def lighting_ramp(group, level, rate = 0b0001, application = 0x38)
+    def light_level(group, level, rate = 0b0001, application = 0x38)
         
         #
         # rates:
@@ -91,9 +91,14 @@ class Clipsal::CBus
         level = level & 0xFF
         application = application & 0xFF
         
-        lighting_term_ramp(group)
+        stop_fading(group)
         command = [0x05, application, 0x00, rate, group, level]
         
+        do_send(command)
+    end
+
+    def stop_fading(group)
+        command = [0x05, 0x38, 0x00, 0x09, group]
         do_send(command)
     end
 
@@ -226,12 +231,6 @@ class Clipsal::CBus
     
     
     protected
-    
-    
-    def lighting_term_ramp(group)
-        command = [0x05, 0x38, 0x00, 0x09, group]
-        do_send(command)
-    end
     
     
     def checksum(data)
