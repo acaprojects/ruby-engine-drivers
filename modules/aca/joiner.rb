@@ -58,6 +58,8 @@ class Aca::Joiner
     end
 
     def on_update
+        return unless ::Orchestrator::Control.instance.ready
+
         # Grab the list of rooms and room details
         @systems = {}       # Provides system proxy lookup
         @system_id = system.id
