@@ -106,13 +106,18 @@ class Extron::Mixer::Dmp44 < Extron::Base
         if data =~ /Login/i
             device_ready
         else
-            case data[0..2].to_sym
+            cmd = data[0..2].to_sym
+
+            case cmd
             when :Grp    # Mute or Volume
                 data = data.split('*')
                 if data[1][0] == '+'    # mute
                     self["ouput#{data[0][5..-1].to_i}_mute"] = data[1][-1] == '1'    # 1 == true
-                else
+                elsif command.present? && command[:group_type] == :volume
                     self["ouput#{data[0][5..-1].to_i}_volume"] = data[1].to_i
+                else
+                    logger.debug { "DSP response failure as couldn't determine if mute or volume request" }
+                    return :ignore
                 end
             when :DsG    # Input gain
                 self["input#{data[7].to_i + 1}_gain"] = data[9..-1].to_i
@@ -120,6 +125,8 @@ class Extron::Mixer::Dmp44 < Extron::Base
                 self["input#{data[7].to_i + 1}_mute"] = data[-1] == '1'    # 1 == true
             when :Rpr    # Preset called
                 logger.debug "Extron DSP called preset #{data[3..-1]}"
+            when :Ver
+                return :success
             else
                 if data == 'E22'    # Busy! We should retry this one
                     command[:delay_on_receive] = 1 unless command.nil?
@@ -127,6 +134,10 @@ class Extron::Mixer::Dmp44 < Extron::Base
                 elsif data[0] == 'E'
                     logger.info "Extron Error #{ERRORS[data[1..2].to_i]}"
                     logger.info "- for command #{command[:data]}" unless command.nil?
+                else
+                    logger.info "unknown response type #{cmd} for response #{data}"
+                    logger.info "possibly requested with #{command[:data]}" unless command.nil?
+                    return :ignore
                 end
             end
         end
