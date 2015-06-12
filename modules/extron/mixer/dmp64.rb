@@ -86,7 +86,7 @@ class Extron::Mixer::Dmp64 < Extron::Base
         # Response:  GrpmD#{group}*+00001
     end
     # Named params version
-    def mutes(ids:, muted: true)
+    def mutes(ids:, muted: true, **_)
         mute(ids, muted)
     end
 
@@ -105,7 +105,7 @@ class Extron::Mixer::Dmp64 < Extron::Base
         # Response: GrpmD#{group}*#{value}*GRPM
     end
     # Named params version
-    def faders(ids:, level:)
+    def faders(ids:, level:, **_)
         fader(ids, level)
     end
     
@@ -120,7 +120,7 @@ class Extron::Mixer::Dmp64 < Extron::Base
         fader_status(fad, :volume)
     end
     # Named params version
-    def query_faders(ids:)
+    def query_faders(ids:, **_)
         query_fader(ids)
     end
 
@@ -130,7 +130,7 @@ class Extron::Mixer::Dmp64 < Extron::Base
         fader_status(fad, :mute)
     end
     # Named params version
-    def query_mutes(ids:)
+    def query_mutes(ids:, **_)
         query_mute(ids)
     end
 
