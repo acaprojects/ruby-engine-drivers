@@ -105,7 +105,7 @@ class Biamp::Nexia
         end
     end
     # Named params version
-    def faders(ids:, level:, index: 1, type: :fader)
+    def faders(ids:, level:, index: 1, type: :fader, **_)
         fader(ids, level, index, type)
     end
     
@@ -132,7 +132,7 @@ class Biamp::Nexia
         end
     end
     # Named params version
-    def mutes(ids:, muted: true, index: 1, type: :fader)
+    def mutes(ids:, muted: true, index: 1, type: :fader, **_)
         mute(ids, muted, index, type)
     end
     
@@ -147,7 +147,7 @@ class Biamp::Nexia
         do_send('GETD', self[:device_id], fad_type, fad, index)
     end
     # Named params version
-    def query_faders(ids:, index: 1, type: :fader)
+    def query_faders(ids:, index: 1, type: :fader, **_)
         query_fader(ids, index, type)
     end
 
@@ -158,7 +158,7 @@ class Biamp::Nexia
         do_send('GETD', self[:device_id], mute_type, fad, index)
     end
     # Named params version
-    def query_mutes(ids:, index: 1, type: :fader)
+    def query_mutes(ids:, index: 1, type: :fader, **_)
         query_mute(ids, index, type)
     end
     

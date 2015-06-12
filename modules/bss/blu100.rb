@@ -84,7 +84,7 @@ class Bss::Blu100
         end
     end
     # Named params version
-    def faders(ids:, level:, index: 0)
+    def faders(ids:, level:, index: 0, **_)
         fader(ids, level, index)
     end
 
@@ -100,7 +100,7 @@ class Bss::Blu100
         end
     end
     # Named params version
-    def mutes(ids:, muted: true, index: 1)
+    def mutes(ids:, muted: true, index: 1, **_)
         mute(ids, muted, index)
     end
 
@@ -116,7 +116,7 @@ class Bss::Blu100
         end
     end
     # Named params version
-    def query_faders(ids:, index: 0)
+    def query_faders(ids:, index: 0, **_)
         query_fader(ids, index)
     end
 
@@ -127,7 +127,7 @@ class Bss::Blu100
         end
     end
     # Named params version
-    def query_mutes(ids:, index: 1)
+    def query_mutes(ids:, index: 1, **_)
         query_mute(ids, index)
     end
 
