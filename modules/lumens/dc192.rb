@@ -217,6 +217,7 @@ class Lumens::Dc192
 				logger.debug "Lumens state == unstable - power resp"
 			else
 				self[:stable_state] = true
+				self[:zoom] = self[:zoom_min] unless self[:power]
 			end
 		when :sharp
 			self[:sharp] = data[1] == 0x01
@@ -229,6 +230,7 @@ class Lumens::Dc192
 				logger.debug "Lumens state == unstable - status"
 			else
 				self[:stable_state] = true
+				self[:zoom] = self[:zoom_min] unless self[:power]
 			end
 			# ready = data[1] == 0x01
 		end
