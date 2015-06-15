@@ -150,6 +150,7 @@ class Sharp::Displays::PnSeries
         :hdmi => 'INPS0010', 10 => :hdmi,
         :hdmi2 => 'INPS0013', 13 => :hdmi2,
         :hdmi3 => 'INPS0018', 18 => :hdmi3,
+        :display_port => 'INPS0014', 14 => :display_port,
         :vga => 'INPS0002', 2 => :vga,
         :vga2 => 'INPS0016', 16 => :vga2,
         :component => 'INPS0003', 3 => :component,
