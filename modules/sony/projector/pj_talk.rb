@@ -225,9 +225,7 @@ class Sony::Projector::PjTalk
 
         # Check we have the data
         data = bytes[8..-1]
-        if data.length == bytes[7]
-            return true
-        elsif data.length > bytes[7]
+        if data.length >= bytes[7]
             # Let the tokeniser know we only want the following number of bytes
             return 7 + bytes[7]
         end
