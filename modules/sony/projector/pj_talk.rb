@@ -168,7 +168,7 @@ class Sony::Projector::PjTalk
                 self[:power] = Off
             else
                 # Same switch however now we know there is data
-                if pjt_length > 0
+                if pjt_length && pjt_length > 0
                     case COMMANDS[pjt_command]
                     when :power_status
                         case pjt_data[-1]
