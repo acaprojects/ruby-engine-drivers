@@ -52,13 +52,20 @@ class Aca::Joiner
 
     
     def on_load
+        @retry_load = nil
+        @loaded = false
+        @room_list_built = false
+
         system.load_complete do
-            on_update
+            retry_load
         end
     end
 
     def on_update
-        return unless ::Orchestrator::Control.instance.ready
+        if not ::Orchestrator::Control.instance.ready
+            logger.warn "Room join update called before system ready"
+            return false
+        end
 
         # Grab the list of rooms and room details
         @systems = {}       # Provides system proxy lookup
@@ -79,13 +86,11 @@ class Aca::Joiner
         rooms.each do |lookup|
             system_proxies << systems(lookup)
         end
-        promise = thread.all(*system_proxies).then do |proxies|
-            logger.debug "Room joining init success"
-            build_room_list(proxies)
-        end
-        promise.catch do |err|
-            logger.error "Failed to load joining systems with #{err.inspect}"
-        end
+
+        logger.info "Room joining init success"
+        build_room_list(system_proxies)
+
+        return true
     end
 
     def join(*ids)
@@ -203,17 +208,23 @@ class Aca::Joiner
         # Load any existing join settings from the database
         # Need to ensure everything is a symbol (database stores strings)
         dbVal = setting(:joined)
-        if dbVal
-            joined_to = dbVal[:rooms].map { |rm| rm.to_sym }
-            self[:joined] = {
-                initiator: dbVal[:initiator].to_sym,
-                rooms: joined_to
-            }
-        else
-            self[:joined] = {
-                initiator: @system_id,
-                rooms: [@system_id]
-            }
+
+        begin
+            if dbVal
+                joined_to = dbVal[:rooms].map { |rm| rm.to_sym }
+                self[:joined] = {
+                    initiator: dbVal[:initiator].to_sym,
+                    rooms: joined_to
+                }
+            else
+                self[:joined] = {
+                    initiator: @system_id,
+                    rooms: [@system_id]
+                }
+            end
+            @room_list_built = true
+        rescue => e
+            logger.print_error(e, "Failed to load exiting join from the database? #{dbVal.nil?}")
         end
     end
 
@@ -228,6 +239,40 @@ class Aca::Joiner
 
     def joining?
         self[:joining]
+    end
+
+    def retry_load
+        # Cancel any pending retries
+        @retry_load.cancel unless @retry_load.nil?
+        @retry_load = nil
+
+        if on_update
+            # Wait 30 seconds and check room list is built
+            @retry_load = schedule.in(30_000) do
+                @retry_load = nil
+
+                if @room_list_built && self[:joined].is_a?(Hash)
+                    logger.info 'Joining room started successfully'
+                else
+                    logger.warn 'Joining room had issues loading... Retrying'
+                    # Invalidate cache
+                    ::Orchestrator::System.expire(@system_id)
+                    retry_load
+                end
+            end
+        else
+            # Temporary value until load can be resolved
+            self[:joined] = {
+                initiator: @system_id,
+                rooms: [@system_id]
+            }
+
+            # Wait 10 seconds and try again
+            @retry_load = schedule.in(10_000) do
+                @retry_load = nil
+                retry_load
+            end
+        end
     end
 
 
