@@ -121,7 +121,7 @@ class Panasonic::Projector::Tcp
         unmute if self[:mute]
         
         do_send(:input, INPUTS[input], {:retries => 10, delay_on_receive: 2000})
-        logger.debug "-- panasonic LCD, requested to switch to: #{input}"
+        logger.debug "-- panasonic Proj, requested to switch to: #{input}"
         
         self[:input] = input    # for a responsive UI
     end
@@ -155,7 +155,7 @@ class Panasonic::Projector::Tcp
     
 
     def received(data, resolve, command)        # Data is default received as a string
-        logger.debug "sent \"#{data}\" for #{command ? command[:data] : 'unknown'}"
+        logger.debug { "sent \"#{data}\" for #{command ? command[:data] : 'unknown'}" }
 
         # This is the ready response
         if data[0] == ' '
