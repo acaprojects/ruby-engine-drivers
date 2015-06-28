@@ -11,6 +11,11 @@ class Pioneer::Bluray::BdpSeries
     include ::Orchestrator::Transcoder
 
 
+    tokenize delimiter: "\r\n"
+	delay between_sends: 100, delay_on_receive: 100
+	wait_response timeout: 8000
+
+
 	def on_load
 		on_update
 	end
@@ -19,15 +24,6 @@ class Pioneer::Bluray::BdpSeries
 	end
 	
 	def on_update
-		defaults({
-			delay: 100,
-			delay_on_receive: 100,
-			timeout: 8000
-		})
-		config({
-			tokenize: true,
-			delimiter: "\r\n"
-		})
 	end
 	
 	

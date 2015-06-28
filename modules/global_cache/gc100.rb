@@ -5,14 +5,12 @@ class GlobalCache::Gc100
     include ::Orchestrator::Constants
 
 
+    tokenize delimiter: "\x0D"
+
+
     def on_load
         self[:num_relays] = 0
         self[:num_ir] = 0
-
-        config({
-            tokenize: true,
-            delimiter: "\x0D"
-        })
     end
     
     def on_update

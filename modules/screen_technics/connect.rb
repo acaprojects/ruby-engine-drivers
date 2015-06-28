@@ -5,14 +5,12 @@ class ScreenTechnics::Connect
     include ::Orchestrator::Constants
 
 
-    def on_load
-        defaults({
-            delay: 2000,
-            keepalive: false,
-            inactivity_timeout: 1.5,  # seconds before closing the connection if no response
-            connect_timeout: 2        # max seconds for the initial connection to the device
-        })
+    delay between_sends: 2000
+    keepalive false
+    inactivity_timeout 1500
 
+
+    def on_load
         self[:state] = :up
     end
     

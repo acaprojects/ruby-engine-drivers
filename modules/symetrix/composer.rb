@@ -8,13 +8,10 @@ module Symetrix; end
 class Symetrix::Composer
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
+
+    tokenize delimiter: "\r"
     
     def on_load
-        config({
-            tokenize: true,
-            delimiter: "\r"
-        })
-
         @type_lookup = {}
     end
     

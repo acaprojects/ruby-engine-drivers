@@ -24,17 +24,12 @@ module Clipsal; end
 class Clipsal::CBus
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
+
+    tokenize delimiter: "\x0D"
+    wait_response false
+    delay between_sends: 100
     
     def on_load
-        defaults({
-            wait: false,
-            delay: 100    # NOTE:: maybe too much?
-        })
-
-        config({
-            tokenize: true,
-            delimiter: "\x0D"
-        })
     end
     
     def on_unload

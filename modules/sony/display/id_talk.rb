@@ -9,6 +9,9 @@ class Sony::Display::IdTalk
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    tokenize indicator: "\x02\x10", callback: :check_complete
+
+
     def on_load
         self[:brightness_min] = 0x00
         self[:brightness_max] = 0x64
@@ -19,15 +22,6 @@ class Sony::Display::IdTalk
 
         self[:power] = false
         self[:type] = :lcd
-
-        config({
-            tokenize: proc {
-                ::UV::AbstractTokenizer.new({
-                    indicator: "\x02\x10",  # Header
-                    callback: method(:check_complete)
-                })
-            }
-        })
 
         on_update
     end

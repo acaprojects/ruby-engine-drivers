@@ -7,6 +7,14 @@ module Biamp; end
 class Biamp::Nexia
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
+
+
+    tokenize delimiter: /\xFF\xFE\x01|\r\n/
+
+    # Nexia requires some breathing room
+    delay between_sends: 30
+    delay on_receive: 30
+
     
     def on_load
         self[:fader_min] = -36        # specifically for tonsley
@@ -14,17 +22,6 @@ class Biamp::Nexia
 
         # max +12
         # min -100
-
-        # Nexia requires some breathing room
-        defaults({
-            delay_on_receive: 30,
-            delay: 30
-        })
-
-        config({
-            tokenize: true,
-            delimiter: /\xFF\xFE\x01|\r\n/
-        })
     end
     
     def on_unload

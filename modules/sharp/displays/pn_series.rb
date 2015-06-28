@@ -38,7 +38,12 @@ class Sharp::Displays::PnSeries
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
-    DelayTime = 120    # Time of 120ms from receive before next send
+
+    clear_queue_on_disconnect!
+    delay on_receive: 120
+    wait_response timeout: 6000
+
+    tokenize delimiter: "\x0D\x0A", wait_ready: "login:"
 
 
     #
@@ -48,19 +53,6 @@ class Sharp::Displays::PnSeries
     #    soon afterwards
     #
     def on_load
-        defaults({
-            delay_on_receive: DelayTime,        # Delay time required between commands
-            clear_queue_on_disconnect: true,    # Don't retry last command sent as we need to login
-            timeout: 6000
-        })
-
-        config({
-            tokenize: true,
-            delimiter: "\x0D\x0A",
-            encoding: "ASCII-8BIT",
-            wait_ready: "login:"
-        })
-
         on_update
     end
 

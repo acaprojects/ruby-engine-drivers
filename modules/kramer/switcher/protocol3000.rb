@@ -26,14 +26,11 @@ module Kramer::Switcher; end
 class Kramer::Switcher::Protocol3000
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
+
+    tokenize delimiter: "\x0D\x0A"
+
     
     def on_load
-        config({
-            tokenize: true,
-            delimiter: "\x0D\x0A",
-            encoding: "ASCII-8BIT"
-        })
-
         on_update
     end
 

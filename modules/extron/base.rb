@@ -5,18 +5,15 @@ class Extron::Base
     include ::Orchestrator::Transcoder
 
 
-    def on_load
-        defaults({
-            wait: false,
-            delay: 30
-        })
+    delay between_sends: 30
+    keepalive false
+    clear_queue_on_disconnect!
 
-        config({
-            clear_queue_on_disconnect: true,
-            tokenize: true,
-            delimiter: "\r\n",
-            wait_ready: /Copyright.*/i  # This should consume the whole copyright message
-        })
+    # This should consume the whole copyright message
+    tokenize delimiter: "\r\n", wait_ready: /Copyright.*/i
+
+
+    def on_load
     end
 
     def connected
