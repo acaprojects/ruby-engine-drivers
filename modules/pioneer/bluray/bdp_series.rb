@@ -12,7 +12,7 @@ class Pioneer::Bluray::BdpSeries
 
 
     tokenize delimiter: "\r\n"
-	delay between_sends: 100, delay_on_receive: 100
+	delay between_sends: 100, on_receive: 100
 	wait_response timeout: 8000
 
 

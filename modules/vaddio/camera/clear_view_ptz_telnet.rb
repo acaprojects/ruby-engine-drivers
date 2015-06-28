@@ -11,7 +11,7 @@ class Vaddio::Camera::ClearViewPtzTelnet
                 # VT100 string -ESC[J
     tokenize indicator: "\e[J\r\n", delimiter: "\r\n> \e[J",
              wait_ready: "login: "
-    delay 150
+    delay between_sends: 150
 
 
     def on_load
