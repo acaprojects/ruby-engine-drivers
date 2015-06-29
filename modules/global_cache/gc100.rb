@@ -23,10 +23,12 @@ class GlobalCache::Gc100
     def connected
         @config = nil
         self[:config_indexed] = false
-        do_send('getdevices', :max_waits => 100)
+        getdevices
         
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling GC100"
+            getdevices unless self[:config_indexed]
+            
             do_send("get_NET,0:1", :priority => 0)    # Low priority sent to maintain the connection
         end
     end
@@ -34,6 +36,11 @@ class GlobalCache::Gc100
     def disconnected
         @polling_timer.cancel unless @polling_timer.nil?
         @polling_timer = nil
+    end
+
+
+    def getdevices
+        do_send('getdevices', :max_waits => 100)
     end
     
     
