@@ -5,25 +5,22 @@ module Bss; end
 class Bss::Blu100
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
+
+
+    # keep sending commands without waiting for a response first
+    wait_response false
+    tokenise delimiter: "\x03", indicator: "\x02"
+
     
     def on_load
-        defaults({
-            :wait => false
-        })
-        config({
-            tokenize: true,
-            delimiter: "\x03",
-            indicator: "\x02"
-        })
-
         @type_lookup = {}
 
         on_update
     end
-    
+
     def on_unload
     end
-    
+
     def on_update
     end
 

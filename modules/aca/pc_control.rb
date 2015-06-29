@@ -13,6 +13,8 @@ class Aca::PcControl
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    tokenize delimiter: "\x03", indicator: "\x02"
+
     #
     #     initialize will not have access to settings
     #
@@ -22,12 +24,6 @@ class Aca::PcControl
         # Setup constants
         #
         self[:authenticated] = 0
-
-        config({
-            tokenize: true,
-            delimiter: "\x03",
-            indicator: "\x02"
-        })
     end
     
     def connected

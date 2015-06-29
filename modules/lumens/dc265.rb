@@ -5,28 +5,21 @@ class Lumens::Dc265
 	include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    tokenize delimiter: "\xAF", indicator: "\xA0"
+    delay between_sends: 300
+    wait_response retries: 8
+
+
 	def on_load
-		on_update
+		self[:zoom_max] = 620
+		self[:zoom_min] = 0
+		self[:stable_state] = true
 	end
 	
 	def on_unload
 	end
 	
 	def on_update
-		defaults({
-			:retries => 8,
-			:delay => 300
-		})
-		config({
-			tokenize: true,
-			delimiter: "\xAF",
-			indicator: "\xA0",
-            encoding: "ASCII-8BIT"
-		})
-		
-		self[:zoom_max] = 620
-		self[:zoom_min] = 0
-		self[:stable_state] = true
 	end
 	
 	

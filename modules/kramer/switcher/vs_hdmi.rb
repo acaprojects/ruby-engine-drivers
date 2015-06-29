@@ -26,6 +26,13 @@ module Kramer::Switcher; end
 class Kramer::Switcher::VsHdmi
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
+
+    delay between_sends: 150
+    wait_response false
+
+    # We wait 5 seconds before the connection is broken (make and break)
+    inactivity_timeout 5000
+
     
     def on_load
         
@@ -33,15 +40,6 @@ class Kramer::Switcher::VsHdmi
         # Setup constants
         #
         self[:limits_known] = false
-        
-        defaults({
-            :wait => false,
-            :delay => 200
-        })
-
-        config = ({
-            :inactivity_timeout => 10000    # We wait 10 seconds before the connection is broken (make and break)
-        })
     end
     
     def connected

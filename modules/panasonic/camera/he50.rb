@@ -6,18 +6,14 @@ class Panasonic::Camera::He50
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    delay between_sends: 150
+    inactivity_timeout 1500
+    keepalive false
+
+
+
     def on_load
-        on_update
-    end
-
-    def on_update
-        defaults({
-            delay: 150,         # As per the manual page 8
-            keepalive: false,
-            inactivity_timeout: 1.5,  # seconds before closing the connection if no response
-            connect_timeout: 2        # max seconds for the initial connection to the device
-        })
-
         self[:pan_max] = 0xD2F5
         self[:pan_min] = 0x2D08
         self[:pan_center] = 0x7FFF
@@ -37,7 +33,11 @@ class Panasonic::Camera::He50
 
         self[:iris_max] = 0xFFF
         self[:iris_min] = 0x555
+        
+        on_update
+    end
 
+    def on_update
         # {near: {zoom: val, pan: val, tilt: val}}
         @presets = setting(:presets) || {}
         self[:presets] = @presets.keys

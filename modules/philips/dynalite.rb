@@ -4,22 +4,13 @@ module Philips; end
 class Philips::Dynalite
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
+
+    delay between_sends: 40
+    wait_response false
+    tokenize indicator: "\x1C", msg_length: 7 # length - indicator
     
 
     def on_load
-        #
-        # Setup constants
-        #
-        defaults({
-            wait: false,
-            delay: 40
-        })
-
-        config({
-            tokenize: true,
-            indicator: "\x1C",
-            msg_length: 7      # length - indicator
-        })
     end
 
     def connected

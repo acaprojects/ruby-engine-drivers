@@ -6,6 +6,9 @@ class Samsung::Displays::MdSeries
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    tokenize indicator: "\xAA", callback: :check_length
+
+
     #
     # Control system events
     def on_load
@@ -14,15 +17,6 @@ class Samsung::Displays::MdSeries
         self[:volume_min] = 0
         self[:volume_max] = 100
         self[:power] = false
-
-        config({
-            tokenize: proc {
-                ::UV::AbstractTokenizer.new({
-                    indicator: "\xAA",
-                    callback: method(:check_length)
-                })
-            }
-        })
 
         # Meta data for inquiring interfaces
         self[:type] = :lcd

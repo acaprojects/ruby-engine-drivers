@@ -9,6 +9,10 @@ class Sony::Projector::PjTalk
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    tokenize indicator: "\x02\x0a", callback: :check_complete
+    delay on_receive: 200
+
+
     def on_load
         self[:brightness_min] = 0x00
         self[:brightness_max] = 0x64
@@ -19,18 +23,6 @@ class Sony::Projector::PjTalk
         self[:type] = :projector
 
         on_update
-        config({
-            tokenize: proc {
-                ::UV::AbstractTokenizer.new({
-                    indicator: "\x02\x0a",  # Header
-                    callback: method(:check_complete)
-                })
-            }
-        })
-
-        defaults({
-            delay_on_receive: 200
-        })
     end
 
     def on_update
