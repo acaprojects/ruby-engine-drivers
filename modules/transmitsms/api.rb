@@ -12,13 +12,11 @@ class Transmitsms::Api
     }.freeze
 
 
-    def on_load
-        defaults({
-            keepalive: false,
-            inactivity_timeout: 1.5,  # seconds before closing the connection if no response
-            connect_timeout: 2        # max seconds for the initial connection to the device
-        })
+    keepalive false
+    inactivity_timeout 1500
 
+
+    def on_load
         on_update
     end
     

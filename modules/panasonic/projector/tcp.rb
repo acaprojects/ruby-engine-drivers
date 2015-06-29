@@ -16,25 +16,22 @@ class Panasonic::Projector::Tcp
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    tokenize delimiter: "\r", wait_ready: 'NTCONTROL'
+
+
+    # Projector will provide us with a password
+    # Which is applied in before_transmit
+    before_transmit :apply_password
+
+    # Response time is slow
+    # and as a make break device it may take time
+    # to acctually setup the connection with the projector
+    delay on_receive: 200
+    wait_response timeout: 5000, retries: 3
+
+
     def on_load
-        # Response time is slow
-        # and as a make break device it may take time
-        # to acctually setup the connection with the projector
-        defaults({
-            timeout: 5000,
-            delay_on_receive: 200,
-            retries: 3
-        })
-
-        # Projector will provide us with a password
-        # Which is applied in before_transmit
-        config({
-            tokenize: true,
-            delimiter: "\r",
-            wait_ready: 'NTCONTROL',
-            before_transmit: method(:apply_password)
-        })
-
         @check_scheduled = false
         self[:power] = false
         self[:stable_state] = true  # Stable by default (allows manual on and off)
@@ -44,7 +41,7 @@ class Panasonic::Projector::Tcp
         
         # The projector drops the connection when there is no activity
         schedule.every('60s') do
-            power?({:priority => 0}) if self[:connected]
+            power?({priority: 0}) if self[:connected]
         end
     end
 
@@ -121,7 +118,7 @@ class Panasonic::Projector::Tcp
         unmute if self[:mute]
         
         do_send(:input, INPUTS[input], {:retries => 10, delay_on_receive: 2000})
-        logger.debug "-- panasonic LCD, requested to switch to: #{input}"
+        logger.debug "-- panasonic Proj, requested to switch to: #{input}"
         
         self[:input] = input    # for a responsive UI
     end
@@ -155,7 +152,7 @@ class Panasonic::Projector::Tcp
     
 
     def received(data, resolve, command)        # Data is default received as a string
-        logger.debug "sent \"#{data}\" for #{command ? command[:data] : 'unknown'}"
+        logger.debug { "sent \"#{data}\" for #{command ? command[:data] : 'unknown'}" }
 
         # This is the ready response
         if data[0] == ' '

@@ -6,16 +6,14 @@ class Axis::Camera::Vapix
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    delay between_sends: 130    # 130ms between requests
+    keepalive false             # HTTP keepalive
+
     def on_load
         on_update
     end
 
     def on_update
-        defaults({
-            delay: 130,
-            keepalive: false
-        })
-
         @username = setting(:username)
         unless @username.nil?
             @password = setting(:password)

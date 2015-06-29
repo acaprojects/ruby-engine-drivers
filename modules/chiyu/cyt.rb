@@ -12,19 +12,13 @@ class Chiyu::Cyt
     include ::Orchestrator::Transcoder
 
 
+    # this will ignore the CRC check byte
+    tokenise delimiter: "\xF0\xF0", min_length: 2
+    delay on_receive: 500
+
+
     def on_load
         @outputs = Array.new(32, 1)
-
-        config({
-            tokenize: true,
-            delimiter: "\xF0\xF0",
-            min_length: 2, # this will ignore the CRC check byte
-            encoding: "ASCII-8BIT"
-        })
-
-        defaults({
-            delay_on_receive: 500
-        })
     end
     
     def on_update

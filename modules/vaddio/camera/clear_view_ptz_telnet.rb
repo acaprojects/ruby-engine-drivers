@@ -8,21 +8,13 @@ class Vaddio::Camera::ClearViewPtzTelnet
     include ::Orchestrator::Transcoder   # (not used in this module)
 
 
+                # VT100 string -ESC[J
+    tokenize indicator: "\e[J\r\n", delimiter: "\r\n> \e[J",
+             wait_ready: "login: "
+    delay between_sends: 150
+
+
     def on_load
-        # Setup tokenisation of connection
-        config({
-            tokenize: true,
-            indicator: "\e[J\r\n",
-            delimiter: "\r\n> \e[J", # VT100 string -ESC[J
-            wait_ready: "login: "
-        })
-
-        # Default send options
-        defaults({
-            delay: 150  # time in ms between commands giving the unit time to process
-        })
-
-
         # Constants that are made available to interfaces
         self[:pan_speed_max] = 24
         self[:pan_speed_min] = 1

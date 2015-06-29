@@ -36,6 +36,10 @@ class Nec::Display::All
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    tokenize delimiter: "\x0D"
+    delay between_sends: 100
+    wait_response timeout: 5000
+
     #
     # Called on module load complete
     #    Alternatively you can use initialize however will
@@ -43,28 +47,15 @@ class Nec::Display::All
     #    soon afterwards
     #
     def on_load
-        #
-        # Setup constants
-        #
-        config({
-            tokenize: true,
-            delimiter: "\x0D",
-            encoding: "ASCII-8BIT"
-        })
-
-        defaults({
-            timeout: 5000,
-            delay: 100
-        })
-
         on_update
+
+        self[:brightness_min] = 0
+        self[:contrast_min] = 0
     end
 
     def on_update
         self[:volume_min] = setting(:volume_min) || 0
         self[:volume_max] = setting(:volume_max) || 100
-        self[:brightness_min] = 0
-        self[:contrast_min] = 0
     end
 
     def connected

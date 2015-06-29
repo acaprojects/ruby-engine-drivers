@@ -9,6 +9,9 @@ class Sony::Display::IdTalk
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    tokenize indicator: "\x02\x10", callback: :check_complete
+
+
     def on_load
         self[:brightness_min] = 0x00
         self[:brightness_max] = 0x64
@@ -19,15 +22,6 @@ class Sony::Display::IdTalk
 
         self[:power] = false
         self[:type] = :lcd
-
-        config({
-            tokenize: proc {
-                ::UV::AbstractTokenizer.new({
-                    indicator: "\x02\x10",  # Header
-                    callback: method(:check_complete)
-                })
-            }
-        })
 
         on_update
     end
@@ -237,9 +231,7 @@ class Sony::Display::IdTalk
 
         # Check we have the data
         data = bytes[8..-1]
-        if data.length == bytes[7]
-            return true
-        elsif data.length > bytes[7]
+        if data.length >= bytes[7]
             # Let the tokeniser know we only want the following number of bytes
             return 7 + bytes[7]
         end

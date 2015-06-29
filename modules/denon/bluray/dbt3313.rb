@@ -6,6 +6,10 @@ class Denon::Bluray::Dbt3313
     include ::Orchestrator::Transcoder
 
 
+    tokenize delimiter: "\x03", indicator: "\x02"
+    delay between_sends: 300
+
+
 	def on_load
 		on_update
 	end
@@ -14,15 +18,6 @@ class Denon::Bluray::Dbt3313
 	end
 	
 	def on_update
-		defaults({
-			delay: 300
-		})
-		config({
-			tokenize: true,
-			delimiter: "\x03",
-			indicator: "\x02",
-            encoding: "ASCII-8BIT"
-		})
 	end
 	
 	
