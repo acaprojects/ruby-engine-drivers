@@ -51,6 +51,8 @@ class Nec::Display::All
 
         self[:brightness_min] = 0
         self[:contrast_min] = 0
+
+        @input_double_check = nil
     end
 
     def on_update
@@ -145,6 +147,13 @@ class Nec::Display::All
 
         send_checksum(type, message, {:name => :input, :delay => 6000})
         video_input
+
+        # Double check the input again!
+        @input_double_check.cancel if @input_double_check
+        @input_double_check = schedule.in('4s') do
+            @input_double_check = nil
+            video_input
+        end
 
         logger.debug "-- NEC LCD, requested to switch to: #{input}"
     end
