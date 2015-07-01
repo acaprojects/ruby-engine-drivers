@@ -37,7 +37,7 @@ class Nec::Display::All
     include ::Orchestrator::Transcoder
 
     tokenize delimiter: "\x0D"
-    delay between_sends: 100
+    delay between_sends: 120
     wait_response timeout: 5000
 
     #
@@ -143,9 +143,7 @@ class Nec::Display::All
         message = OPERATION_CODE[:video_input]
         message += INPUTS[input].to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
-        send_checksum(type, message, {:name => :input})
-        brightness_status(20)        # higher status than polling commands - lower than input switching
-        contrast_status(20)
+        send_checksum(type, message, {:name => :input, :delay => 6000})
 
         logger.debug "-- NEC LCD, requested to switch to: #{input}"
     end
