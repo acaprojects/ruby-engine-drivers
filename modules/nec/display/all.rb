@@ -61,7 +61,7 @@ class Nec::Display::All
     def connected
         do_poll
 
-        @polling_timer = schedule.every('30s') do
+        @polling_timer = schedule.every('50s') do
             logger.debug "-- Polling Display"
             do_poll
         end
@@ -137,13 +137,14 @@ class Nec::Display::All
     }
     def switch_to(input)
         input = input.to_sym if input.class == String
-        #self[:target_input] = input
+        self[:target_input] = input
 
         type = :set_parameter
         message = OPERATION_CODE[:video_input]
         message += INPUTS[input].to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
         send_checksum(type, message, {:name => :input, :delay => 6000})
+        video_input
 
         logger.debug "-- NEC LCD, requested to switch to: #{input}"
     end
@@ -158,7 +159,7 @@ class Nec::Display::All
     }
     def switch_audio(input)
         input = input.to_sym if input.class == String
-        #self[:target_audio] = input
+        self[:target_audio] = input
 
         type = :set_parameter
         message = OPERATION_CODE[:audio_input]
@@ -327,13 +328,13 @@ class Nec::Display::All
         case OPERATION_CODE[data[10..13]]
             when :video_input
                 self[:input] = INPUTS.invert[value]
-                #self[:target_input] = self[:input] if self[:target_input].nil?
-                #switch_to(self[:target_input]) unless self[:input] == self[:target_input]
+                self[:target_input] = self[:input] if self[:target_input].nil?
+                switch_to(self[:target_input]) unless self[:input] == self[:target_input]
 
             when :audio_input
                 self[:audio] = AUDIO.invert[value]
-                #self[:target_audio] = self[:audio] if self[:target_audio].nil?
-                #switch_audio(self[:target_audio]) unless self[:audio] == self[:target_audio]
+                self[:target_audio] = self[:audio] if self[:target_audio].nil?
+                switch_audio(self[:target_audio]) unless self[:audio] == self[:target_audio]
 
             when :volume_status
                 self[:volume_max] = max
