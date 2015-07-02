@@ -43,7 +43,7 @@ class Sharp::Displays::PnSeries
     delay on_receive: 120
     wait_response timeout: 6000
 
-    tokenize delimiter: "\x0D\x0A", wait_ready: "login:"
+    tokenize delimiter: "\x0D\x0A"
 
 
     #
@@ -229,19 +229,20 @@ class Sharp::Displays::PnSeries
         self[:audio_mute] = false    # audio is unmuted when the volume is set (TODO:: check this)
     end
 
-    def mute
-        do_send('MUTE   1')
+    def mute(state = true)
+        state_actual = is_affirmative?(state) ? '1' : '0'
+
+        do_send("MUTE   #{state_actual}")
         mute_status(50)    # High priority mute status
 
-        logger.debug "-- Sharp LCD, requested to mute audio"
+        logger.debug { "-- Sharp LCD, requested to mute #{state}" }
     end
+    alias_method :mute_audio, :mute
 
     def unmute
-        do_send('MUTE   0')
-        mute_status(50)    # High priority mute status
-
-        logger.debug "-- Sharp LCD, requested to unmute audio"
+        mute false
     end
+    alias_method :unmute_audio, :unmute
 
 
     #
