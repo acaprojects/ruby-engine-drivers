@@ -224,9 +224,16 @@ class Sharp::Displays::PnSeries
         message = "VOLM"
         message += val.to_s.rjust(4, ' ')
 
-        do_send(message)
+        @vol_status.cancel if @vol_status
+        @vol_status = schedule.in(2000) do
+            @vol_status = nil
+            volume_status
+        end
 
-        self[:audio_mute] = false    # audio is unmuted when the volume is set (TODO:: check this)
+        self[:volume] = val
+        self[:audio_mute] = false
+
+        do_send(message)
     end
 
     def mute(state = true)
@@ -326,6 +333,7 @@ class Sharp::Displays::PnSeries
                 mute_status
                 brightness_status
                 contrast_status
+                volume_status
             end
         end
     end
