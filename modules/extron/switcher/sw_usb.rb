@@ -17,8 +17,14 @@ module Extron::Switcher; end
 
 class Extron::Switcher::SwUsb < Extron::Base
 
-    def switch(input = nil)
+    def switch_to(input = nil)
         send("#{input}!")
+    end
+
+    def switch(map)
+        map.each do |input, outputs|
+            send("#{input}!")
+        end
     end
 
 
