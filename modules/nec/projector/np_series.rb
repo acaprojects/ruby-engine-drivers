@@ -71,7 +71,6 @@ class Nec::Projector::NpSeries
         #
         # Setup constants
         #
-        self[:volume_min] = 0
         self[:lamp_usage] = []
         self[:filter_usage] = []
         self[:error] = []
@@ -166,8 +165,8 @@ class Nec::Projector::NpSeries
         # D4 = value (lower bits 0 to 63)
         # D5 = value (higher bits always 00h)
 
-        vol = 63 if vol > 63
-        vol = 0 if vol < 0
+        vol = 63 if vol > self[:volume_max]
+        vol = 0 if vol < self[:volume_min]
         command[-2] = vol
 
         self[:volume] = vol
