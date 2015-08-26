@@ -57,6 +57,9 @@ class Nec::Projector::NpSeries
     def on_update
         self[:power_stable] = true
         self[:input_stable] = true
+
+        self[:volume_min] = setting(:volume_min) || 0
+        self[:volume_max] = setting(:volume_max) || 63
     end
     
     
@@ -69,13 +72,11 @@ class Nec::Projector::NpSeries
         # Setup constants
         #
         self[:volume_min] = 0
-        self[:volume_max] = 63
         self[:lamp_usage] = []
         self[:filter_usage] = []
         self[:error] = []
         
-        self[:power_stable] = true
-        self[:input_stable] = true
+        on_update
     end
 
     #
