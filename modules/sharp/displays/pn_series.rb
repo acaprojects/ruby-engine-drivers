@@ -252,14 +252,6 @@ class Sharp::Displays::PnSeries
     end
     alias_method :unmute_audio, :unmute
 
-    def determine_contrast_mode
-        # As of 09/2015 only the PN-L802B does not have double contrast on RGB input. 
-        # All prior models do double the contrast and don't have an L so let's assume it's the L in the model number that determines this for now 
-        # (we can confirm the logic as more models are released) 
-        if self[:model_number] =~ /L/
-            self[:dbl_contrast] = false
-        end
-    end
     #
     # LCD Response code
     #
@@ -354,6 +346,14 @@ class Sharp::Displays::PnSeries
 
     private
 
+    def determine_contrast_mode
+        # As of 09/2015 only the PN-L802B does not have double contrast on RGB input. 
+        # All prior models do double the contrast and don't have an L so let's assume it's the L in the model number that determines this for now 
+        # (we can confirm the logic as more models are released) 
+        if self[:model_number] =~ /L/
+            self[:dbl_contrast] = false
+        end
+    end
 
     def send_credentials
         do_send(setting(:username) || '',  { delay: 500, wait: false, priority: 100 })
