@@ -81,7 +81,7 @@ class Sony::Projector::PjTalk
         return unless INPUTS.has_key? input
         
         do_send(:set, :input, INPUTS[input], delay_on_receive: 500)
-        logger.debug "-- sony projector, requested to switch to: #{input}"
+        logger.debug { "-- sony projector, requested to switch to: #{input}" }
         
         input?
     end
@@ -145,7 +145,7 @@ class Sony::Projector::PjTalk
 
     def received(byte_str, resolve, command)        # Data is default received as a string
         # Remove community string (useless)
-        logger.debug  "sony proj sent: 0x#{byte_to_hex(byte_str[4..-1])}"
+        logger.debug { "sony proj sent: 0x#{byte_to_hex(byte_str[4..-1])}" }
 
         data = str_to_array(byte_str)
         pjt_command = data[5..6]
@@ -196,7 +196,7 @@ class Sony::Projector::PjTalk
         else
             # Command failed..
             self[:last_error] = pjt_data
-            logger.debug "Command #{pjt_command} failed with Major 0x#{pjt_data[0].to_s(16)} and Minor 0x#{pjt_data[1].to_s(16)}"
+            logger.debug { "Command #{pjt_command} failed with Major 0x#{byte_to_hex(pjt_data[0])} and Minor 0x#{byte_to_hex(pjt_data[1])}" }
             return :abort
         end
 

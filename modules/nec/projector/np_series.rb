@@ -57,6 +57,9 @@ class Nec::Projector::NpSeries
     def on_update
         self[:power_stable] = true
         self[:input_stable] = true
+
+        self[:volume_min] = setting(:volume_min) || 0
+        self[:volume_max] = setting(:volume_max) || 63
     end
     
     
@@ -68,14 +71,11 @@ class Nec::Projector::NpSeries
         #
         # Setup constants
         #
-        self[:volume_min] = 0
-        self[:volume_max] = 63
         self[:lamp_usage] = []
         self[:filter_usage] = []
         self[:error] = []
         
-        self[:power_stable] = true
-        self[:input_stable] = true
+        on_update
     end
 
     #
@@ -118,7 +118,7 @@ class Nec::Projector::NpSeries
         # Mute controls
         :mute_picture =>    "$02,$10,$00,$00,$00,$12",
         :unmute_picture =>    "$02,$11,$00,$00,$00,$13",
-        :mute_audio =>        "02H 12H 00H 00H 00H 14H",
+        :mute_audio_cmd =>  "02H 12H 00H 00H 00H 14H",
         :unmute_audio =>    "02H 13H 00H 00H 00H 15H",
         :mute_onscreen =>    "02H 14H 00H 00H 00H 16H",
         :unmute_onscreen =>    "02H 15H 00H 00H 00H 17H",
@@ -165,8 +165,8 @@ class Nec::Projector::NpSeries
         # D4 = value (lower bits 0 to 63)
         # D5 = value (higher bits always 00h)
 
-        vol = 63 if vol > 63
-        vol = 0 if vol < 0
+        vol = 63 if vol > self[:volume_max]
+        vol = 0 if vol < self[:volume_min]
         command[-2] = vol
 
         self[:volume] = vol
@@ -191,6 +191,29 @@ class Nec::Projector::NpSeries
     #
     def unmute
         unmute_picture
+    end
+
+    # Support naitive Audio Mute
+    def mute_audio(mute = true)
+        if mute
+            mute_audio_cmd
+        else
+            unmute_audio
+        end
+    end
+
+    
+    AUDIO = {
+        hdmi: 0,
+        vga: 1
+    }
+
+    # Switches HDMI audio
+    def switch_audio(input)
+        # C0 == HDMI Audio
+        command = [0x23, 0xB1, 0x00, 0x00, 0x02, 0xC0]
+        command << INPUTS[input.to_sym]
+        send_checksum(command, name: :switch_audio)
     end
 
     #
@@ -268,7 +291,7 @@ class Nec::Projector::NpSeries
         data = str_to_array(data)
         req = str_to_array(command[:data]) if command && command[:data]
         
-        logger.debug "NEC projector sent: 0x#{byte_to_hex(response)}"
+        logger.debug { "NEC projector sent: 0x#{byte_to_hex(response)}" }
         
         #
         # Command failed
@@ -291,7 +314,7 @@ class Nec::Projector::NpSeries
         # Check checksum
         #
         if !check_checksum(data)
-            logger.debug "-- NEC projector, checksum failed for command: 0x#{byte_to_hex(req)}" if req
+            logger.warn "-- NEC projector, checksum failed for command: 0x#{byte_to_hex(req)}" if req
             return false
         end
 
@@ -345,6 +368,12 @@ class Nec::Projector::NpSeries
                 when 0x8A
                     process_projector_information(data, req)
                     return true
+
+                when 0xB1
+                    # This is the audio switch command
+                    # TODO:: data[-2] == 0:Normal, 1:Error
+                    # If error do we retry? Or does it mean something else
+                    return true 
             end
         end
 
@@ -377,7 +406,7 @@ class Nec::Projector::NpSeries
     # Process the lamp on/off command response
     #
     def process_lamp_command(data, req)
-        logger.debug "-- NEC projector sent a response to a power command"
+        logger.debug "-- NEC projector sent a response to a power command".freeze
 
         #
         # Ensure a change of power state was the last command sent
@@ -394,7 +423,7 @@ class Nec::Projector::NpSeries
     #    (as we need to control ensure we are in the correct target state)
     #
     def process_power_status(data, command)
-        logger.debug "-- NEC projector sent a response to a power status command"    
+        logger.debug "-- NEC projector sent a response to a power status command".freeze
 
         self[:power] = (data[-2] & 0b10) > 0x0    # Power on?
 
@@ -405,14 +434,14 @@ class Nec::Projector::NpSeries
                 self[:cooling] = false
                 self[:warming] = true
 
-                logger.debug "power warming..."
+                logger.debug "power warming...".freeze
 
 
             elsif self[:power_target] == Off
                 self[:warming] = false
                 self[:cooling] = true
 
-                logger.debug "power cooling..."
+                logger.debug "power cooling...".freeze
             end
             
             
@@ -438,11 +467,11 @@ class Nec::Projector::NpSeries
                     #
                     # if we are in an undesirable state then correct it
                     #
-                    logger.debug "NEC projector in an undesirable power state... (Correcting)"
+                    logger.debug "NEC projector in an undesirable power state... (Correcting)".freeze
                     power(self[:power_target])
                 end
             else
-                logger.debug "NEC projector is in a good power state..."
+                logger.debug "NEC projector is in a good power state...".freeze
 
                 self[:warming] = false
                 self[:cooling] = false
@@ -456,7 +485,7 @@ class Nec::Projector::NpSeries
         end
 
 
-        logger.debug "Current state {power: #{self[:power]}, warming: #{self[:warming]}, cooling: #{self[:cooling]}}"
+        logger.debug { "Current state {power: #{self[:power]}, warming: #{self[:warming]}, cooling: #{self[:cooling]}}" }
     end
 
 
@@ -482,7 +511,7 @@ class Nec::Projector::NpSeries
         }
     }
     def process_input_state(data, command)
-        logger.debug "-- NEC projector sent a response to an input state command"
+        logger.debug "-- NEC projector sent a response to an input state command".freeze
 
 
         return if self[:power] == Off        # no point doing anything here if the projector is off
@@ -498,7 +527,7 @@ class Nec::Projector::NpSeries
             status_mute                            # get mute status one signal has settled
         end
 
-        logger.debug "The input selected was: #{self[:input_selected][0]}"
+        logger.debug { "The input selected was: #{self[:input_selected][0]}" }
 
         #
         # Notify of bad input selection for debugging
@@ -510,7 +539,7 @@ class Nec::Projector::NpSeries
                 self[:input_stable] = true
             else
                 switch_to(self[:target_input])
-                logger.debug "-- NEC input state may not be correct, desired: #{self[:target_input]} current: #{self[:input_selected]}"
+                logger.debug { "-- NEC input state may not be correct, desired: #{self[:target_input]} current: #{self[:input_selected]}" }
             end
         else
             self[:input_stable] = true
@@ -524,14 +553,14 @@ class Nec::Projector::NpSeries
     # Check the input switching command was successful
     #
     def process_input_switch(data, req)
-        logger.debug "-- NEC projector responded to switch input command"    
+        logger.debug "-- NEC projector responded to switch input command".freeze   
 
         if data[-2] != 0xFF
             status_input    # Double check with a status update
             return true
         end
 
-        logger.debug "-- NEC projector failed to switch input with command: #{byte_to_hex(req)}"
+        logger.debug { "-- NEC projector failed to switch input with command: #{byte_to_hex(req)}" }
         return false    # retry the command
     end
 
@@ -540,7 +569,7 @@ class Nec::Projector::NpSeries
     # Process the mute state response
     #
     def process_mute_state(data, command)
-        logger.debug "-- NEC projector responded to mute state command"
+        logger.debug "-- NEC projector responded to mute state command".freeze
 
         self[:picture_mute] = data[-17] == 0x01
         self[:audio_mute] = data[-16] == 0x01
@@ -562,7 +591,7 @@ class Nec::Projector::NpSeries
     #    lamp1 hours + filter hours
     #
     def process_projector_information(data, command)
-        logger.debug "-- NEC projector sent a response to a projector information command"    
+        logger.debug "-- NEC projector sent a response to a projector information command".freeze
 
         lamp = 0
         filter = 0    
@@ -622,7 +651,7 @@ class Nec::Projector::NpSeries
         0b1000 => "A foreign object sensor error"
     }]
     def process_error_status(data, command)
-        logger.debug "-- NEC projector sent a response to an error status command"    
+        logger.debug "-- NEC projector sent a response to an error status command".freeze
 
         errors = []
         error = data[5..8]

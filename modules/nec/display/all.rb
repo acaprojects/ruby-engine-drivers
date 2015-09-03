@@ -137,15 +137,18 @@ class Nec::Display::All
 
         :hdmi => 17
     }
+    INPUTS.merge!(INPUTS.invert)
+
     def switch_to(input)
         input = input.to_sym if input.class == String
         self[:target_input] = input
+        self[:target_audio] = nil
 
         type = :set_parameter
         message = OPERATION_CODE[:video_input]
         message += INPUTS[input].to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
-        send_checksum(type, message, {:name => :input, :delay => 6000})
+        send_checksum(type, message, name: :input, delay: 6000)
         video_input
 
         # Double check the input again!
@@ -155,7 +158,7 @@ class Nec::Display::All
             video_input
         end
 
-        logger.debug "-- NEC LCD, requested to switch to: #{input}"
+        logger.debug { "-- NEC LCD, requested to switch to: #{input}" }
     end
 
     AUDIO = {
@@ -166,6 +169,8 @@ class Nec::Display::All
         :tv => 6,
         :display_port => 7
     }
+    AUDIO.merge!(AUDIO.invert)
+
     def switch_audio(input)
         input = input.to_sym if input.class == String
         self[:target_audio] = input
@@ -174,11 +179,11 @@ class Nec::Display::All
         message = OPERATION_CODE[:audio_input]
         message += AUDIO[input].to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
-        send_checksum(type, message, :name => :audio)
+        send_checksum(type, message, name: :audio)
         mute_status(20)        # higher status than polling commands - lower than input switching
         volume_status(20)
 
-        logger.debug "-- NEC LCD, requested to switch audio to: #{input}"
+        logger.debug { "-- NEC LCD, requested to switch audio to: #{input}" }
     end
 
 
@@ -189,7 +194,7 @@ class Nec::Display::All
         message = OPERATION_CODE[:auto_setup] #"001E"    # Page + OP code
         message += "0001"    # Value of input as a hex string
 
-        send_checksum(:set_parameter, message, :delay_on_receive => 4.0)
+        send_checksum(:set_parameter, message, delay_on_receive: 4000)
     end
 
 
@@ -202,9 +207,8 @@ class Nec::Display::All
         message = OPERATION_CODE[:brightness_status]
         message += val.to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
-        send_checksum(:set_parameter, message)
-        send_checksum(:command, '0C')    # Save the settings
-        brightness_status
+        send_checksum(:set_parameter, message, name: :brightness)
+        send_checksum(:command, '0C', name: :brightness_save)    # Save the settings
     end
 
     def contrast(val)
@@ -213,9 +217,8 @@ class Nec::Display::All
         message = OPERATION_CODE[:contrast_status]
         message += val.to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
-        send_checksum(:set_parameter, message)
-        send_checksum(:command, '0C')    # Save the settings
-        contrast_status
+        send_checksum(:set_parameter, message, name: :contrast)
+        send_checksum(:command, '0C', name: :contrast_save)    # Save the settings
     end
 
     def volume(val)
@@ -224,11 +227,10 @@ class Nec::Display::All
         message = OPERATION_CODE[:volume_status]
         message += val.to_s(16).upcase.rjust(4, '0')    # Value of input as a hex string
 
-        send_checksum(:set_parameter, message)
-        send_checksum(:command, '0C')    # Save the settings
-        volume_status
-
         self[:audio_mute] = false    # audio is unmuted when the volume is set
+
+        send_checksum(:set_parameter, message, name: :volume)
+        send_checksum(:command, '0C', name: :volume_save)    # Save the settings
     end
 
     
@@ -236,9 +238,9 @@ class Nec::Display::All
         message = OPERATION_CODE[:mute_status]
         message += is_affirmative?(state) ? "0001" : "0000"    # Value of input as a hex string
 
-        send_checksum(:set_parameter, message)
+        send_checksum(:set_parameter, message, name: :mute)
 
-        logger.debug "requested to update mute to #{state}"
+        logger.debug { "requested to update mute to #{state}" }
     end
     alias_method :mute, :mute_audio
 
@@ -255,8 +257,8 @@ class Nec::Display::All
         # Check for valid response
         #
         if !check_checksum(data)
-            logger.debug "-- NEC LCD, checksum failed for command: #{command[:data]}" if command
-            logger.debug "-- NEC LCD, response was: #{data}"
+            logger.debug { "-- NEC LCD, checksum failed for command: #{command[:data]}" } if command
+            logger.debug { "-- NEC LCD, response was: #{data}" }
             return false
         end
 
@@ -336,14 +338,13 @@ class Nec::Display::All
 
         case OPERATION_CODE[data[10..13]]
             when :video_input
-                self[:input] = INPUTS.invert[value]
+                self[:input] = INPUTS[value]
                 self[:target_input] = self[:input] if self[:target_input].nil?
                 switch_to(self[:target_input]) unless self[:input] == self[:target_input]
 
             when :audio_input
-                self[:audio] = AUDIO.invert[value]
-                self[:target_audio] = self[:audio] if self[:target_audio].nil?
-                switch_audio(self[:target_audio]) unless self[:audio] == self[:target_audio]
+                self[:audio] = AUDIO[value]
+                switch_audio(self[:target_audio]) if self[:target_audio] && self[:audio] != self[:target_audio]
 
             when :volume_status
                 self[:volume_max] = max
@@ -427,7 +428,7 @@ class Nec::Display::All
             logger.debug { "NEC requesting #{command}" }
 
             message = OPERATION_CODE[command]
-            send_checksum(:get_parameter, message, {:priority => priority})    # Status polling is a low priority
+            send_checksum(:get_parameter, message, priority: priority, name: command)    # Status polling is a low priority
         end
     end
 

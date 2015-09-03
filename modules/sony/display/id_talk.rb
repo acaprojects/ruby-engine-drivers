@@ -85,7 +85,7 @@ class Sony::Display::IdTalk
         return unless INPUTS.has_key? input
         
         do_send(:input, INPUTS[input])
-        logger.debug "-- sony display, requested to switch to: #{input}"
+        logger.debug { "-- sony display, requested to switch to: #{input}" }
         
         input?
     end
@@ -169,7 +169,7 @@ class Sony::Display::IdTalk
     
 
     def received(byte_str, resolve, command)        # Data is default received as a string
-        logger.debug "sony display sent: 0x#{byte_to_hex(data)}"
+        logger.debug { "sony display sent: 0x#{byte_to_hex(data)}" }
 
         data = str_to_array(byte_str)
         idt_command = data[5..6]
