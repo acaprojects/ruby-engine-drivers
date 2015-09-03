@@ -45,7 +45,6 @@ class Sharp::Displays::PnSeries
 
     tokenize delimiter: "\x0D\x0A"
 
-
     #
     # Called on module load complete
     #    Alternatively you can use initialize however will
@@ -63,6 +62,8 @@ class Sharp::Displays::PnSeries
         self[:brightness_max] = 31
         self[:contrast_min] = 0
         self[:contrast_max] = 60    # multiply by two when VGA selected
+        self[:dbl_contrast] = true
+        self[:model_number] = false
     end
 
     def connected
@@ -209,7 +210,7 @@ class Sharp::Displays::PnSeries
         val = 60 if val > 60
         val = 0 if val < 0
 
-        val = val * 2 if self[:input] == :vga        # See sharp Manual
+        val = val * 2 if self[:input] == :vga && self[:dbl_contrast]     # See sharp Manual
 
         message = "CONT"
         message += val.to_s.rjust(4, ' ')
@@ -251,7 +252,6 @@ class Sharp::Displays::PnSeries
     end
     alias_method :unmute_audio, :unmute
 
-
     #
     # LCD Response code
     #
@@ -276,6 +276,10 @@ class Sharp::Displays::PnSeries
         elsif data == "ERR"
             logger.debug "-- Sharp LCD, error"
             return false
+        elsif data =~ /^PN/    # A model number (e.g. PN-L802B) in response to INF1???
+            self[:model_number] = data.split.first # (remove the ' 001')
+            logger.debug "-- Sharp LCD, model number #{self[:model_number]}"
+            determine_contrast_mode
         end
 
         if command.nil?
@@ -310,7 +314,7 @@ class Sharp::Displays::PnSeries
                     volume_status(90)    # high priority
                 end
             when :CONT # Contrast status
-                value = value / 2 if self[:input] == :vga
+                value = value / 2 if self[:input] == :vga && self[:dbl_contrast]
                 self[:contrast] = value
             when :VLMP # brightness status
                 self[:brightness] = value
@@ -327,6 +331,7 @@ class Sharp::Displays::PnSeries
             result = self[:power]
 
             if result == On
+                model_number if !self[:model_number] # only query the model number if we don't already have it
                 power_on_delay
                 #video_input
                 #audio_input
@@ -341,6 +346,14 @@ class Sharp::Displays::PnSeries
 
     private
 
+    def determine_contrast_mode
+        # As of 09/2015 only the PN-L802B does not have double contrast on RGB input. 
+        # All prior models do double the contrast and don't have an L so let's assume it's the L in the model number that determines this for now 
+        # (we can confirm the logic as more models are released) 
+        if self[:model_number] =~ /L/
+            self[:dbl_contrast] = false
+        end
+    end
 
     def send_credentials
         do_send(setting(:username) || '',  { delay: 500, wait: false, priority: 100 })
@@ -356,6 +369,7 @@ class Sharp::Displays::PnSeries
         :power_on_delay => 'PWOD????',
         :contrast_status => 'CONT????',
         :brightness_status => 'VLMP????',
+        :model_number => 'INF1????'
     }
     #
     # Automatically creates a callable function for each command
