@@ -316,8 +316,6 @@ class Sharp::Displays::PnSeries
                 self[:brightness] = value
             when :PWOD
                 self[:power_on_delay] = value
-            when :INF1
-                self[:model_number] = value
         end
 
         return true # Command success?
@@ -329,7 +327,6 @@ class Sharp::Displays::PnSeries
             result = self[:power]
 
             if result == On
-                model_number if !self[:model_number] # only query the model number if we don't already have it
                 power_on_delay
                 #video_input
                 #audio_input
@@ -359,7 +356,6 @@ class Sharp::Displays::PnSeries
         :power_on_delay => 'PWOD????',
         :contrast_status => 'CONT????',
         :brightness_status => 'VLMP????',
-        :model_number => 'INF1????'
     }
     #
     # Automatically creates a callable function for each command
