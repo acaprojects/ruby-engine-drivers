@@ -45,7 +45,6 @@ class Sharp::Displays::PnSeries
 
     tokenize delimiter: "\x0D\x0A"
 
-
     #
     # Called on module load complete
     #    Alternatively you can use initialize however will
@@ -63,6 +62,7 @@ class Sharp::Displays::PnSeries
         self[:brightness_max] = 31
         self[:contrast_min] = 0
         self[:contrast_max] = 60    # multiply by two when VGA selected
+        self[:dbl_contrast] = true
     end
 
     def connected
@@ -209,7 +209,7 @@ class Sharp::Displays::PnSeries
         val = 60 if val > 60
         val = 0 if val < 0
 
-        val = val * 2 if self[:input] == :vga        # See sharp Manual
+        val = val * 2 if self[:input] == :vga && self[:dbl_contrast]     # See sharp Manual
 
         message = "CONT"
         message += val.to_s.rjust(4, ' ')
@@ -251,7 +251,14 @@ class Sharp::Displays::PnSeries
     end
     alias_method :unmute_audio, :unmute
 
-
+    def determine_contrast_mode
+        # As of 09/2015 only the PN-L802B does not have double contrast on RGB input. 
+        # All prior models do double the contrast and don't have an L so let's assume it's the L in the model number that determines this for now 
+        # (we can confirm the logic as more models are released) 
+        if self[:model_number] =~ /L/
+            self[:dbl_contrast] = false
+        end
+    end
     #
     # LCD Response code
     #
@@ -276,6 +283,10 @@ class Sharp::Displays::PnSeries
         elsif data == "ERR"
             logger.debug "-- Sharp LCD, error"
             return false
+        elsif data =~ /^PN/    # A model number (e.g. PN-L802B) in response to INF1???
+            self[:model_number] = data.to_s
+            logger.debug "-- Sharp LCD, model number #{self[:model_number]}"
+            determine_contrast_mode
         end
 
         if command.nil?
@@ -310,14 +321,12 @@ class Sharp::Displays::PnSeries
                     volume_status(90)    # high priority
                 end
             when :CONT # Contrast status
-                value = value / 2 if self[:input] == :vga
+                value = value / 2 if self[:input] == :vga && self[:dbl_contrast]
                 self[:contrast] = value
             when :VLMP # brightness status
                 self[:brightness] = value
             when :PWOD
                 self[:power_on_delay] = value
-            when :INF1
-                self[:model_number] = value
         end
 
         return true # Command success?
