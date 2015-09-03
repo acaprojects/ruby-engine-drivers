@@ -63,6 +63,7 @@ class Sharp::Displays::PnSeries
         self[:contrast_min] = 0
         self[:contrast_max] = 60    # multiply by two when VGA selected
         self[:dbl_contrast] = true
+        self[:model_number] = false
     end
 
     def connected
@@ -284,7 +285,7 @@ class Sharp::Displays::PnSeries
             logger.debug "-- Sharp LCD, error"
             return false
         elsif data =~ /^PN/    # A model number (e.g. PN-L802B) in response to INF1???
-            self[:model_number] = data.to_s
+            self[:model_number] = data.split.first # (remove the ' 001')
             logger.debug "-- Sharp LCD, model number #{self[:model_number]}"
             determine_contrast_mode
         end
