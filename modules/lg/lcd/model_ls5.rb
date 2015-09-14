@@ -4,7 +4,7 @@ module Lg::Lcd; end
 
 # TCP Port: 9761
 # This device does not hold the connection open. Must be configured as makebreak
-class Lg::Lcd::GeneralCommandProtocol
+class Lg::Lcd::ModelLs5
     include ::Orchestrator::Constants    # these provide optional helper methods
     include ::Orchestrator::Transcoder   # (not used in this module)
 
@@ -15,36 +15,17 @@ class Lg::Lcd::GeneralCommandProtocol
 
     def on_load
         @polling_timer = schedule.every('40s') do
-            logger.debug "-- Polling Display"
-            #do_poll
+            # No point polling if we can't connect to the display
+            if self[:connected]
+                logger.debug "-- Polling Display"
+                do_poll
+            end
         end
 
         on_update
     end
 
-
-=begin
-Example input settings:
-Note that the manual uses hex numbers and you should use base 10 in settings
-
-"inputs": {
-    "dvi": 112,
-    "hdmi": 160,
-    "hdmi2": 161,
-    "display_port": 208 
-}
-
-=end
     def on_update
-        inputs = setting(:inputs)
-
-        if inputs.nil?
-            logger.warn 'Input mapping settings are missing for this LG monitor!'
-        else
-            hash = inputs.symbolize_keys
-            @inputs = hash.merge!(hash.invert)
-        end
-
         @id = (setting(:display_id) || 1).to_s.rjust(2, '0')
     end
 
@@ -69,8 +50,15 @@ Note that the manual uses hex numbers and you should use base 10 in settings
 
 
     # NOTE:: We are currently only supporting the PC values here
+    Inputs = {
+        dvi: 112,
+        hdmi: 160,
+        hdmi2: 161,
+        display_port: 208 
+    }
+    Inputs.merge!(Inputs.invert)
     def input(source)
-        val = @inputs[source.to_sym]
+        val = Inputs[source.to_sym]
         do_send(Command[:input], val, 'x'.freeze, name: :input)
     end
 
@@ -99,7 +87,6 @@ Note that the manual uses hex numbers and you should use base 10 in settings
 
     # Status values we are interested in polling
     def do_poll
-        power?
         input?
         screen_mute?
         volume_mute?
@@ -165,7 +152,7 @@ Note that the manual uses hex numbers and you should use base 10 in settings
         when :power
             self[:power] = resp_value == 1
         when :input
-            self[:input] = @inputs[resp_value] || :unknown
+            self[:input] = Inputs[resp_value] || :unknown
         when :screen_mute
             self[:display_mute] = resp_value == 1
         when :volume_mute
