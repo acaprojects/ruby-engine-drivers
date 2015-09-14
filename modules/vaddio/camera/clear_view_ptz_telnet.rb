@@ -114,7 +114,7 @@ class Vaddio::Camera::ClearViewPtzTelnet
 
 
     def received(data, resolve, command)
-        logger.debug "Vaddio sent #{data}"
+        logger.debug { "Vaddio sent #{data}" }
 
         # Deals with multi-line responses
         data = data.split("\r\n")[-1]
