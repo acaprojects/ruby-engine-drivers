@@ -153,13 +153,14 @@ class Sharp::Displays::PnSeries
         input = input.to_sym if input.class == String
 
         #self[:target_input] = input
-        do_send(INPUTS[input], {:timeout => 20000, :name => :input, :delay => 2000})    # does an auto adjust on switch to vga
+        resp = do_send(INPUTS[input], {:timeout => 20000, :name => :input, :delay => 2000})    # does an auto adjust on switch to vga
         #video_input(0)    # high level command
         self[:input] = input
-        brightness_status(60)        # higher status than polling commands - lower than input switching (vid then audio is common)
-        contrast_status(60)
+        brightness_status(40)        # higher status than polling commands - lower than input switching (vid then audio is common)
+        contrast_status(40)
 
-        logger.debug "-- Sharp LCD, requested to switch to: #{input}"
+        logger.debug { "-- Sharp LCD, requested to switch to: #{input}" }
+        resp
     end
 
     AUDIO = {
@@ -177,11 +178,13 @@ class Sharp::Displays::PnSeries
         input = input.to_sym if input.class == String
         self[:audio] = input
 
-        do_send(AUDIO[input], :name => :audio)
-        mute_status(0)        # higher status than polling commands - lower than input switching
-        #volume_status(60)    # Mute response requests volume
+        resp = do_send(AUDIO[input], :name => :audio)
+        mute_status(40)        # higher status than polling commands - lower than input switching
+        #volume_status(40)    # Mute response requests volume
 
-        logger.debug "-- Sharp LCD, requested to switch audio to: #{input}"
+        logger.debug { "-- Sharp LCD, requested to switch audio to: #{input}" }
+
+        resp
     end
 
 
@@ -256,7 +259,7 @@ class Sharp::Displays::PnSeries
     # LCD Response code
     #
     def received(data, resolve, command)        # Data is default received as a string
-        logger.debug "-- Sharp LCD, received: #{data}"
+        logger.debug { "-- Sharp LCD, received: #{data}" }
 
         value = nil
 
@@ -276,10 +279,6 @@ class Sharp::Displays::PnSeries
         elsif data == "ERR"
             logger.debug "-- Sharp LCD, error"
             return false
-        elsif data =~ /^PN/    # A model number (e.g. PN-L802B) in response to INF1???
-            self[:model_number] = data.split.first # (remove the ' 001')
-            logger.debug "-- Sharp LCD, model number #{self[:model_number]}"
-            determine_contrast_mode
         end
 
         if command.nil?
@@ -292,7 +291,7 @@ class Sharp::Displays::PnSeries
         else
             value = data.to_i
             command = command[:value_ret_only] || command[:name]
-            logger.debug "setting value ret: #{command}"
+            logger.debug { "setting value ret: #{command}" }
         end
 
         case command
@@ -301,7 +300,7 @@ class Sharp::Displays::PnSeries
                 self[:power] = value > 0
             when :INPS # Input status
                 self[:input] = INPUTS[value]
-                logger.debug "-- Sharp LCD, input #{INPUTS[value]} == #{value}"
+                logger.debug { "-- Sharp LCD, input #{INPUTS[value]} == #{value}" }
             when :VOLM # Volume status
                 if not self[:audio_mute]
                     self[:volume] = value
@@ -320,6 +319,10 @@ class Sharp::Displays::PnSeries
                 self[:brightness] = value
             when :PWOD
                 self[:power_on_delay] = value
+            when :INF1
+                self[:model_number] = value
+                logger.debug { "-- Sharp LCD, model number #{self[:model_number]}" }
+                determine_contrast_mode
         end
 
         return true # Command success?
@@ -336,8 +339,6 @@ class Sharp::Displays::PnSeries
                 #video_input
                 #audio_input
                 mute_status
-                brightness_status
-                contrast_status
                 volume_status
             end
         end
@@ -382,7 +383,7 @@ class Sharp::Displays::PnSeries
             if args.length > 0
                 priority = args[0]
             end
-            logger.debug "Sharp sending: #{command}"
+            logger.debug { "Sharp sending: #{command}" }
             do_send(value.clone, {:priority => priority, :value_ret_only => value[0..3].to_sym})    # Status polling is a low priority
         end
     end
