@@ -95,8 +95,8 @@ class Nec::Display::All
                 logger.debug "-- NEC LCD, requested to power on"
 
                 power_on_delay
-                mute_status(99)
-                volume_status(99)
+                mute_status(20)
+                volume_status(20)
             end
         else
             if current == On
@@ -318,8 +318,6 @@ class Nec::Display::All
                 power_on_delay
                 mute_status
                 volume_status
-                brightness_status
-                contrast_status
                 video_input
                 audio_input
             end
@@ -365,7 +363,7 @@ class Nec::Display::All
                 if(value == 1)
                     self[:volume] = 0
                 else
-                    volume_status(0)    # high priority
+                    volume_status(60)    # high priority
                 end
 
             when :power_on_delay
