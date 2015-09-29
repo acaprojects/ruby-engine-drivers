@@ -156,7 +156,11 @@ class Aca::Joiner
         # TODO:: Should warn people not to send arguments that might be modified
         # As multiple threads will be recieving these data structures
         rooms = self[:joined][:rooms]
-        logger.debug { "Calling #{mod}->#{func} on #{rooms}" }
+        logger.debug {
+            msg = "Calling #{mod}->#{func} on #{rooms}"
+            msg += " (skipping #{@system_id})" if skipMe
+            msg
+        }
         rooms.each do |id_str|
             # Might have been pulled from the database
             id = id_str.to_sym
