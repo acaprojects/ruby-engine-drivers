@@ -71,6 +71,8 @@ class Aca::Joiner
         @systems = {}       # Provides system proxy lookup
         @system_id = system.id
 
+        @join_module_class = (setting(:joiner_driver) || :Joiner).to_sym
+
         # System lookup occurs on a seperate thread returning a promise
         # Seems the database won't store an empty array and we don't want duplicates
         system_proxies = []
@@ -120,7 +122,7 @@ class Aca::Joiner
             # Warning as the UI should try to prevent this happening
             rms.each do |id|
                 logger.warn "Notifying system #{id} of unjoin due to new join"
-                @systems[id.to_sym][:Joiner].notify_unjoin
+                @systems[id.to_sym][@join_module_class].notify_unjoin
             end
         end
         promise.finally do
@@ -156,7 +158,11 @@ class Aca::Joiner
         # TODO:: Should warn people not to send arguments that might be modified
         # As multiple threads will be recieving these data structures
         rooms = self[:joined][:rooms]
-        logger.debug { "Calling #{mod}->#{func} on #{rooms}" }
+        logger.debug {
+            msg = "Calling #{mod}->#{func} on #{rooms}"
+            msg += " (skipping #{@system_id})" if skipMe
+            msg
+        }
         rooms.each do |id_str|
             # Might have been pulled from the database
             id = id_str.to_sym
@@ -308,13 +314,13 @@ class Aca::Joiner
             rooms.each do |id|
                 next if id == @system_id
                 logger.debug "Notifying system #{id} of join"
-                promises << @systems[id][:Joiner].notify_join(@system_id, rooms)
+                promises << @systems[id][@join_module_class].notify_join(@system_id, rooms)
             end
         else
             rooms.each do |id|
                 next if id == @system_id
                 logger.debug "Notifying system #{id} of unjoin"
-                promises << @systems[id][:Joiner].notify_unjoin
+                promises << @systems[id][@join_module_class].notify_unjoin
             end
         end
 
