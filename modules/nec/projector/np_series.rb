@@ -211,7 +211,7 @@ class Nec::Projector::NpSeries
     # Switches HDMI audio
     def switch_audio(input)
         # C0 == HDMI Audio
-        command = [0x23, 0xB1, 0x00, 0x00, 0x02, 0xC0]
+        command = [0x03, 0xB1, 0x00, 0x00, 0x02, 0xC0]
         command << AUDIO[input.to_sym]
         send_checksum(command, name: :switch_audio)
     end
