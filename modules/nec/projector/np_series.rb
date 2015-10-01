@@ -211,7 +211,7 @@ class Nec::Projector::NpSeries
     # Switches HDMI audio
     def switch_audio(input)
         # C0 == HDMI Audio
-        command = [0x23, 0xB1, 0x00, 0x00, 0x02, 0xC0]
+        command = [0x03, 0xB1, 0x00, 0x00, 0x02, 0xC0]
         command << AUDIO[input.to_sym]
         send_checksum(command, name: :switch_audio)
     end
@@ -230,10 +230,18 @@ class Nec::Projector::NpSeries
             command[-1] += 1    # checksum
             self[:power_target] = Off
 
-            send(command, :name => :power, :timeout => 15000, :delay => 15000)
+            # Jump ahead of any other queued commands as they are no longer important
+            send(command, {
+                :name => :power,
+                :timeout => 60000,  # don't want retries occuring very fast
+                :delay => 30000,
+                :clear_queue => true,
+                :priority => 100,
+                :delay_on_receive => 200  # give it a little bit of breathing room
+            })
         else
             self[:power_target] = On
-            send(command, :name => :power, :timeout => 15000)
+            send(command, :name => :power, :timeout => 15000, :delay => 1000)
         end
     end
     
