@@ -231,10 +231,17 @@ class Nec::Projector::NpSeries
             self[:power_target] = Off
 
             # Jump ahead of any other queued commands as they are no longer important
-            send(command, :name => :power, :timeout => 60000, :delay => 30000, :clear_queue => true, :priority => 100)
+            send(command, {
+                :name => :power,
+                :timeout => 60000,  # don't want retries occuring very fast
+                :delay => 30000,
+                :clear_queue => true,
+                :priority => 100,
+                :delay_on_receive => 200  # give it a little bit of breathing room
+            })
         else
             self[:power_target] = On
-            send(command, :name => :power, :timeout => 15000)
+            send(command, :name => :power, :timeout => 15000, :delay => 1000)
         end
     end
     
