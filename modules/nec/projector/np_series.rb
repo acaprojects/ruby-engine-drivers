@@ -230,7 +230,8 @@ class Nec::Projector::NpSeries
             command[-1] += 1    # checksum
             self[:power_target] = Off
 
-            send(command, :name => :power, :timeout => 15000, :delay => 15000)
+            # Jump ahead of any other queued commands as they are no longer important
+            send(command, :name => :power, :timeout => 60000, :delay => 30000, :clear_queue => true, :priority => 100)
         else
             self[:power_target] = On
             send(command, :name => :power, :timeout => 15000)
