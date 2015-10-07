@@ -526,8 +526,8 @@ class Nec::Projector::NpSeries
         first = INPUT_MAP[data[-15]]
         return :ignore unless first
 
-        self[:input_selected] = first[data[-14]]
-        self[:input] = self[:input_selected].nil? ? :unknown : self[:input_selected][0]
+        self[:input_selected] = first[data[-14]] || [:unknown]
+        self[:input] = self[:input_selected][0]
         if data[-17] == 0x01
             command[:delay_on_receive] = 3000        # still processing signal
             status_input
