@@ -85,6 +85,12 @@ class Chiyu::Cyt
         do_send(:trigger, opts)
         self[:"relay#{index + 1}"] = true
     end
+
+    # According to the manual we have to use UDP on port 5050 to signal a reboot
+    def reboot
+        data = "CHIYU Reboot CMD\x00\x00\x00\x20"
+        thread.udp_service.send(remote_address, 5050, data)
+    end
     
     
     
