@@ -47,7 +47,7 @@ class Tripleplay::XmlRpc
         logger.debug { "Play #{filename} on box#{box_id}" }
         make_req(:ChangePortalPage, box_id.to_i, :watch_video, {
             vodItem: filename
-        }, name: :Reboot)
+        }, name: :vod)
     end
 
 
