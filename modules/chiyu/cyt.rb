@@ -22,6 +22,12 @@ class Chiyu::Cyt
     end
     
     def on_update
+        # Restart schedule (prevents it crashing)
+        # Every night at 02:00am restart unless defined otherwise in settings
+        @reboot_sched.cancel unless @reboot_sched.nil?
+        @reboot_sched = schedule.cron(setting(:restart_time) || '0 2 * * *') do
+            reboot
+        end
     end
     
     def connected
@@ -86,10 +92,22 @@ class Chiyu::Cyt
         self[:"relay#{index + 1}"] = true
     end
 
-    # According to the manual we have to use UDP on port 5050 to signal a reboot
     def reboot
-        data = "CHIYU Reboot CMD\x00\x00\x00\x20"
-        thread.udp_service.send(remote_address, 5050, data)
+        # According to the manual we have to use UDP on port 5050 to signal a reboot
+        # (Didn't work)
+        # data = "CHIYU Reboot CMD\x00\x00\x00\x20"
+        # thread.udp_service.send(remote_address, 5050, data)
+
+        # So we'll use the more reliable HTTP protocol
+        username = setting(:username) || 'admin'
+        password = setting(:password) || 'admin'
+        addr = remote_address
+        Thread.new do
+            Socket.tcp(addr, 80) { |sock|
+                sock.print "GET /reboot.htm@#{username}:#{password} HTTP/1.0\r\n\r\n"
+                sock.close_write
+            }
+        end
     end
     
     
