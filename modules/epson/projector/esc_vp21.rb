@@ -101,6 +101,8 @@ class Epson::Projector::EscVp21
         vol = 0 if vol < 0
         vol = 255 if vol > 255
 
+        # Seems to only return ':' for this command
+        self[:volume] = vol
         do_send(:VOL, vol, options)
     end
     
