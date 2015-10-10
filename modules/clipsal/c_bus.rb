@@ -158,7 +158,7 @@ class Clipsal::CBus
         # We are only looking at Point -> MultiPoint commands
         if data[0] != 0x05
             logger.debug { "was not a Point -> MultiPoint response: type 0x#{data[0].to_s(16)}" }
-            return
+            return :ignore
         end
         # 0x03 == Point -> Point -> MultiPoint
         # 0x06 == Point -> Point
@@ -207,7 +207,9 @@ class Clipsal::CBus
                     logger.debug { "terminate ramp request: grp 0x#{commands[0].to_s(16)}" }
                     commands.shift        # Group address
                 else
-                    if (current & 0b10000101) == 0    # Ramp to level (ex: 05013800 0205FF BC)
+                    # Ramp to level (ex: 05013800 0205FF BC)
+                    #                    Header   cmd    cksum
+                    if ((current & 0b10000101) == 0) && commands.length > 1
                         logger.debug { "ramp request: grp 0x#{commands[0].to_s(16)} - level 0x#{commands[1].to_s(16)}" }
                         commands.shift(2)    # Group address, level
                     else
