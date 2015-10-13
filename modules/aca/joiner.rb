@@ -79,7 +79,7 @@ class Aca::Joiner
         rms = setting(:rooms)
 
         if rms.nil? || rms.empty?
-            logger.warn "No room joining settings provided"
+            logger.warn "No room joining settings provided".freeze
             rms = []
         end
         rms << @system_id.to_s
@@ -89,7 +89,7 @@ class Aca::Joiner
             system_proxies << systems(lookup)
         end
 
-        logger.info "Room joining init success"
+        logger.info "Room joining init success".freeze
         build_room_list(system_proxies)
 
         return true
@@ -258,9 +258,9 @@ class Aca::Joiner
                 @retry_load = nil
 
                 if @room_list_built && self[:joined].is_a?(Hash)
-                    logger.info 'Joining room started successfully'
+                    logger.debug 'Joining room started successfully'.freeze
                 else
-                    logger.warn 'Joining room had issues loading... Retrying'
+                    logger.warn 'Joining room had issues loading... Retrying'.freeze
                     # Invalidate cache
                     ::Orchestrator::System.expire(@system_id)
                     retry_load
@@ -293,7 +293,7 @@ class Aca::Joiner
                 rooms: rooms
             }
         else
-            logger.debug 'Unjoining'
+            logger.debug 'Unjoining'.freeze
             self[:joined] = {
                 initiator: @system_id,
                 rooms: [@system_id]
