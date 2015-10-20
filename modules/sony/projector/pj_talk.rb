@@ -89,6 +89,10 @@ class Sony::Projector::PjTalk
     def input?
         do_send(:get, :input, {:priority => 0})
     end
+
+    def lamp_time?
+        do_send(:get, :lamp_timer, {:priority => 0})
+    end
     
     
     #
@@ -158,6 +162,9 @@ class Sony::Projector::PjTalk
                 self[:power] = On
             when :power_off
                 self[:power] = Off
+            when :lamp_timer
+                # Two bytes converted to a 16bit integer
+                self[:lamp_usage] = array_to_str(pjt_data).unpack('n')[0]
             else
                 # Same switch however now we know there is data
                 if pjt_length && pjt_length > 0
@@ -233,6 +240,7 @@ class Sony::Projector::PjTalk
                 input?
                 mute?
                 do_send(:get, :error_status, {:priority => 0})
+                lamp_time?
             end
         end
     end
@@ -257,6 +265,7 @@ class Sony::Projector::PjTalk
         color: [0x00, 0x12],
         hue: [0x00, 0x13],
         sharpness: [0x00, 0x14],
+        lamp_timer: [0x01, 0x13]
     }
     COMMANDS.merge!(COMMANDS.invert)
 

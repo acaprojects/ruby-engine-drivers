@@ -41,7 +41,10 @@ class Panasonic::Projector::Tcp
         
         # The projector drops the connection when there is no activity
         schedule.every('60s') do
-            power?({priority: 0}) if self[:connected]
+            if self[:connected]
+                power?({priority: 0})
+                lamp_hours?(priority: 0)
+            end
         end
     end
 
@@ -62,7 +65,8 @@ class Panasonic::Projector::Tcp
         freeze: :OFZ,
         input: :IIS,
         mute: :OSH,
-        lamp: :"Q$S"
+        lamp: :"Q$S",
+        lamp_hours: :"Q$L"
     }
     COMMANDS.merge!(COMMANDS.invert)
     
@@ -89,6 +93,11 @@ class Panasonic::Projector::Tcp
     def power?(options = {}, &block)
         options[:emit] = block if block_given?
         do_send(:lamp, options)
+    end
+
+    def lamp_hours?(options = {})
+        options[:emit] = block if block_given?
+        do_send(:lamp_hours, options)
     end
     
     
@@ -198,6 +207,8 @@ class Panasonic::Projector::Tcp
                 self[:input] = INPUTS[val.to_sym]
             when :mute
                 self[:mute] = val.to_i == 1
+            when :lamp_hours
+                self[:lamp_usage] = val.to_i
             else
                 if command && command[:name] == :lamp
                     ival = resp[0].to_i

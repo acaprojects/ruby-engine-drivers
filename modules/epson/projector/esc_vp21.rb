@@ -192,7 +192,7 @@ class Epson::Projector::EscVp21
         when :VOL
             self[:volume] = data[1].to_i
         when :LAMP
-            self[:lamp] = data[1].to_i
+            self[:lamp_usage] = data[1].to_i
         when :SOURCE
             self[:source] = INPUTS[data[1].to_i(16)] || :unknown
         end
