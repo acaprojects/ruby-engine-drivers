@@ -164,7 +164,8 @@ class Sony::Projector::PjTalk
                 self[:power] = Off
             when :lamp_timer
                 # Two bytes converted to a 16bit integer
-                self[:lamp_usage] = array_to_str(pjt_data).unpack('n')[0]
+                # Response looks like: 0x01 01 13 (02 03) <- lamp hours
+                self[:lamp_usage] = array_to_str(data[-2..-1]).unpack('n')[0]
             else
                 # Same switch however now we know there is data
                 if pjt_length && pjt_length > 0

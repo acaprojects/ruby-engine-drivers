@@ -97,7 +97,7 @@ class Panasonic::Projector::Tcp
 
     def lamp_hours?(options = {})
         options[:emit] = block if block_given?
-        do_send(:lamp_hours, options)
+        do_send(:lamp_hours, 1, options)
     end
     
     
@@ -207,35 +207,38 @@ class Panasonic::Projector::Tcp
                 self[:input] = INPUTS[val.to_sym]
             when :mute
                 self[:mute] = val.to_i == 1
-            when :lamp_hours
-                self[:lamp_usage] = val.to_i
             else
-                if command && command[:name] == :lamp
-                    ival = resp[0].to_i
-                    self[:power] = ival == 1 || ival == 2
-                    self[:warming] = ival == 1
-                    self[:cooling] = ival == 3
-    
-                    if (self[:warming] || self[:cooling]) && !@check_scheduled && !self[:stable_state]
-                        @check_scheduled = true
-                        schedule.in('13s') do
-                            @check_scheduled = false
-                            logger.debug "-- checking panasonic state"
-                            power?({:priority => 0}) do
-                                state = self[:power]
-                                if state != self[:power_target]
-                                    if self[:power_target] || !self[:cooling]
+                if command
+                    if command[:name] == :lamp
+                        ival = resp[0].to_i
+                        self[:power] = ival == 1 || ival == 2
+                        self[:warming] = ival == 1
+                        self[:cooling] = ival == 3
+        
+                        if (self[:warming] || self[:cooling]) && !@check_scheduled && !self[:stable_state]
+                            @check_scheduled = true
+                            schedule.in('13s') do
+                                @check_scheduled = false
+                                logger.debug "-- checking panasonic state"
+                                power?({:priority => 0}) do
+                                    state = self[:power]
+                                    if state != self[:power_target]
+                                        if self[:power_target] || !self[:cooling]
+                                            power(self[:power_target])
+                                        end
+                                    elsif self[:power_target] && self[:cooling]
                                         power(self[:power_target])
+                                    else
+                                        self[:stable_state] = true
+                                        switch_to(self[:input]) if self[:power_target] == On && !self[:input].nil?
                                     end
-                                elsif self[:power_target] && self[:cooling]
-                                    power(self[:power_target])
-                                else
-                                    self[:stable_state] = true
-                                    switch_to(self[:input]) if self[:power_target] == On && !self[:input].nil?
                                 end
                             end
-                        end
-                    end    
+                        end 
+                    elsif command[:name] == :lamp_hours
+                        # Resp looks like: "001682"
+                        self[:lamp_usage] = data.to_i
+                    end
                 end
             end
         end
