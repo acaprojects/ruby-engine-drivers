@@ -71,8 +71,6 @@ class Nec::Projector::NpSeries
         #
         # Setup constants
         #
-        self[:lamp_usage] = []
-        self[:filter_usage] = []
         self[:error] = []
         
         on_update
