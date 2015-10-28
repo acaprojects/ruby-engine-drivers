@@ -1,6 +1,6 @@
 module Transmitsms; end
 
-# default URL: https://api.transmitsms.com
+# default URL: https://app.wholesalesms.com.au/api/v2
 # Settings: api_key and api_secret
 
 class Transmitsms::Api
@@ -36,7 +36,7 @@ class Transmitsms::Api
 
         logger.debug "Requesting SMS: #{params}"
 
-        post('/send-sms.json', options) do |data, resolve|
+        post('/api/v2/send-sms.json', options) do |data, resolve|
             resp = ::JSON.parse(data[:body], DECODE_OPTIONS)
             if resp[:error][:code] != 'SUCCESS'
                 self[:last_error] = resp[:error]
