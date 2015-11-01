@@ -12,6 +12,7 @@ class Aca::MeetingRoom < Aca::Joiner
         begin
             self[:name] = system.name
             self[:help_msg] = setting(:help_msg)
+            self[:analytics] = setting(:analytics)
 
             # Pod sharing settings
             @always_share = !!setting(:always_share)
