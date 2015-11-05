@@ -38,7 +38,8 @@ class Lg::Lcd::ModelLs5
         volume: 'f',
         contrast: 'g',
         brightness: 'h',
-        sharpness: 'k'
+        sharpness: 'k',
+        wol: 'w'
     }
     Lookup = Command.invert
 
@@ -130,6 +131,11 @@ class Lg::Lcd::ModelLs5
         end
     end
 
+
+    def enable_wol
+        do_send(Command[:wol], 1, :f, name: :enable_wol)
+    end
+
     def wake(broadcast = nil)
         mac = setting(:mac_address)
         if mac
@@ -185,6 +191,8 @@ class Lg::Lcd::ModelLs5
             self[:sharpness] = resp_value
         when :volume
             self[:volume] = resp_value
+        when :wol
+            logger.debug { "WOL Enabled!" }
         else
             return :ignore
         end
