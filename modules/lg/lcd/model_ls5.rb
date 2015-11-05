@@ -50,7 +50,7 @@ class Lg::Lcd::ModelLs5
             wake(broadcast)
         end
 
-        do_send(Command[:power], val, name: :power)
+        do_send(Command[:power], val, name: :power) if self[:connected]
     end
 
 
@@ -135,6 +135,13 @@ class Lg::Lcd::ModelLs5
         if mac
             # config is the database model representing this device
             wake_device(mac, broadcast)
+            logger.debug { 
+                info = "Wake on Lan for MAC #{mac}"
+                info << " directed to VLAN #{broadcast}" if broadcast
+                info
+            }
+        else
+            logger.debug { "No MAC address provided" }
         end
     end
 

@@ -177,6 +177,13 @@ class Samsung::Displays::MdSeries
         if mac
             # config is the database model representing this device
             wake_device(mac, broadcast)
+            logger.debug { 
+                info = "Wake on Lan for MAC #{mac}"
+                info << " directed to VLAN #{broadcast}" if broadcast
+                info
+            }
+        else
+            logger.debug { "No MAC address provided" }
         end
     end
 
