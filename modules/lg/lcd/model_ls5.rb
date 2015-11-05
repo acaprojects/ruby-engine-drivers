@@ -43,8 +43,13 @@ class Lg::Lcd::ModelLs5
     Lookup = Command.invert
 
 
-    def power(state)
-        val = is_affirmative?(state) ? 1 : 0
+    def power(state, broadcast = nil)
+        val = 0
+        if is_affirmative?(state)
+            val = 1
+            wake(broadcast)
+        end
+
         do_send(Command[:power], val, name: :power)
     end
 
@@ -64,7 +69,7 @@ class Lg::Lcd::ModelLs5
 
     # Audio mute
     def mute_audio(state = true)
-        val = is_affirmative?(state) ? 1 : 0
+        val = is_affirmative?(state) ? 0 : 1
         do_send(Command[:volume_mute], val, name: :volume_mute)
     end
     alias_method :mute, :mute_audio
@@ -122,6 +127,14 @@ class Lg::Lcd::ModelLs5
             val = in_range value.to_i, 0x64 # 0 - 100
             options[:name] = cmd
             do_send Command[cmd], val, **options
+        end
+    end
+
+    def wake(broadcast = nil)
+        mac = setting(:mac_address)
+        if mac
+            # config is the database model representing this device
+            wake_device(mac, broadcast)
         end
     end
 

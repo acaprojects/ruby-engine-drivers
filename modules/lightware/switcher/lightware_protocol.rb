@@ -136,6 +136,13 @@ class Lightware::Switcher::LightwareProtocol
     def received(data, resolve, command)
         logger.debug { "Matrix sent #{data}" }
 
+        if data[0..2] == 'ERR'.freeze
+            err = "Matrix sent error #{data}"
+            err << " for command #{command[:data]}" if command
+            logger.warn err
+            return :abort
+        end
+
         case data[0]
         when 'O'.freeze
             # Probably a switch command
