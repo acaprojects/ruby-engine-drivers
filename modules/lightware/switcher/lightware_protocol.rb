@@ -29,7 +29,12 @@ class Lightware::Switcher::LightwareProtocol
             logger.debug "Maintaining Connection"
 
             # Low priority poll to maintain connection
-            send("{elist=?}\r\n", priority: 0)
+            
+
+            # This command doesn't seem to work, returns ERR00 which is undocumented
+            #send("{elist=?}\r\n", priority: 0)
+            
+
             routing_state?(priority: 0)
             mute_state?(priority: 0)
         end
@@ -133,12 +138,19 @@ class Lightware::Switcher::LightwareProtocol
 
 
     TrackErrors = ['W', 'M', 'E', 'F']
+    RespErrors = {
+        1 => 'input number exceeds the maximum number of inputs or equals zero',
+        2 => 'output number exceeds the installed number of outputs or equals zero',
+        3 => 'value exceeds the maximum allowed value can be sent',
+        4 => 'preset number exceeds the maximum allowed preset number'
+    }
     def received(data, resolve, command)
         logger.debug { "Matrix sent #{data}" }
 
         if data[0..2] == 'ERR'.freeze
-            err = "Matrix sent error #{data}"
-            err << " for command #{command[:data]}" if command
+            err = "Matrix sent error #{data}: "
+            err << RespErrors[data[3..-1].to_i] || 'unknown error code'
+            err << "\nfor command #{command[:data]}" if command
             logger.warn err
             return :abort
         end
