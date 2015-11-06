@@ -148,7 +148,7 @@ class Lg::Lcd::ModelLs5
 
 
     def wake_on_lan(enable = true)
-        val = is_affirmative?(state) ? 1 : 0
+        val = is_affirmative?(enable) ? 1 : 0
         do_send(Command[:wol], val, :f, name: :enable_wol)
     end
 
