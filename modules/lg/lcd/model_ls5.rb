@@ -35,7 +35,7 @@ class Lg::Lcd::ModelLs5
         # Disconnected may be called without calling connected
         #
         self[:power] = false  # As we may need to use wake on lan
-        @polling_timer.cancel unless @polling_timer.nil?
+        @polling_timer.cancel if @polling_timer
         @polling_timer = nil
     end
 
@@ -147,8 +147,9 @@ class Lg::Lcd::ModelLs5
     end
 
 
-    def enable_wol
-        do_send(Command[:wol], 1, :f, name: :enable_wol)
+    def wake_on_lan(enable = true)
+        val = is_affirmative?(state) ? 1 : 0
+        do_send(Command[:wol], val, :f, name: :enable_wol)
     end
 
     def wake(broadcast = nil)

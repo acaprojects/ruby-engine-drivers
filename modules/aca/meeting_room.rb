@@ -72,6 +72,36 @@ class Aca::MeetingRoom < Aca::Joiner
             logger.print_error(e, 'bad system logic configuration')
         end
 
+        # Update the Schedules
+        begin
+            # Shutdown schedule
+            # Every night at 11:30pm shutdown the systems if they are on
+            @shutdown_timer.cancel if @shutdown_timer
+            @shutdown_timer = schedule.cron(setting(:shutdown_time) || '30 23 * * *') do
+                shutdown
+            end
+
+            # Startup schedule
+            @warmup_timer.cancel if @warmup_timer
+            time = setting(:warmup_time)
+            if time
+                @warmup_timer = schedule.cron(time) do
+                    warm_up_displays
+                end
+            end
+
+            # Poweroff schedule
+            @hardoff_timer.cancel if @hardoff_timer
+            time = setting(:hardoff_time)
+            if time
+                @hardoff_timer = schedule.cron(time) do
+                    hard_off_displays
+                end
+            end
+        rescue => e
+            logger.print_error(e, 'bad cron schedule configuration')
+        end
+
         # Call the Joiner on_update function
         super
     end
@@ -596,6 +626,27 @@ class Aca::MeetingRoom < Aca::Joiner
             title: disp_source[:title],
             type: disp_source[:type]
         }
+    end
+
+    # ------------------------------------
+    # Wake on LAN power display management
+    # ------------------------------------
+    def warm_up_displays
+        if setting(:broadcast)
+            system.all(:Display).each do |display|
+                arity = display.arity(:power)
+                if check_arity(arity)
+                    display.power(On, setting(:broadcast))
+                    display.power Off
+                end
+            end
+        end
+    end
+
+    def hard_off_displays
+        system.all(:Display).each do |disp|
+            disp.hard_off if disp.respond_to? :hard_off
+        end
     end
 
 
