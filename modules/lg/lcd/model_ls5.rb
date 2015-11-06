@@ -78,7 +78,7 @@ class Lg::Lcd::ModelLs5
         display_port: 208 
     }
     Inputs.merge!(Inputs.invert)
-    def input(source)
+    def switch_to(source)
         val = Inputs[source.to_sym]
         do_send(Command[:input], val, 'x'.freeze, name: :input)
     end
