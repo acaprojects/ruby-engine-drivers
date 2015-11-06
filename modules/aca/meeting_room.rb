@@ -621,11 +621,13 @@ class Aca::MeetingRoom < Aca::Joiner
         end
 
         # Provide the UI with source information
-        self[display] = {
+        tmp = {
             source: source,
             title: disp_source[:title],
             type: disp_source[:type]
         }
+        tmp[:record_as] = disp_source[:record_as] if disp_source[:record_as]
+        self[display] = tmp
     end
 
     # ------------------------------------
