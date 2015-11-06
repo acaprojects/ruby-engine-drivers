@@ -14,19 +14,29 @@ class Lg::Lcd::ModelLs5
 
 
     def on_load
-        @polling_timer = schedule.every('40s') do
-            # No point polling if we can't connect to the display
-            if self[:connected]
-                logger.debug "-- Polling Display"
-                do_poll
-            end
-        end
-
         on_update
     end
 
     def on_update
         @id = (setting(:display_id) || 1).to_s.rjust(2, '0')
+    end
+
+    def connected
+        do_poll
+
+        @polling_timer = schedule.every('50s') do
+            logger.debug "-- Polling Display"
+            do_poll
+        end
+    end
+
+    def disconnected
+        #
+        # Disconnected may be called without calling connected
+        #
+        self[:power] = false  # As we may need to use wake on lan
+        @polling_timer.cancel unless @polling_timer.nil?
+        @polling_timer = nil
     end
 
 
@@ -45,13 +55,18 @@ class Lg::Lcd::ModelLs5
 
 
     def power(state, broadcast = nil)
-        val = 0
-        if is_affirmative?(state)
-            val = 1
+        power_on = is_affirmative?(state)
+        if power_on
             wake(broadcast)
         end
 
-        do_send(Command[:power], val, name: :power) if self[:connected]
+        if self[:connected]
+            mute_display !power_on
+        end
+    end
+
+    def hard_off
+        do_send(Command[:power], 0, name: :power)
     end
 
 
