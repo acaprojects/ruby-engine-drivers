@@ -198,7 +198,7 @@ class Lg::Lcd::ModelLs5
         when :screen_mute
             self[:display_mute] = resp_value == 1
         when :volume_mute
-            self[:audio_mute] = resp_value == 1
+            self[:audio_mute] = resp_value == 0
         when :contrast
             self[:contrast] = resp_value
         when :brightness
