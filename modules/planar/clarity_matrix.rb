@@ -79,7 +79,7 @@ class Planar::ClarityMatrix
     end
 
 
-    def received(data, command)
+    def received(data, resolve, command)
         logger.debug "Vid Wall: #{data}"
 
         data = data.split('.')      # OPA1DISPLAY.POWER=ON || OPA1SLOT.CURRENT=0
