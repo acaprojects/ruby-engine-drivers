@@ -1,8 +1,8 @@
 module Toshiba; end
-module Toshiba::Displays; end
+module Toshiba::Display; end
 
 
-class Toshiba::Displays::ESeries
+class Toshiba::Display::ESeries
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
