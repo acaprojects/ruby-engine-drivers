@@ -50,6 +50,10 @@ module Aca; end
 class Aca::Joiner
     include ::Orchestrator::Constants
 
+    descriptive_name 'ACA Room Joining Logic'
+    generic_name :Joiner
+    implements :logic
+
     
     def on_load
         @retry_load = nil

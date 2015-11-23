@@ -27,6 +27,12 @@ class Kramer::Switcher::VsHdmi
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    # Discovery Information
+    tcp_port 23
+    descriptive_name 'Kramer Protocol 2000 Switcher'
+    generic_name :Switcher
+
+    # Communication settings
     delay between_sends: 150
     wait_response false
 

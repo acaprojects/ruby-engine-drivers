@@ -12,6 +12,12 @@ class Chiyu::Cyt
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    tcp_port 50001
+    descriptive_name 'CYT-1333SC IO Gateway'
+    generic_name :DigitalIO
+
+    # Communication settings
     # this will ignore the CRC check byte
     tokenise delimiter: "\xF0\xF0", min_length: 2
     delay on_receive: 500

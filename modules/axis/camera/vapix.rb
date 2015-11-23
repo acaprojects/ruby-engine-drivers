@@ -6,6 +6,12 @@ class Axis::Camera::Vapix
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    # Discovery Information
+    implements :service
+    descriptive_name 'Axis PTZ Camera'
+    generic_name :Camera
+
+    # Communication settings
     delay between_sends: 130    # 130ms between requests
     keepalive false             # HTTP keepalive
 

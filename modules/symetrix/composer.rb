@@ -9,7 +9,15 @@ class Symetrix::Composer
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    # Discovery Information
+    tcp_port 48631
+    descriptive_name 'Symetrix Composer Audio DSP'
+    generic_name :Mixer
+
+    # Communication settings
     tokenize delimiter: "\r"
+
     
     def on_load
         @type_lookup = {}

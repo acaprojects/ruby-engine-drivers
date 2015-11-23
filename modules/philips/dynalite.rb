@@ -5,6 +5,13 @@ class Philips::Dynalite
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    # Discovery Information
+    tcp_port 50000
+    descriptive_name 'Philips Dynalite Lighting'
+    generic_name :Lighting
+
+    # Communication settings
     delay between_sends: 40
     wait_response false
     tokenize indicator: "\x1C", msg_length: 7 # length - indicator

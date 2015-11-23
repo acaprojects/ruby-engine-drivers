@@ -11,6 +11,12 @@ class Pioneer::Bluray::BdpSeries
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    tcp_port 8102
+    descriptive_name 'Pioneer Bluray'
+    generic_name :Bluray
+
+    # Communication settings
     tokenize delimiter: "\r\n"
 	delay between_sends: 100, on_receive: 100
 	wait_response timeout: 8000

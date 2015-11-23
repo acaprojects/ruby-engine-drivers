@@ -7,6 +7,12 @@ class Panasonic::Camera::He50
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    implements :service
+    descriptive_name 'Panasonic PTZ Camera HE50/60'
+    generic_name :Camera
+
+    # Communication settings
     delay between_sends: 150
     inactivity_timeout 1500
     keepalive false

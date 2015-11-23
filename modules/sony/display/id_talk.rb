@@ -2,13 +2,17 @@ module Sony; end
 module Sony::Display; end
 
 
-#
-# Port: 53484
-#
 class Sony::Display::IdTalk
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    # Discovery Information
+    tcp_port 53484
+    descriptive_name 'Sony ID Talk LCD Monitor'
+    generic_name :Display
+
+    # Communication settings
     tokenize indicator: "\x02\x10", callback: :check_complete
 
 

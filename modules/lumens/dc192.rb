@@ -5,6 +5,13 @@ class Lumens::Dc192
 	include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    # Discovery Information
+    implements :device
+    descriptive_name 'Lumens Visualiser DC192'
+    generic_name :Visualiser
+
+    # Communication settings
     tokenize delimiter: "\xAF", indicator: "\xA0"
     delay between_sends: 300
     wait_response retries: 8

@@ -1,12 +1,16 @@
 module Qsc; end
 
-# port 1710
-
 class Qsc::QSys
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    tcp_port 1710
+    descriptive_name 'QSC Audio DSP'
+    generic_name :Mixer
+
+    # Communication settings
     # Wait for null terminator before processing command
     tokenize delimiter: "\0"
 

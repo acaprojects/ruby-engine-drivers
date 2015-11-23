@@ -7,6 +7,12 @@ class Toshiba::Display::ESeries
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    implements :device
+    descriptive_name 'Toshiba E-Series LCD Monitor'
+    generic_name :Display
+
+    # Communication settings
     tokenize indicator: "\x1D", msg_length: 2
     delay between_sends: 100
 

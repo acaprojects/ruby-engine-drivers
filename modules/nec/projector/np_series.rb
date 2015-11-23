@@ -48,6 +48,13 @@ class Nec::Projector::NpSeries
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    # Discovery Information
+    tcp_port 7142
+    descriptive_name 'NEC LCD Monitor'
+    generic_name :Display
+
+    # Communication settings
     delay between_sends: 100
 
 

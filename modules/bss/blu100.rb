@@ -1,12 +1,16 @@
 module Bss; end
 
-# TCP port 1023
-
 class Bss::Blu100
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    tcp_port 1023
+    descriptive_name 'Soundweb London BSS BLU series'
+    generic_name :Mixer
+
+    # Communication settings
     # keep sending commands without waiting for a response first
     wait_response false
     tokenise delimiter: "\x03", indicator: "\x02"

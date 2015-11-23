@@ -2,22 +2,23 @@ module Panasonic; end
 module Panasonic::Projector; end
 
 
-# Default Web UI Access
-# Username: admin1
-# Password: panasonic
-
-
 require 'digest/md5'
 
-#
-# Port: 1024
-#
+
 class Panasonic::Projector::Tcp
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    tcp_port 1024
+    descriptive_name 'Panasonic Projector'
+    generic_name :Display
+    default_settings username: 'admin1', password: 'panasonic'
+
+    # Communication settings
     tokenize delimiter: "\r", wait_ready: 'NTCONTROL'
+    makebreak!
 
 
     # Projector will provide us with a password

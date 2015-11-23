@@ -3,6 +3,12 @@ module Aca; end
 ::Orchestrator::DependencyManager.load('Aca::Joiner', :logic)
 
 class Aca::MeetingRoom < Aca::Joiner
+    descriptive_name 'ACA Meeting Room Logic'
+    generic_name :System
+    default_settings joiner_driver: :System
+    implements :logic
+
+
     def on_load
         # Call the Joiner load function
         super

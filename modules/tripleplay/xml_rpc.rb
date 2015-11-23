@@ -12,6 +12,12 @@ class Tripleplay::XmlRpc
     }.freeze
 
 
+    # Discovery Information
+    uri_base 'http://serverIP'
+    descriptive_name 'Tripleplay Digital Signage and IPTV'
+    generic_name :IPTV
+
+    # Communication settings
     keepalive false
     inactivity_timeout 1500
 

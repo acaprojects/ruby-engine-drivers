@@ -5,6 +5,12 @@ class ScreenTechnics::Connect
     include ::Orchestrator::Constants
 
 
+    # Discovery Information
+    implements :service
+    descriptive_name 'Screen Technics Projector Screen Control'
+    generic_name :Screen
+
+    # Communication settings
     delay between_sends: 2000
     keepalive false
     inactivity_timeout 1500

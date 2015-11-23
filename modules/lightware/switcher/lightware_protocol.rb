@@ -2,13 +2,16 @@ module Lightware; end
 module Lightware::Switcher; end
 
 
-# TCP Port: 10001
-
-
 class Lightware::Switcher::LightwareProtocol
     include ::Orchestrator::Constants
 
 
+    # Discovery Information
+    tcp_port 10001
+    descriptive_name 'Lightware Switcher'
+    generic_name :Switcher
+
+    # Communication settings
     # This will strip the brackets from the response data
     tokenize indicator: '(', delimiter: ")\r\n"
 

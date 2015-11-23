@@ -27,6 +27,13 @@ class Kramer::Switcher::Protocol3000
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    # Discovery Information
+    tcp_port 23
+    descriptive_name 'Kramer Protocol 3000 Switcher'
+    generic_name :Switcher
+
+    # Communication settings
     tokenize delimiter: "\x0D\x0A"
 
     

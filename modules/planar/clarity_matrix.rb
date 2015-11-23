@@ -6,6 +6,12 @@ class Planar::ClarityMatrix
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    implements :device
+    descriptive_name 'Planar Clarity Matrix Video Wall'
+    generic_name :VideoWall
+
+    # Communication settings
     tokenize delimiter: "\r"
     wait_response false
 

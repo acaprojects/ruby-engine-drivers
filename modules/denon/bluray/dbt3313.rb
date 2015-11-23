@@ -6,6 +6,12 @@ class Denon::Bluray::Dbt3313
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    implements :device
+    descriptive_name 'Denon Bluray'
+    generic_name :Bluray
+
+    # Communication settings
     tokenize delimiter: "\x03", indicator: "\x02"
     delay between_sends: 300
 

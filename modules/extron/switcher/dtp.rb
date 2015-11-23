@@ -32,6 +32,8 @@ module Extron::Switcher; end
 
 
 class Extron::Switcher::Dtp < Extron::Base
+    descriptive_name 'Extron Switcher DTP'
+    generic_name :Switcher
 
     #
     # No need to wait as commands can be chained

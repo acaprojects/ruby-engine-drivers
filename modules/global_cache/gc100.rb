@@ -5,6 +5,12 @@ class GlobalCache::Gc100
     include ::Orchestrator::Constants
 
 
+    # Discovery Information
+    tcp_port 4998
+    descriptive_name 'GlobalCache IO Gateway'
+    generic_name :DigitalIO
+
+    # Communication settings
     tokenize delimiter: "\x0D"
 
 

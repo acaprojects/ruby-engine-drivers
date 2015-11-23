@@ -1,12 +1,16 @@
 module Epson; end
 module Epson::Projector; end
 
-#
-# Port: 3629
-#
 class Epson::Projector::EscVp21
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
+
+
+    # Discovery Information
+    tcp_port 3629
+    descriptive_name 'Epson Projectors'
+    generic_name :Display
+
 
     def on_load
         #config({

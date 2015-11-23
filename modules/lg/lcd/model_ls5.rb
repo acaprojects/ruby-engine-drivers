@@ -2,15 +2,21 @@ module Lg; end
 module Lg::Lcd; end
 
 
-# TCP Port: 9761
 # This device does not hold the connection open. Must be configured as makebreak
 class Lg::Lcd::ModelLs5
     include ::Orchestrator::Constants    # these provide optional helper methods
     include ::Orchestrator::Transcoder   # (not used in this module)
 
 
+    # Discovery Information
+    tcp_port 9761
+    descriptive_name 'LG WebOS LCD Monitor'
+    generic_name :Display
+
+    # Communication settings
     tokenize delimiter: 'x'
     delay between_sends: 150
+    makebreak!
 
 
     def on_load

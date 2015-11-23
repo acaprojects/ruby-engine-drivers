@@ -1,8 +1,5 @@
 module Transmitsms; end
 
-# default URL: https://app.wholesalesms.com.au/api/v2
-# Settings: api_key and api_secret
-
 class Transmitsms::Api
     include ::Orchestrator::Constants
 
@@ -12,6 +9,13 @@ class Transmitsms::Api
     }.freeze
 
 
+    # Discovery Information
+    uri_base 'https://app.wholesalesms.com.au'
+    descriptive_name 'Wholesalesms SMS Service'
+    generic_name :SMS
+    default_settings api_key: 'key here', api_secret: 'secret here'
+
+    # Communication settings
     keepalive false
     inactivity_timeout 1500
 

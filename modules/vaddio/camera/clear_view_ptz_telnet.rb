@@ -2,12 +2,17 @@ module Vaddio; end
 module Vaddio::Camera; end
 
 
-# TCP Port: 23
 class Vaddio::Camera::ClearViewPtzTelnet
     include ::Orchestrator::Constants    # these provide optional helper methods
     include ::Orchestrator::Transcoder   # (not used in this module)
 
 
+    # Discovery Information
+    tcp_port 23
+    descriptive_name 'Vaddio Clear View PTZ Camera'
+    generic_name :Camera
+
+    # Communication settings
                 # VT100 string -ESC[J
     tokenize indicator: "\e[J\r\n", delimiter: "\r\n> \e[J",
              wait_ready: "login: "

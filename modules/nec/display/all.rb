@@ -36,6 +36,13 @@ class Nec::Display::All
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    # Discovery Information
+    tcp_port 7142
+    descriptive_name 'NEC Projector'
+    generic_name :Display
+
+    # Communication settings
     tokenize delimiter: "\x0D"
     delay between_sends: 120
     wait_response timeout: 5000

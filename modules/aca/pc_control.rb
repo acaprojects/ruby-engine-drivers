@@ -13,6 +13,13 @@ class Aca::PcControl
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    # Discovery Information
+    tcp_port 443
+    descriptive_name 'ACA PC Control Interface'
+    generic_name :Computer
+    default_settings domain: '.', username: 'service', password: 'account'
+
+    # Communication settings
     tokenize delimiter: "\x03", indicator: "\x02"
 
     #

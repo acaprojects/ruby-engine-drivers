@@ -2,13 +2,17 @@ module Sony; end
 module Sony::Projector; end
 
 
-#
-# Port: 53484
-#
 class Sony::Projector::PjTalk
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+
+    # Discovery Information
+    tcp_port 53484
+    descriptive_name 'Sony PJ Talk Projector'
+    generic_name :Display
+
+    # Communication settings
     tokenize indicator: "\x02\x0a", callback: :check_complete
     delay on_receive: 200
 

@@ -2,13 +2,17 @@
 
 module Biamp; end
 
-# TELNET port 23
-
 class Biamp::Nexia
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    tcp_port 23 # Telnet
+    descriptive_name 'Biamp Nexia/Audia'
+    generic_name :Mixer
+
+    # Communication settings
     tokenize delimiter: /\xFF\xFE\x01|\r\n/
 
     # Nexia requires some breathing room

@@ -25,6 +25,8 @@ module Extron::Mixer; end
 
 
 class Extron::Mixer::Dmp64 < Extron::Base
+    descriptive_name 'Extron DSP DMP64'
+    generic_name :Mixer
 
     def on_load
         super

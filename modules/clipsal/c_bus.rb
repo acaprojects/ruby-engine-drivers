@@ -25,6 +25,12 @@ class Clipsal::CBus
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
+    # Discovery Information
+    tcp_port 10001
+    descriptive_name 'Clipsal CBus Lighting Gateway'
+    generic_name :Lighting
+
+    # Communication settings
     tokenize delimiter: "\x0D"
     wait_response false
     delay between_sends: 100

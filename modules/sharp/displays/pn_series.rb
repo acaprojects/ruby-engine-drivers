@@ -39,6 +39,12 @@ class Sharp::Displays::PnSeries
     include ::Orchestrator::Transcoder
 
 
+    # Discovery Information
+    tcp_port 10008
+    descriptive_name 'Sharp LCD Monitor'
+    generic_name :Display
+
+    # Communication settings
     clear_queue_on_disconnect!
     delay on_receive: 120
     wait_response timeout: 6000

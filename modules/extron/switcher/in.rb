@@ -32,6 +32,8 @@ module Extron::Switcher; end
 
 
 class Extron::Switcher::In < Extron::Base
+    descriptive_name 'Extron Switcher IN'
+    generic_name :Switcher
 
     # nil as these functions can be used to request state too
     def switch(input = nil)
