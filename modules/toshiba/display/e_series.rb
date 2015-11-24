@@ -172,7 +172,7 @@ class Toshiba::Display::ESeries
 
     def received(data, resolve, command)
         logger.debug {
-            cmd = "Toshiba sent #{data}"
+            cmd = "Toshiba sent 0x#{byte_to_hex(data)}"
             cmd << " for command #{command[:name]}" if command
             cmd
         }
