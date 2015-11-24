@@ -87,7 +87,7 @@ class Aca::Crestron::DmSwitcherInterface
 
 
     def received(data, resolve, command)
-        logger.debug "-- Crestron sent: #{data}"
+        logger.debug { "-- Crestron sent: #{data}" }
 
         response = str_to_array(data)
         case TYPE[response[0]]
