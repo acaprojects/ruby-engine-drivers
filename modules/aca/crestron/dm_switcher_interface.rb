@@ -26,7 +26,6 @@ class Aca::Crestron::DmSwitcherInterface
     end
     
     def connected
-        @in_sync = 0
         send("status\xff", wait: true)
 
         # Maintain connection
@@ -89,30 +88,27 @@ class Aca::Crestron::DmSwitcherInterface
 
     def received(data, resolve, command)
         logger.debug "-- Crestron sent: #{data}"
-        if @in_sync < 2
 
-            response = str_to_array(data)
-            case TYPE[response[0]]
-            when :video
-                @outputs = response
-                @outputs.each_index do |i|
-                    if i > 0 && i < 17
-                        self["video#{i}"] = @outputs[i]
-                    end
+        response = str_to_array(data)
+        case TYPE[response[0]]
+        when :video
+            @outputs = response
+            @outputs.each_index do |i|
+                if i > 0 && i < 17
+                    self["video#{i}"] = @outputs[i]
                 end
-                @outputs << 0xFF # as the buffering process would have removed this
-            when :audio
-                @audio = response
-                @audio.each_index do |i|
-                    if i > 0 && i < 17
-                        self["audio#{i}"] = @audio[i]
-                    end
-                end
-                @audio << 0xFF # as the buffering process would have removed this
             end
-            
-            @in_sync += 1
+            @outputs << 0xFF # as the buffering process would have removed this
+        when :audio
+            @audio = response
+            @audio.each_index do |i|
+                if i > 0 && i < 17
+                    self["audio#{i}"] = @audio[i]
+                end
+            end
+            @audio << 0xFF # as the buffering process would have removed this
         end
+
         :success
     end
 end
