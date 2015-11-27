@@ -104,7 +104,7 @@ class Lg::Lcd::ModelLs5
     # Display Mute
     def mute_display(state = true)
         val = is_affirmative?(state) ? 1 : 0
-        do_send(Command[:screen_mute], val, name: :screen_mute)
+        do_send(Command[:screen_mute], val, name: :screen_mute, delay: 5000)
     end
 
     def unmute_display
