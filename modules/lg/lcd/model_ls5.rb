@@ -41,6 +41,7 @@ class Lg::Lcd::ModelLs5
         # Disconnected may be called without calling connected
         #
         self[:power] = false  # As we may need to use wake on lan
+        self[:power_target] = false
         @polling_timer.cancel if @polling_timer
         @polling_timer = nil
     end
@@ -64,9 +65,8 @@ class Lg::Lcd::ModelLs5
         power_on = is_affirmative?(state)
 
         if self[:connected]
-            if (power_on && self[:power] == false) || (!power_on && self[:power] == true)
-                mute_display !power_on
-            end
+            self[:power_target] = power_on
+            mute_display !power_on
         else
             wake(broadcast) if power_on
         end
@@ -86,6 +86,7 @@ class Lg::Lcd::ModelLs5
     }
     Inputs.merge!(Inputs.invert)
     def switch_to(source)
+        logger.debug "Requesting input: #{source}"
         val = Inputs[source.to_sym]
         do_send(Command[:input], val, 'x'.freeze, name: :input, delay_on_receive: 2000)
     end
@@ -104,8 +105,18 @@ class Lg::Lcd::ModelLs5
 
     # Display Mute
     def mute_display(state = true)
+        options = {
+            name: :screen_mute
+        }
+        options[:delay_on_receive] = 5000 if self[:power] == state
         val = is_affirmative?(state) ? 1 : 0
-        do_send(Command[:screen_mute], val, name: :screen_mute, delay_on_receive: 5000)
+        do_send(Command[:screen_mute], val, **options)
+
+        # Check power target after a power change
+        if self[:power] == state
+            self[:power] = !state
+            screen_mute?
+        end
     end
 
     def unmute_display
@@ -207,6 +218,9 @@ class Lg::Lcd::ModelLs5
         when :screen_mute
             # This indicates power status as hard off we are disconnected
             self[:power] = resp_value != 1
+            if self[:power_target] != self[:power]
+                power(self[:power_target])
+            end
         when :volume_mute
             self[:audio_mute] = resp_value == 0
         when :contrast
