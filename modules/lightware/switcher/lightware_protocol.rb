@@ -152,7 +152,7 @@ class Lightware::Switcher::LightwareProtocol
 
         if data[0..2] == 'ERR'.freeze
             err = "Matrix sent error #{data}: "
-            err << RespErrors[data[3..-1].to_i] || 'unknown error code'
+            err << (RespErrors[data[3..-1].to_i] || 'unknown error code')
             err << "\nfor command #{command[:data]}" if command
             logger.warn err
             return :abort
