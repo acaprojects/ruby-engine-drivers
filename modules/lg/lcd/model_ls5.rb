@@ -86,7 +86,7 @@ class Lg::Lcd::ModelLs5
     Inputs.merge!(Inputs.invert)
     def switch_to(source)
         val = Inputs[source.to_sym]
-        do_send(Command[:input], val, 'x'.freeze, name: :input)
+        do_send(Command[:input], val, 'x'.freeze, name: :input, delay_on_receive: 2000)
     end
 
     # Audio mute
