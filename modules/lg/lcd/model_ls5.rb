@@ -62,12 +62,13 @@ class Lg::Lcd::ModelLs5
 
     def power(state, broadcast = nil)
         power_on = is_affirmative?(state)
-        if power_on
-            wake(broadcast)
-        end
 
         if self[:connected]
-            mute_display !power_on
+            if (power_on && self[:power] == false) || (!power_on && self[:power] == true)
+                mute_display !power_on
+            end
+        else
+            wake(broadcast) if power_on
         end
     end
 
@@ -114,10 +115,12 @@ class Lg::Lcd::ModelLs5
 
     # Status values we are interested in polling
     def do_poll
-        input?
-        screen_mute?
-        volume_mute?
-        volume?
+        if self[:connected]
+            screen_mute?
+            input?
+            volume_mute?
+            volume?
+        end
     end
 
 
@@ -202,7 +205,8 @@ class Lg::Lcd::ModelLs5
         when :input
             self[:input] = Inputs[resp_value] || :unknown
         when :screen_mute
-            self[:display_mute] = resp_value == 1
+            # This indicates power status as hard off we are disconnected
+            self[:power] = resp_value == 1
         when :volume_mute
             self[:audio_mute] = resp_value == 0
         when :contrast
