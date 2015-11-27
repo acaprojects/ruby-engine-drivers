@@ -206,7 +206,7 @@ class Lg::Lcd::ModelLs5
             self[:input] = Inputs[resp_value] || :unknown
         when :screen_mute
             # This indicates power status as hard off we are disconnected
-            self[:power] = resp_value == 1
+            self[:power] = resp_value != 1
         when :volume_mute
             self[:audio_mute] = resp_value == 0
         when :contrast
