@@ -88,7 +88,13 @@ class Lg::Lcd::ModelLs5
     Inputs.merge!(Inputs.invert)
     def switch_to(source)
         logger.debug "Requesting input: #{source}"
-        val = Inputs[source.to_sym]
+
+        # Input target allows us to ensure the correct input is selected
+        # After a WOL event
+        source_sym = source.to_sym
+        self[:input_target] = source_sym
+
+        val = Inputs[source_sym]
         do_send(Command[:input], val, 'x'.freeze, name: :input, delay_on_receive: 2000)
     end
 
@@ -223,9 +229,14 @@ class Lg::Lcd::ModelLs5
             self[:power] = resp_value == 1
         when :input
             self[:input] = Inputs[resp_value] || :unknown
+            self[:input_target] = self[:input] if self[:input_target].nil?
+            if self[:input_target] != self[:input]
+                switch_to(self[:input_target])
+            end
         when :screen_mute
             # This indicates power status as hard off we are disconnected
             self[:power] = resp_value != 1
+            self[:power_target] = self[:power] if self[:power_target].nil?
             if self[:power_target] != self[:power]
                 power(self[:power_target])
             end
