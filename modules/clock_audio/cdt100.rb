@@ -168,7 +168,7 @@ class ClockAudio::Cdt100
 
             when :set_arm_c, :get_arm_c
                 # ACK GARMC 1
-                self[:arm_c] == result[2].to_i == 1
+                self[:arm_c] = result[2].to_i == 1
 
             when :address
                 # ACK GAS something,with,commas
