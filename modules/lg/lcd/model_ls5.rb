@@ -21,6 +21,12 @@ class Lg::Lcd::ModelLs5
 
     def on_load
         on_update
+        @last_broadcast = nil
+
+        schedule.every('50s') do
+            logger.debug "-- Polling Display"
+            do_poll
+        end
     end
 
     def on_update
@@ -31,11 +37,6 @@ class Lg::Lcd::ModelLs5
         dpm(false)
         wake_on_lan(true)
         do_poll
-
-        @polling_timer = schedule.every('50s') do
-            logger.debug "-- Polling Display"
-            do_poll
-        end
     end
 
     def disconnected
@@ -43,9 +44,6 @@ class Lg::Lcd::ModelLs5
         # Disconnected may be called without calling connected
         #
         self[:power] = false  # As we may need to use wake on lan
-        self[:power_target] = false
-        @polling_timer.cancel if @polling_timer
-        @polling_timer = nil
     end
 
 
@@ -63,8 +61,11 @@ class Lg::Lcd::ModelLs5
     Lookup = Command.invert
 
 
-    def power(state, broadcast = nil)
+    def power(state, broadcast = @last_broadcast)
         power_on = is_affirmative?(state)
+
+        # This allows polling 
+        @last_broadcast = broadcast if broadcast
 
         if self[:connected]
             self[:power_target] = power_on
@@ -74,7 +75,8 @@ class Lg::Lcd::ModelLs5
     end
 
     def hard_off
-        do_send(Command[:power], 0, name: :power)
+        self[:power_target] = false
+        do_send(Command[:power], 0, name: :power, priority: 99)
     end
 
 
@@ -138,6 +140,8 @@ class Lg::Lcd::ModelLs5
             input?
             volume_mute?
             volume?
+        elsif self[:power_target] == On
+            power On
         end
     end
 
