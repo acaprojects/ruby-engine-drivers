@@ -1,6 +1,6 @@
 module Qsc; end
 
-class Qsc::QSys
+class Qsc::QSysRemote
     include ::Orchestrator::Constants
     include ::Orchestrator::Transcoder
 
