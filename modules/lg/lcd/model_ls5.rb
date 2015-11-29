@@ -15,7 +15,7 @@ class Lg::Lcd::ModelLs5
 
     # Communication settings
     tokenize delimiter: 'x'
-    delay between_sends: 150
+    delay between_sends: 150, on_receive: 200
     makebreak!
 
 
@@ -28,6 +28,8 @@ class Lg::Lcd::ModelLs5
     end
 
     def connected
+        dpm(false)
+        wake_on_lan(true)
         do_poll
 
         @polling_timer = schedule.every('50s') do
@@ -67,9 +69,8 @@ class Lg::Lcd::ModelLs5
         if self[:connected]
             self[:power_target] = power_on
             mute_display !power_on
-        else
-            wake(broadcast) if power_on
         end
+        wake(broadcast) if power_on
     end
 
     def hard_off
@@ -167,6 +168,12 @@ class Lg::Lcd::ModelLs5
     end
 
 
+    # DPM is "display power management" turn it off to ensure the display does not auto sleep
+    def dpm(enable = false)
+        val = is_affirmative?(enable) ? 1 : 0
+        do_send(Command[:dpm], val, :f, name: :disable_dpm)
+    end
+    
     def wake_on_lan(enable = true)
         val = is_affirmative?(enable) ? 1 : 0
         do_send(Command[:wol], val, :f, name: :enable_wol)
@@ -192,6 +199,7 @@ class Lg::Lcd::ModelLs5
 
 
     def do_send(cmd, data, system = :k, **options)
+        logger.debug { "Sending command #{options[:name]} - #{system}#{cmd} #{@id} #{data.to_s(16).upcase.rjust(2, '0')}" }
         cmd = "#{system}#{cmd} #{@id} #{data.to_s(16).upcase.rjust(2, '0')}\r"
         send cmd, options
     end
