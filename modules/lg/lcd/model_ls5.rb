@@ -46,7 +46,7 @@ class Lg::Lcd::ModelLs5
     end
 
     def connected
-        configure_dpm
+        #configure_dpm
         wake_on_lan(true)
         no_signal_off(false)
         auto_off(false)
