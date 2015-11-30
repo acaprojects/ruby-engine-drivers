@@ -36,6 +36,8 @@ class Lg::Lcd::ModelLs5
     def connected
         dpm(false)
         wake_on_lan(true)
+	no_signal_off(false)
+	auto_off(false)
         do_poll
     end
 
@@ -56,7 +58,10 @@ class Lg::Lcd::ModelLs5
         contrast: 'g',
         brightness: 'h',
         sharpness: 'k',
-        wol: 'w'
+        wol: 'w',
+        no_signal_off: 'g',
+        auto_off: 'n'
+
     }
     Lookup = Command.invert
 
@@ -184,6 +189,16 @@ class Lg::Lcd::ModelLs5
         do_send(Command[:dpm], val, :f, name: :disable_dpm)
     end
     
+    def no_signal_off(enable = false)
+        val = is_affirmative?(enable) ? 1 : 0
+        do_send(Command[:no_signal_off], val, :f, name: :disable_no_sig_off)
+    end
+
+    def auto_off(enable = false)
+        val = is_affirmative?(enable) ? 1 : 0
+        do_send(Command[:auto_off], val, :m, name: :disable_auto_off)
+    end
+
     def wake_on_lan(enable = true)
         val = is_affirmative?(enable) ? 1 : 0
         do_send(Command[:wol], val, :f, name: :enable_wol)
@@ -256,6 +271,12 @@ class Lg::Lcd::ModelLs5
             self[:volume] = resp_value
         when :wol
             logger.debug { "WOL Enabled!" }
+        when :dpm
+            logger.debug { "DPM changed!" }
+        when :no_signal_off
+            logger.debug { "No Signal Auto Off changed!" }
+        when :auto_off
+            logger.debug { "Auto Off changed!" }
         else
             return :ignore
         end
