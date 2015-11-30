@@ -58,7 +58,7 @@ class Lg::Lcd::ModelLs5
         # Disconnected may be called without calling connected
         #
         self[:power] = false  # As we may need to use wake on lan
-        self[:power_stable] = false
+        self[:power_stable] = false if !self[:power_target].nil? && self[:power_target] != self[:power]
     end
 
 
