@@ -2,6 +2,15 @@ module Lg; end
 module Lg::Lcd; end
 
 
+# There is a secret menu that allows you to disable power management
+# 1. Press and hold the 'Setting' button on the remote for 7 seconds
+# 2. Press: 0 0 0 0 OK (Press Zero four times and then OK)
+# 3. From the signage setup, turn off DPM
+
+# For firmware updates there is a good guide here:
+# https://support.signagelive.com/hc/en-us/articles/204116196-LG-WebOS-Checking-and-Updating-Firmware-Version
+
+
 # This device does not hold the connection open. Must be configured as makebreak
 class Lg::Lcd::ModelLs5
     include ::Orchestrator::Constants    # these provide optional helper methods
