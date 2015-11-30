@@ -6,6 +6,7 @@ module Lg::Lcd; end
 # 1. Press and hold the 'Setting' button on the remote for 7 seconds
 # 2. Press: 0 0 0 0 OK (Press Zero four times and then OK)
 # 3. From the signage setup, turn off DPM
+#    * Alternatively set DPM to 1m and PM to Screen Off Always
 
 # For firmware updates there is a good guide here:
 # https://support.signagelive.com/hc/en-us/articles/204116196-LG-WebOS-Checking-and-Updating-Firmware-Version
@@ -36,6 +37,8 @@ class Lg::Lcd::ModelLs5
             logger.debug "-- Polling Display"
             do_poll
         end
+
+        self[:power_stable] = true
     end
 
     def on_update
@@ -43,10 +46,10 @@ class Lg::Lcd::ModelLs5
     end
 
     def connected
-        dpm(false)
+        configure_dpm
         wake_on_lan(true)
-	no_signal_off(false)
-	auto_off(false)
+        no_signal_off(false)
+        auto_off(false)
         do_poll
     end
 
@@ -55,6 +58,7 @@ class Lg::Lcd::ModelLs5
         # Disconnected may be called without calling connected
         #
         self[:power] = false  # As we may need to use wake on lan
+        self[:power_stable] = false
     end
 
 
@@ -69,8 +73,8 @@ class Lg::Lcd::ModelLs5
         sharpness: 'k',
         wol: 'w',
         no_signal_off: 'g',
-        auto_off: 'n'
-
+        auto_off: 'n',
+        dpm: 'j'
     }
     Lookup = Command.invert
 
@@ -80,9 +84,10 @@ class Lg::Lcd::ModelLs5
 
         # This allows polling 
         @last_broadcast = broadcast if broadcast
+        self[:power_target] = power_on
+        self[:power_stable] = false
 
         if self[:connected]
-            self[:power_target] = power_on
             mute_display !power_on
         end
         wake(broadcast) if power_on
@@ -90,6 +95,7 @@ class Lg::Lcd::ModelLs5
 
     def hard_off
         self[:power_target] = false
+        self[:power_stable] = true
         do_send(Command[:power], 0, name: :power, priority: 99)
     end
 
@@ -192,10 +198,21 @@ class Lg::Lcd::ModelLs5
     end
 
 
-    # DPM is "display power management" turn it off to ensure the display does not auto sleep
-    def dpm(enable = false)
-        val = is_affirmative?(enable) ? 1 : 0
-        do_send(Command[:dpm], val, :f, name: :disable_dpm)
+    # DPM is "display power management"
+    # turn it to 1 min
+    def configure_dpm(time_out = 4)
+        # 0 == off
+        # 1 == 5s
+        # 2 == 10s
+        # 3 == 15s
+        # 4 == 1m
+        # 5 == 3m
+        # 6 == 5m
+        # 7 == 10m
+        do_send(Command[:dpm], 4, :f, name: :disable_dpm)
+
+        # The action DPM takes needs to be configured using a remote
+        # The action should be set to: screen off always
     end
     
     def no_signal_off(enable = false)
@@ -264,9 +281,18 @@ class Lg::Lcd::ModelLs5
         when :screen_mute
             # This indicates power status as hard off we are disconnected
             self[:power] = resp_value != 1
-            self[:power_target] = self[:power] if self[:power_target].nil?
-            if self[:power_target] != self[:power]
-                power(self[:power_target])
+
+            if self[:power_stable] == false
+                # Power target should only be auto-set to on. Off is undesirable.
+                self[:power_target] = On if self[:power_target].nil? && self[:power]
+
+                # The target has been achieved
+                # This does allow users to turn off displays with a remote if they desire
+                if self[:power_target] == self[:power]
+                    self[:power_stable] = true
+                elsif self[:power_target] != nil
+                    power(self[:power_target])
+                end
             end
         when :volume_mute
             self[:audio_mute] = resp_value == 0
