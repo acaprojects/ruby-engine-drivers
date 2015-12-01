@@ -80,6 +80,16 @@ class Qsc::QSysControl
         send "login #{name} #{password}\n", name: :login, priority: 99
     end
 
+    # Used to set a dial number / string
+    def set_string(control_id, text)
+        send "css #{control_id} \"#{text}\"\n"
+    end
+
+    # Used to trigger dialing etc
+    def trigger(action)
+        send "ct #{action}\n", wait: false
+    end
+
 
 
     # Compatibility Methods
