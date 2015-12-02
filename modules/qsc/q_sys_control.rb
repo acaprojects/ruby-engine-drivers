@@ -20,6 +20,8 @@ class Qsc::QSysControl
 
 
     def on_load
+        @history = {}
+
         on_update
     end
 
@@ -48,8 +50,8 @@ class Qsc::QSysControl
 
 
 
-    def get_status(control_id)
-        send("cg #{control_id}\n")
+    def get_status(control_id, **options)
+        send("cg #{control_id}\n", options)
     end
 
     def set_position(control_id, position, ramp_time = nil)
@@ -63,19 +65,20 @@ class Qsc::QSysControl
         end
     end
 
-    def set_value(control_id, value, ramp_time = nil)
+    def set_value(control_id, value, ramp_time = nil, **options)
         if ramp_time
-            send("csvr #{control_id} #{value} #{ramp_time}\n", wait: false)
+            options[:wait] = false
+            send("csvr #{control_id} #{value} #{ramp_time}\n", options)
             schedule.in(ramp_time * 1000 + 200) do
                 get_status(control_id)
             end
         else
-            send("csv #{control_id} #{value}\n")
+            send("csv #{control_id} #{value}\n", options)
         end
     end
 
     def about
-        send "sg", name: :status, priority: 0
+        send "sg\n", name: :status, priority: 0
     end
 
     def login(name = @username, password = @password)
@@ -98,13 +101,30 @@ class Qsc::QSysControl
     def fader(fader_id, level)
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
-            set_value(fad, level)
+            set_value(fad, level, fader_type: :fader)
         end
     end
 
     # Named params version
     def faders(ids:, level:)
         fader(ids, level)
+    end
+
+    def mute(mute_id, value = true, index = nil)
+        level = is_affirmative?(value) ? 1 : 0
+
+        mutes = mute_id.is_a?(Array) ? mute_id : [mute_id]
+        mutes.each do |mute|
+            set_value(mute, level, fader_type: :mute)
+        end
+    end
+
+    def mutes(ids:, muted: true, **_)
+        mute(ids, muted)
+    end
+
+    def unmute(mute_id, index = nil)
+        mute(mute_id, false, index)
     end
 
 
@@ -118,11 +138,40 @@ class Qsc::QSysControl
 
 
 
+    # For inter-module compatibility
+    def query_fader(fader_id)
+        fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+        get_status(fad, fader_type: :fader)
+    end
+    # Named params version
+    def query_faders(ids:, **_)
+        faders = ids.is_a?(Array) ? ids : [ids]
+        faders.each do |fad|
+            get_status(fad, fader_type: :fader)
+        end
+    end
+
+
+    def query_mute(fader_id)
+        fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+        get_status(fad, fader_type: :mute)
+    end
+    # Named params version
+    def query_mutes(ids:, **_)
+        faders = ids.is_a?(Array) ? ids : [ids]
+        faders.each do |fad|
+            get_status(fad, fader_type: :mute)
+        end
+    end
+
+
+
     # -------------------
     # RESPONSE PROCESSING
     # -------------------
     def received(data, resolve, command)
         logger.debug { "QSys sent: #{data}" }
+        # rc == will disconnect
 
         resp = Shellwords.split(data)
         cmd = resp[0].to_sym
@@ -133,19 +182,54 @@ class Qsc::QSysControl
             # string rep = resp[2]
             value = resp[3].to_i
             position = resp[4].to_i
-            self["#{control_id}_#{index}"] = value
-            self["#{control_id}_#{index}_pos"] = position
+
+            self["pos_#{control_id}"] = position
+
+            type = command[:fader_type] || @history[control_id]            
+            if type
+                @history[control_id] = type
+
+                case type
+                when :fader
+                    self["fader#{control_id}"] = value
+                when :mute
+                    self["fader#{control_id}_mute"] = value == 1
+                end
+            else
+                self[control_id] = value
+                logger.debug { "Received response from unknown ID type: #{control_id} == #{value}" }
+            end
 
         when :cvv   # Control status, Array of control status
             control_id = resp[1]
             count = resp[2].to_i
 
-            # Skip strings and extract the values
-            next_count = 3 + count
-            count = resp[next_count].to_i
-            1.upto(count) do |index|
-                value = resp[next_count + index]
-                self["#{control_id}_#{index}"] = value
+            type = command[:fader_type] || @history[control_id]
+            if type
+                @history[control_id] = type
+
+                # Skip strings and extract the values
+                next_count = 3 + count
+                count = resp[next_count].to_i
+                1.upto(count) do |index|
+                    value = resp[next_count + index]
+
+                    case type
+                    when :fader
+                        self["fader#{control_id}"] = value
+                    when :mute
+                        self["fader#{control_id}_mute"] = value == 1
+                    end
+                end
+            else
+                # Skip strings and extract the values
+                next_count = 3 + count
+                count = resp[next_count].to_i
+                1.upto(count) do |index|
+                    value = resp[next_count + index]
+                    self[control_id] = value
+                end
+                logger.debug { "Received response from unknown ID type: #{control_id} == #{value}" }
             end
 
             # Grab the positions
@@ -153,7 +237,7 @@ class Qsc::QSysControl
             count = resp[next_count].to_i
             1.upto(count) do |index|
                 value = resp[next_count + index]
-                self["#{control_id}_#{index}_pos"] = value
+                self["pos_#{control_id}"] = value
             end
 
         when :sr
@@ -178,9 +262,13 @@ class Qsc::QSysControl
 
         when :login_failed
             logger.error 'Invalid login details provided'
-            
+
+        when :rc
+            logger.warn "System is notifying us of a disconnect!"
+
         else
             logger.warn "Unknown response received #{resp.join(' ')}"
+
         end
 
         return :success
