@@ -6,7 +6,7 @@ class ClockAudio::Cdt100
 
 
     # Discovery Information
-    udp_port 50000
+    udp_port 49494
     descriptive_name 'Clock Audio CDT100 Microphones'
     generic_name :Microphone
 
@@ -20,11 +20,17 @@ class ClockAudio::Cdt100
     end
 
     def on_update
+        self[:local_address] = setting(:server_ip) # || local_address
+        self[:local_port] = 49494  # TODO:: replace with local_port
     end
     
     def connected
-        # Have to init comms
-        #do_poll
+        start_async
+        do_poll
+        @polling_timer = schedule.every('60s') do
+            logger.debug "-- Polling Mics"
+            do_poll
+        end
     end
 
 
@@ -87,7 +93,7 @@ class ClockAudio::Cdt100
         end
     end
 
-    def set_arm_c(state, **options)
+    def raise(state, **options)
         val = is_affirmative?(state) ? '1' : '0'
         do_send(Commands[:set_arm_c], val, **options)
     end
@@ -105,10 +111,23 @@ class ClockAudio::Cdt100
         do_send(Commands[:preset_load], 0, **options)
     end
 
-    # TODO:: This isn't implemented yet!
+    # This lets the devices know which IP and port to respond to
+    # God forbid they do any packet inspection. I guess it might be useful in a distributed system
     def start_async
-        do_send(Commands[:async], "#{local_address}:#{local_port}", **options)
+        do_send(Commands[:async], "#{self[:local_address]}:#{self[:local_port]}", **options)
     end
+
+
+    # Returns the mic power on/off state
+    def get_phantom
+        do_send(Commands[:query], priority: 0)
+    end
+
+    # Returns the raised/lowered state
+    def is_raised?
+        do_send(Commands[:get_arm_c], priority: 0)
+    end
+
 
   
     def received(data, resolve, command)        # Data is default received as a string
@@ -190,6 +209,12 @@ class ClockAudio::Cdt100
         end
 
         :success
+    end
+
+
+    def do_poll
+        is_raised?
+        get_phantom
     end
 
 
