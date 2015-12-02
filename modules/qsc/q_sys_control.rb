@@ -1,4 +1,5 @@
 require 'shellwords'
+require 'set'
 
 module Qsc; end
 
@@ -21,6 +22,8 @@ class Qsc::QSysControl
 
     def on_load
         @history = {}
+        @change_groups = {}
+        @change_group_id = 30
 
         on_update
     end
@@ -32,6 +35,18 @@ class Qsc::QSysControl
 
     def connected
         login if @username
+
+        @change_groups.each do |name, group|
+            group_id = group[:id]
+            controls = group[:controls]
+
+            # Re-create change groups and poll every 2 seconds
+            send "cgc #{group_id}\n", wait: false
+            send "cgsna #{group_id} 2000\n", wait: false
+            controls.each do |id|
+                send "cga #{group_id} #{id}\n", wait: false
+            end
+        end
 
         @polling_timer = schedule.every('40s') do
             logger.debug "Maintaining Connection"
@@ -96,8 +111,9 @@ class Qsc::QSysControl
     end
 
 
-
+    # ---------------------
     # Compatibility Methods
+    # ---------------------
     def fader(fader_id, level)
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
@@ -161,6 +177,77 @@ class Qsc::QSysControl
         faders = ids.is_a?(Array) ? ids : [ids]
         faders.each do |fad|
             get_status(fad, fader_type: :mute)
+        end
+    end
+
+
+    # ----------------------
+    # Soft phone information
+    # ----------------------
+    def phone_number(number, control_id)
+        set_string control_id, number
+    end
+
+    def phone_dial(control_id)
+        trigger control_id
+        schedule.in 200 do
+            poll_change_group :phone
+        end
+    end
+
+    def phone_hangup(control_id)
+        trigger control_id
+        schedule.in 200 do
+            poll_change_group :phone
+        end
+    end
+
+    def phone_startup(*ids)
+        # Check change group exists
+        group = @change_groups[:phone]
+        if group.nil?
+            group = create_change_group(:phone)
+        end
+
+        group_id = group[:id]
+        controls = group[:controls]
+
+        # Add ids to change group
+        ids.each do |id|
+            actual = id.to_s
+            if not controls.include? actual
+                controls << actual
+                send "cga #{group_id} #{actual}\n", wait: false
+            end
+        end
+    end
+
+    def create_change_group(name)
+        # Don't recreate if already exists
+        name = name.to_sym
+        group = @change_groups[name]
+        return group if group
+
+        # Provide a unique group id
+        next_id = @change_group_id
+        @change_group_id += 1
+
+        group = {
+            id: next_id,
+            controls: Set.new
+        }
+        @change_groups[name] = group
+
+        # create change group and poll every 2 seconds
+        send "cgc #{next_id}\n", wait: false
+        send "cgsna #{next_id} 2000\n", wait: false
+        group
+    end
+
+    def poll_change_group(name)
+        group = @change_groups[name.to_sym]
+        if group
+            send "cgpna #{group[:id]}\n", wait: false
         end
     end
 
@@ -240,6 +327,7 @@ class Qsc::QSysControl
                 self["pos_#{control_id}"] = value
             end
 
+        # About response
         when :sr
             self[:design_name] = resp[1]
             self[:is_primary] = resp[3] == '1'
