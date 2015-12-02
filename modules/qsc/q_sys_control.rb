@@ -271,6 +271,7 @@ class Qsc::QSysControl
             position = resp[4].to_i
 
             self["pos_#{control_id}"] = position
+            self[control_id] = value
 
             type = command[:fader_type] || @history[control_id]            
             if type
@@ -283,7 +284,6 @@ class Qsc::QSysControl
                     self["fader#{control_id}_mute"] = value == 1
                 end
             else
-                self[control_id] = value
                 logger.debug { "Received response from unknown ID type: #{control_id} == #{value}" }
             end
 
