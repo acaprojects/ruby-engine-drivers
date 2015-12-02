@@ -1,3 +1,5 @@
+require 'shellwords'
+
 module Qsc; end
 
 # The older V1 protocol
