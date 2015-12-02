@@ -94,6 +94,7 @@ class Samsung::Displays::MdSeries
         elsif !self[:connected]
             wake(broadcast)
         else
+            do_send(:hard_off, 1)
             do_send(:power, 0)
         end
     end
