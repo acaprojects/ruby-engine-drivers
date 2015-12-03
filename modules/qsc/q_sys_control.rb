@@ -202,7 +202,9 @@ class Qsc::QSysControl
         end
     end
 
-    def phone_startup(*ids)
+    def phone_watch(control_ids)
+        ids = control_ids.class == Array ? control_ids : [control_ids]
+
         # Check change group exists
         group = @change_groups[:phone]
         if group.nil?
@@ -267,23 +269,27 @@ class Qsc::QSysControl
         when :cv
             control_id = resp[1]
             # string rep = resp[2]
-            value = resp[3].to_i
+            value = resp[3]
             position = resp[4].to_i
 
             self["pos_#{control_id}"] = position
-            self[control_id] = value
 
             type = command[:fader_type] || @history[control_id]            
             if type
                 @history[control_id] = type
-
+                
                 case type
                 when :fader
-                    self["fader#{control_id}"] = value
+                    self["fader#{control_id}"] = value.to_i
                 when :mute
-                    self["fader#{control_id}_mute"] = value == 1
+                    self["fader#{control_id}_mute"] = value.to_i == 1
                 end
             else
+                if value == '0' || value == '1'
+                    self[control_id] = value == '1'
+                else
+                    self[control_id] = value
+                end
                 logger.debug { "Received response from unknown ID type: #{control_id} == #{value}" }
             end
 
@@ -353,6 +359,9 @@ class Qsc::QSysControl
 
         when :rc
             logger.warn "System is notifying us of a disconnect!"
+
+        when :cmvv
+            logger.debug 'received cmvv response'
 
         else
             logger.warn "Unknown response received #{resp.join(' ')}"
