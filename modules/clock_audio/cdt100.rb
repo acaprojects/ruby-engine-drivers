@@ -8,24 +8,23 @@ class ClockAudio::Cdt100
     # Discovery Information
     udp_port 49494
     descriptive_name 'Clock Audio CDT100 Microphones'
-    generic_name :Microphone
+    generic_name :TableMics
 
 
     # Communication settings
     tokenise delimiter: "\r\0"
-    wait_response false # NOTE:: Temporary!!
 
 
     def on_load
     end
 
     def on_update
-        self[:local_address] = setting(:server_ip) # || local_address
-        self[:local_port] = 49494  # TODO:: replace with local_port
+        #@local_address = setting(:server_ip) # || local_address
+        #@local_port] = 49494  # TODO:: replace with local_port
     end
     
     def connected
-        start_async
+        #start_async
         do_poll
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling Mics"
@@ -93,7 +92,7 @@ class ClockAudio::Cdt100
         end
     end
 
-    def raise(state, **options)
+    def raise_mics(state, **options)
         val = is_affirmative?(state) ? '1' : '0'
         do_send(Commands[:set_arm_c], val, **options)
     end
@@ -114,17 +113,17 @@ class ClockAudio::Cdt100
     # This lets the devices know which IP and port to respond to
     # God forbid they do any packet inspection. I guess it might be useful in a distributed system
     def start_async
-        do_send(Commands[:async], "#{self[:local_address]}:#{self[:local_port]}", **options)
+        do_send(Commands[:async], "#{@local_address}:#{@local_port}", **options)
     end
 
 
     # Returns the mic power on/off state
-    def get_phantom
+    def phantom_on?
         do_send(Commands[:query], priority: 0)
     end
 
     # Returns the raised/lowered state
-    def is_raised?
+    def mics_raised?
         do_send(Commands[:get_arm_c], priority: 0)
     end
 
@@ -187,7 +186,7 @@ class ClockAudio::Cdt100
 
             when :set_arm_c, :get_arm_c
                 # ACK GARMC 1
-                self[:arm_c] = result[2].to_i == 1
+                self[:raised] = result[2].to_i == 1
 
             when :address
                 # ACK GAS something,with,commas
@@ -213,8 +212,8 @@ class ClockAudio::Cdt100
 
 
     def do_poll
-        is_raised?
-        get_phantom
+        mics_raised?
+        phantom_on?
     end
 
 
