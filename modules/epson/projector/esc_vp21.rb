@@ -77,7 +77,8 @@ class Epson::Projector::EscVp21
     # Input selection
     #
     INPUTS = {
-        :hdmi => 0x30 # TODO:: Might need to have a setting for configuring this
+        :hdmi => 0x30,
+        :hdbaset => 80
     }
     INPUTS.merge!(INPUTS.invert)
     
@@ -125,6 +126,13 @@ class Epson::Projector::EscVp21
         do_send(:MUTE, :OFF, {:name => :video_mute})
         do_send(:MUTE)
     end
+
+    def input?
+        do_send(:SOURCE, {
+            :name => :inpt_query,
+            :priority => 0
+        })
+    end
     
     
     ERRORS = {
@@ -155,7 +163,7 @@ class Epson::Projector::EscVp21
     # epson Response code
     #
     def received(data, resolve, command)        # Data is default received as a string
-        logger.debug "epson Proj sent: #{data}"
+        logger.debug { "epson Proj sent: #{data}" }
 
         if data == ':'
             return :success
