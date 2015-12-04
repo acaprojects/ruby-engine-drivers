@@ -274,7 +274,12 @@ class Qsc::QSysControl
 
             self["pos_#{control_id}"] = position
 
-            type = command[:fader_type] || @history[control_id]            
+            type = if command
+                command[:fader_type] || @history[control_id]
+            else
+                @history[control_id]
+            end
+
             if type
                 @history[control_id] = type
                 
@@ -285,8 +290,9 @@ class Qsc::QSysControl
                     self["fader#{control_id}_mute"] = value.to_i == 1
                 end
             else
-                if value == '0' || value == '1'
-                    self[control_id] = value == '1'
+                value = resp[2]
+                if value == 'false' || value == 'true'
+                    self[control_id] = value == 'true'
                 else
                     self[control_id] = value
                 end
@@ -297,7 +303,12 @@ class Qsc::QSysControl
             control_id = resp[1]
             count = resp[2].to_i
 
-            type = command[:fader_type] || @history[control_id]
+            type = if command
+                command[:fader_type] || @history[control_id]
+            else
+                @history[control_id]
+            end
+
             if type
                 @history[control_id] = type
 
@@ -315,14 +326,22 @@ class Qsc::QSysControl
                     end
                 end
             else
-                # Skip strings and extract the values
-                next_count = 3 + count
-                count = resp[next_count].to_i
+                # Don't skip strings here
+                next_count = 2
                 1.upto(count) do |index|
                     value = resp[next_count + index]
-                    self[control_id] = value
+
+                    if value == 'false' || value == 'true'
+                        self[control_id] = value == 'true'
+                    else
+                        self[control_id] = value
+                    end
                 end
                 logger.debug { "Received response from unknown ID type: #{control_id} == #{value}" }
+
+                # Jump to the position values
+                next_count = 3 + count
+                count = resp[next_count].to_i
             end
 
             # Grab the positions
