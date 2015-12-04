@@ -115,6 +115,8 @@ class Qsc::QSysControl
     # Compatibility Methods
     # ---------------------
     def fader(fader_id, level)
+        level = level.to_f / 10
+
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
             set_value(fad, level, fader_type: :fader)
@@ -285,7 +287,7 @@ class Qsc::QSysControl
                 
                 case type
                 when :fader
-                    self["fader#{control_id}"] = value.to_i
+                    self["fader#{control_id}"] = (value.to_f * 10).to_i
                 when :mute
                     self["fader#{control_id}_mute"] = value.to_i == 1
                 end
@@ -294,7 +296,7 @@ class Qsc::QSysControl
                 if value == 'false' || value == 'true'
                     self[control_id] = value == 'true'
                 else
-                    self[control_id] = value
+                    self[control_id] = value.gsub('_', ' ')
                 end
                 logger.debug { "Received response from unknown ID type: #{control_id} == #{value}" }
             end
@@ -320,7 +322,7 @@ class Qsc::QSysControl
 
                     case type
                     when :fader
-                        self["fader#{control_id}"] = value
+                        self["fader#{control_id}"] = (value.to_f * 10).to_i
                     when :mute
                         self["fader#{control_id}_mute"] = value == 1
                     end
@@ -334,7 +336,7 @@ class Qsc::QSysControl
                     if value == 'false' || value == 'true'
                         self[control_id] = value == 'true'
                     else
-                        self[control_id] = value
+                        self[control_id] = value.gsub('_', ' ')
                     end
                 end
                 logger.debug { "Received response from unknown ID type: #{control_id} == #{value}" }
