@@ -163,15 +163,14 @@ class ClockAudio::Cdt100
                 end while result.length > 1
 
             when :query
-                # ACK QUERY garbage PP 1 ON PP 3 OFF
-                while result[0] != 'PP'
-                    result.shift
-                end
+                # ACK QUERY PP1=ON PP2=ON PP3=ON PP4=ON ID=OFF
+                result.shift
+                result.shift
 
-                while result[0] == 'PP'
-                    item = result.shift # PP
-                    channel = result.shift
-                    state = result.shift == 'ON'
+                while result[0] =~ /^PP/
+                    item = result.shift # PP1
+                    channel = item[2]
+                    state = item[-2..-1] == 'ON'
 
                     set_status(item, channel, state)
                 end
@@ -221,7 +220,7 @@ class ClockAudio::Cdt100
 
 
     def set_status(item, channel, state)
-        if channel == 0
+        if channel.to_i == 0
             1.upto(MaxChannels) do |index|
                 self["#{Commands[item]}_#{index}"] = state
             end
