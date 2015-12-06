@@ -172,8 +172,10 @@ class ClockAudio::Cdt100
                     channel = item[2]
                     state = item[-2..-1] == 'ON'
 
-                    set_status(item, channel, state)
+                    set_status('PP', channel, state)
                 end
+
+                self[:id] = result[0][-2..-1] == 'ON'
 
             when :phantom
                 # ACK PP 2 1
