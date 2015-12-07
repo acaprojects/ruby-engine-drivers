@@ -13,6 +13,7 @@ class ClockAudio::Cdt100
 
     # Communication settings
     tokenise delimiter: "\r\0"
+    delay between_sends: 150
 
 
     def on_load

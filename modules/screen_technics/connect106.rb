@@ -38,7 +38,7 @@ class ScreenTechnics::Connect106
         stop(index)
         do_send({
             state: :down,
-            body: "Down#{index}=Down",
+            body: {"Down#{index}" => "Down"},
             name: :"position#{index}",
             index: index
         })
@@ -48,7 +48,7 @@ class ScreenTechnics::Connect106
         stop(index)
         do_send({
             state: :up,
-            body: "Up#{index}=Up",
+            body: {"Up#{index}" => "Up"},
             name: :"position#{index}",
             index: index
         })
@@ -56,7 +56,7 @@ class ScreenTechnics::Connect106
 
     def stop(index = 1)
         do_send({
-            body: "Stop#{index}=Stop",
+            body: {"Stop#{index}" => "Stop"},
             name: :"stop#{index}",
             priority: 99,
             clear_queue: true
@@ -70,14 +70,15 @@ class ScreenTechnics::Connect106
     def do_send(options)
         state = options.delete(:state)
         index = options.delete(:index)
-        options[:cookie] = {
+        options[:headers] ||= {}
+        options[:headers][:cookie] = {
             :LoggedIn => :Technical,
             :IRSel => 1,
             :SWSel => 1,
             :MAFSel => 1,
             :IDSel => 1
         }
-        post('/TDirectControl.html', options) do
+        post('/TDirectControl', options) do
             self[:"screen#{index}"] = state if state
             :success
         end
