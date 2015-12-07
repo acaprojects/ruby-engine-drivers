@@ -303,12 +303,10 @@ class HuddleCam::Visca
         when :pantilt
             hex = byte_to_hex(data[2..5])
             pan_hex = ''
-            logger.debug "HEX PAN #{hex}"
             pan_hex << hex[1] << hex[3] << hex[5] << hex[7]
             self[:pan] = pan_hex.to_i(16)
 
             hex = byte_to_hex(data[6..-1])
-            logger.debug "HEX TILT #{hex}"
             tilt_hex = ''
             tilt_hex << hex[1] << hex[3] << hex[5] << hex[7]
             self[:tilt] = tilt_hex.to_i(16)
