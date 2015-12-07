@@ -560,6 +560,11 @@ class Aca::MeetingRoom < Aca::Joiner
         disp_source = self[:sources][source]
 
 
+        # We might not actually want to switch anything (support tab)
+        # Especially if the room only as a single display (switch on tab select)
+        return if disp_source[:ignore]
+
+
         # Task 1: switch the display on and to the correct source
         unless disp_info[:no_mod]
             disp_mod = system.get_implicit(display)
