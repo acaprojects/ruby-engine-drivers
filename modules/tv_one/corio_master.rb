@@ -11,7 +11,7 @@ class TvOne::CorioMaster
     generic_name :VideoWall
 
     # Communication settings
-    # tokenize delimiter: "\r\n" # This my guess
+    tokenize delimiter: "\r\n", wait_ready: "Interface Ready"
     delay between_sends: 150
 
 
@@ -23,14 +23,16 @@ class TvOne::CorioMaster
     end
     
     def on_update
-        @username = setting(:username) # || default username
-        @password = setting(:password) # || default password
+        @username = setting(:username) || 'admin'
+        @password = setting(:password) || 'adminpw'
     end
     
     def connected
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling CORIOmaster"
-            send "CORIOmax.Model_Name", priority: 0, name: :name
+
+            # Get the current preset
+            preset
         end
 
         login
@@ -43,9 +45,7 @@ class TvOne::CorioMaster
     end
 
     def login
-        if @username
-            send "Login(#{@username},#{password})\r\n", priotity: 99
-        end
+        send "login(#{@username},#{@password})\r\n", priotity: 99
     end
 
     def reboot
@@ -60,14 +60,38 @@ class TvOne::CorioMaster
         end
     end
 
+    # Runs any command provided
+    def send_command(cmd)
+        send "#{cmd}\r\n", wait: false
+    end
+
     
     protected
 
 
     def received(data, resolve, command)
-        logger.debug { "CORIO sent: #{data}" }
+        if data[1..5] == 'Error'
+            logger.warn "CORIO error: #{data}"
+            return :abort if command
+        else
+            logger.debug { "CORIO sent: #{data}" }
+        end
 
-        :success
+        if command
+            if data[0] == '!'
+                result = data.split(' ')
+                case result[0].to_sym
+                when :"Preset.Take"
+                    self[:preset] = result[-1].to_i
+                end
+
+                :success
+            else
+                :ignore
+            end
+        else
+            :success
+        end
     end
 end
 

@@ -72,9 +72,9 @@ class HuddleCam::Visca
 
         # Execute command
         if target == On
-            send_cmd "\x04\x00\x02", name: :power
+            send_cmd "\x04\x00\x02", name: :power, delay: 10000
         else
-            send_cmd "\x04\x00\x03", name: :power
+            send_cmd "\x04\x00\x03", name: :power, delay: 10000
         end
 
         # ensure the comman ran successfully
@@ -201,6 +201,8 @@ class HuddleCam::Visca
         end
         cmd << hex_to_byte(value)
 
+        self[:zoom] = position
+
         send_cmd cmd, name: :zoom
     end
 
@@ -302,7 +304,9 @@ class HuddleCam::Visca
             self[:power] = bytes[-1] == 2
 
             if !self[:power_target].nil? && self[:power_target] != self[:power]
-                power self[:power_target]
+                schedule.in 3000 do
+                    power(self[:power_target]) if self[:power_target] != self[:power]
+                end
             end
         when :zoom
             hex = byte_to_hex(data[2..-1])
