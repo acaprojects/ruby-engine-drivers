@@ -50,7 +50,13 @@ class HuddleCam::Visca
     def connected
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling Huddle Camera"
-            # TODO::
+            power? do
+                if self[:power] == On
+                    zoom?
+                    pantilt?
+                    autofocus?
+                end
+            end
         end
     end
     
@@ -216,11 +222,14 @@ class HuddleCam::Visca
 
     # Recall a preset from the database
     def preset(name)
-        values = @presets[name.to_sym]
+        name_sym = name.to_sym
+        values = @presets[name_sym]
         if values
             pantilt(values[:pan], values[:tilt])
             zoom(values[:zoom])
             true
+        elsif name_sym == :default
+            home
         else
             false
         end
@@ -291,6 +300,10 @@ class HuddleCam::Visca
         case command[:inq]
         when :power
             self[:power] = bytes[-1] == 2
+
+            if !self[:power_target].nil? && self[:power_target] != self[:power]
+                power self[:power_target]
+            end
         when :zoom
             hex = byte_to_hex(data[2..-1])
             hex_new = ''
