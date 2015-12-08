@@ -35,6 +35,10 @@ class Aca::MeetingRoom < Aca::Joiner
                 end
             end
 
+            # Grab any video wall details
+            # {Display_1: {module: VidWall, input: display_port} }
+            @vidwalls = setting(:vidwalls) || {}
+
             # Grab the list of inputs and outputs
             self[:sources] = setting(:sources)
             self[:outputs] = setting(:outputs)
@@ -439,6 +443,11 @@ class Aca::MeetingRoom < Aca::Joiner
         system.all(:Camera).power(Off)
         system.all(:Visualiser).power(Off)
 
+        # Turn off video wall slave displays
+        @vidwalls.each do |key, details|
+            system.all(details[:module]).power(Off)
+        end
+
         self[:state] = :shutdown
     end
 
@@ -571,12 +580,22 @@ class Aca::MeetingRoom < Aca::Joiner
 
             if disp_mod[:power] == Off || disp_mod[:power_target] == Off
                 arity = disp_mod.arity(:power)
+                wall_details = @vidwalls[display]
+                wall_display = system.all(wall_details[:module]) if wall_details
 
                 # Check if we need to broadcast to turn it on
                 if setting(:broadcast) && check_arity(arity)
                     disp_mod.power(On, setting(:broadcast))
+                    if wall_details
+                        wall_display.power(On, setting(:broadcast))
+                        wall_display.switch_to wall_details[:input]
+                    end
                 else
                     disp_mod.power(On)
+                    if wall_details
+                        wall_display.power(On)
+                        wall_display.switch_to wall_details[:input]
+                    end
                 end
 
                 # Set default levels if it was off
@@ -653,12 +672,36 @@ class Aca::MeetingRoom < Aca::Joiner
                     display.power Off
                 end
             end
+
+            @vidwalls.each do |key, details|
+                display = system.get_implicit(key)
+                if display
+                    arity = display.arity(:power)
+                    if check_arity(arity)
+                        walldisp = system.all(details[:module])
+                        walldisp.power(On, setting(:broadcast))
+                        walldisp.power Off
+                    end
+                else
+                    logger.error "Invalid video wall configuration!"
+                end
+            end
         end
     end
 
     def hard_off_displays
         system.all(:Display).each do |disp|
             disp.hard_off if disp.respond_to? :hard_off
+        end
+
+        @vidwalls.each do |key, details|
+            display = system.get_implicit(key)
+            if display.respond_to? :hard_off
+                walldisp = system.all(details[:module])
+                walldisp.hard_off
+            else
+                logger.error "Invalid video wall configuration!"
+            end
         end
     end
 
