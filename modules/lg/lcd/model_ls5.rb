@@ -39,6 +39,7 @@ class Lg::Lcd::ModelLs5
         end
 
         self[:power_stable] = true
+        self[:input_stable] = true
     end
 
     def on_update
@@ -115,6 +116,7 @@ class Lg::Lcd::ModelLs5
         # After a WOL event
         source_sym = source.to_sym
         self[:input_target] = source_sym
+        self[:input_stable] = false
 
         val = Inputs[source_sym]
         do_send(Command[:input], val, 'x'.freeze, name: :input, delay_on_receive: 2000)
@@ -275,7 +277,9 @@ class Lg::Lcd::ModelLs5
         when :input
             self[:input] = Inputs[resp_value] || :unknown
             self[:input_target] = self[:input] if self[:input_target].nil?
-            if self[:input_target] != self[:input]
+            if self[:input_target] == self[:input]
+                self[:input_stable] = true
+            else
                 switch_to(self[:input_target])
             end
         when :screen_mute
