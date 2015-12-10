@@ -1,0 +1,345 @@
+require 'shellwords'
+require 'set'
+
+
+module Cisco; end
+module Cisco::TelePresence; end
+
+
+class Cisco::TelePresence::SxCamera
+    include ::Orchestrator::Constants
+    include ::Orchestrator::Transcoder
+
+
+    # Discovery Information
+    tcp_port 23
+    descriptive_name 'Cisco TelePresence Camera'
+    generic_name :Camera
+
+    # Communication settings
+    tokenize delimiter: "\r\n"
+    clear_queue_on_disconnect!
+
+
+
+    def on_load
+        # Constants that are made available to interfaces
+        self[:pan_speed_max] = 15
+        self[:pan_speed_min] = 1
+        self[:tilt_speed_max] = 15
+        self[:tilt_speed_min] = 1
+
+        self[:joy_left] = -15
+        self[:joy_right] = 15
+        self[:joy_center] = 0
+
+        self[:pan_max] = 65535    # Right
+        self[:pan_min] = -65535   # Left
+        self[:pan_center] = 0
+        self[:tilt_max] = 65535   # UP
+        self[:tilt_min] = -65535  # Down
+        self[:tilt_center] = 0
+
+        self[:zoom_max] = 65535
+        self[:zoom_min] = 0
+
+        # Allow more ignores
+        defaults max_waits: 5 
+
+        on_update
+    end
+    
+    def on_update
+        @presets = setting(:presets) || {}
+        self[:presets] = @presets.keys
+
+        @index = setting(:camera_index) || 1
+        self[:camera_index] = @index
+    end
+    
+    def connected
+        self[:power] = true
+
+
+        do_send "Echo off", wait: false, priority: 98
+        do_poll 
+        @polling_timer = schedule.every('60s') do
+            logger.debug "-- Polling Camera"
+            do_poll
+        end
+    end
+    
+    def disconnected
+        self[:power] = false
+
+        @polling_timer.cancel unless @polling_timer.nil?
+        @polling_timer = nil
+    end
+
+
+    def power(state)
+        self[:power]  # Here for compatibility with other camera modules
+    end
+
+    def power?(options = nil, &block)
+        block.call unless block.nil?
+        self[:power]
+    end
+
+
+    def home
+        command "Camera PositionReset CameraId:#{@index}", name: :preset
+    end
+
+    def autofocus
+        command "Camera TriggerAutofocus CameraId:#{@index}"
+    end
+
+
+    # Absolute position
+    def pantilt(pan, tilt)
+        pan = in_range(pan.to_i, self[:pan_max], self[:pan_min])
+        tilt = in_range(tilt.to_i, self[:tilt_max], self[:tilt_min])
+
+        command('Camera PositionSet', params({
+            :CameraId => @index,
+            :Pan => pan,
+            :Tilt => tilt
+        }), name: :pantilt).then do
+            autofocus
+        end
+    end
+
+    def zoom(position)
+        val = in_range(position.to_i, self[:zoom_max], self[:zoom_min])
+
+        command('Camera PositionSet', params({
+            :CameraId => @index,
+            :Zoom => val
+        }), name: :zoom).then do
+            autofocus
+        end
+    end
+
+    def joystick(pan_speed, tilt_speed)
+        left_max = self[:joy_left]
+        right_max = self[:joy_right]
+
+        pan_speed = in_range(pan_speed.to_i, right_max, left_max)
+        tilt_speed = in_range(tilt_speed.to_i, right_max, left_max)
+
+        is_centered = false
+        if pan_speed == 0 && tilt_speed == 0
+            is_centered = true
+        end
+
+        options = {}
+        options[:name] = :joystick
+
+        if is_centered
+            options[:clear_queue] = true
+            options[:priority] = 99  # Make sure it is executed asap
+
+            # Request the current position once the stop command
+            # has run, we are clearing the queue so we use promises to
+            # ensure the pantilt command is executed
+            command('Camera Ramp', params({
+                :CameraId => @index,
+                :Pan => :stop,
+                :Tilt => :stop
+            }), **options).then do
+                autofocus
+                pantilt?
+            end
+        else
+            # Calculate direction
+            dir_hori = :stop
+            if pan_speed > 0
+                dir_hori = :right
+            elsif pan_speed < 0
+                dir_hori = :left
+            end
+            
+            dir_vert = :stop
+            if tilt_speed > 0
+                dir_vert = :up
+            elsif tilt_speed < 0
+                dir_vert = :down
+            end
+
+            # Find the absolute speed
+            pan_speed = pan_speed * -1 if pan_speed < 0
+            tilt_speed = tilt_speed * -1 if tilt_speed < 0
+
+            # Build the request
+            cmd = ["Camera Ramp CameraId:#{@index}"]
+            if dir_hori == :stop
+                cmd << "Pan:stop"
+            else
+                cmd << params(:Pan => dir_hori, :PanSpeed => pan_speed)
+            end
+
+            if dir_vert == :stop
+                cmd << "Tilt:stop"
+            else
+                cmd << params(:Tilt => dir_vert, :TiltSpeed => tilt_speed)
+            end
+            command *cmd, **options
+        end
+    end
+
+
+    # ---------------------------------
+    # Preset Management
+    # ---------------------------------
+    def preset(name)
+        name_sym = name.to_sym
+        values = @presets[name_sym]
+
+        if values
+            pantilt(values[:pan], values[:tilt])
+            zoom(values[:zoom])
+            true
+        elsif name_sym == :default
+            home
+        else
+            false
+        end
+    end
+
+    # Recall a preset from the camera
+    def recall_position(number)
+        number = in_range(number, 15, 1)
+
+        command('Camera PositionActivateFromPreset', params({
+            :CameraId => @index,
+            :PresetId => number
+        }), name: :preset)
+    end
+
+    def save_position(number)
+        number = in_range(number, 15, 1)
+        
+        command('Camera Preset Store', params({
+            :CameraId => @index,
+            :PresetId => number
+        }))
+    end
+
+
+
+    # ---------------
+    # STATUS REQUESTS
+    # ---------------
+
+    def connected?
+        status "Camera #{@index} Connected", priority: 0, name: :connected?
+    end
+
+    def pantilt?
+        status "Camera #{@index} Position Pan", priority: 0, name: :pan?
+        status "Camera #{@index} Position Tilt", priority: 0, name: :tilt?
+    end
+
+    def zoom?
+        status "Camera #{@index} Position Zoom", priority: 0, name: :zoom?
+    end
+
+    def manufacturer?
+        status "Camera #{@index} Manufacturer", priority: 0, name: :manufacturer?
+    end
+
+    def model?
+        status "Camera #{@index} Model", priority: 0, name: :model?
+    end
+
+    def flipped?
+        status "Camera #{@index} Flip", priority: 0, name: :flipped?
+    end
+
+
+    def do_poll
+        connected?.then do
+            if self[:connected]
+                zoom?
+                pantilt?
+            end
+        end
+    end
+
+    
+    IsResponse = '*s'.freeze
+    IsComplete = '**'.freeze
+    def received(data, resolve, command)
+        logger.debug { "Cam sent #{data}" }
+
+        result = Shellwords.split data
+
+        if command
+            if result[0] == IsComplete
+                return :success
+            elsif result[0] != IsResponse
+                return :ignore
+            end
+        end
+
+        if result[0] == IsResponse
+            type = result[3].downcase.gsub(':', '').to_sym
+
+            case type
+            when :position
+                # Tilt: Pan: Zoom: etc so we massage to our desired status variables
+                self[result[4].downcase.gsub(':', '').to_sym] = result[-1].to_i
+            when :connected
+                self[:connected] = result[-1].downcase == 'true'
+            when :model
+                self[:model] = result[-1]
+            when :manufacturer
+                self[:manufacturer] = result[-1]
+            when :flip
+                # Can be auto/on/off
+                self[:flip] = result[-1].downcase != 'off'
+            end
+
+            return :ignore
+        end
+        
+        return :success
+    end
+    
+    
+    protected
+
+
+    def params(opts = {})
+        return nil if opts.empty?
+
+        cmd = ''
+        opts.each do |key, value|
+            next if value.blank?
+            cmd << key
+            cmd << ':'
+            cmd << value
+            cmd << ' '
+        end
+        cmd.chop!
+        cmd
+    end
+    
+
+    def command(*args, **options)
+        args.reject! { |item| item.blank? }
+        cmd = "xcommand #{args.join(' ')}"
+        do_send cmd, options
+    end
+
+    def status(*args, **options)
+        args.reject! { |item| item.blank? }
+        do_send "xstatus #{args.join(' ')}", options
+    end
+
+    def do_send(command, options)
+        send "#{command}\r\n", options
+    end
+end
+

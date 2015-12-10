@@ -153,10 +153,13 @@ class HuddleCam::Visca
         if is_centered
             options[:clear_queue] = true
             cmd << "\x01\x01\x03\x03"
-            send_cmd cmd, options
 
-            # Request the current position
-            pantilt?
+            # Request the current position once the stop command
+            # has run, we are clearing the queue so we use promises to
+            # ensure the pantilt command is executed
+            send_cmd(cmd, options).then do
+                pantilt?
+            end
         else
             # below stop, above queries in priority
             options[:priority] = 10
