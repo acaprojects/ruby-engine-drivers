@@ -106,6 +106,8 @@ class Cisco::TelePresence::SxCamera
             :Pan => pan,
             :Tilt => tilt
         }), name: :pantilt).then do
+            self[:pan] = pan
+            self[:tilt] = tilt
             autofocus
         end
     end
@@ -117,6 +119,7 @@ class Cisco::TelePresence::SxCamera
             :CameraId => @index,
             :Zoom => val
         }), name: :zoom).then do
+            self[:zoom] = val
             autofocus
         end
     end

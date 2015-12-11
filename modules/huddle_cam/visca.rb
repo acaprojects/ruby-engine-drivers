@@ -72,9 +72,9 @@ class HuddleCam::Visca
 
         # Execute command
         if target == On
-            send_cmd "\x04\x00\x02", name: :power, delay: 10000
+            send_cmd "\x04\x00\x02", name: :power, delay: 15000
         else
-            send_cmd "\x04\x00\x03", name: :power, delay: 10000
+            send_cmd "\x04\x00\x03", name: :power, delay: 15000
         end
 
         # ensure the comman ran successfully
@@ -151,7 +151,8 @@ class HuddleCam::Visca
         cmd = "\x06\x01"
 
         if is_centered
-            options[:clear_queue] = true
+            options[:priority] = 99
+            options[:retries] = 5
             cmd << "\x01\x01\x03\x03"
 
             # Request the current position once the stop command
@@ -161,8 +162,7 @@ class HuddleCam::Visca
                 pantilt?
             end
         else
-            # below stop, above queries in priority
-            options[:priority] = 10
+            options[:retries] = 0
 
             # Calculate direction
             dir_hori = nil
