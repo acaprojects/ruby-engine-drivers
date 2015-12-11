@@ -36,6 +36,9 @@ class HuddleCam::Visca
         self[:tilt_min] = 0        # Down
         self[:tilt_center] = (0x01C8 / 2).to_i
 
+        self[:zoom_max] = 16384
+        self[:zoom_min] = 0
+
         on_update
     end
     
@@ -192,6 +195,8 @@ class HuddleCam::Visca
     end
 
     def zoom(position, focus = 0)
+        val = in_range(position.to_i, self[:zoom_max], self[:zoom_min])
+        
         cmd = "\x04\x47"
 
         # Format the zoom focus values as required
