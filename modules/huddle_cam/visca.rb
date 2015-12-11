@@ -284,7 +284,8 @@ class HuddleCam::Visca
     end
 
 
-    RespComplete = "\x90\x51"
+    RespComplete = "\x90\x51".freeze
+    RespIgnore = "\x90\x41".freeze
     def received(data, resolve, command)
         logger.debug { "Huddle sent 0x#{byte_to_hex(data)}" }
 
@@ -299,6 +300,7 @@ class HuddleCam::Visca
 
         # This will probably not ever be true
         return :success unless command && command[:inq]
+        return :ignore if data == RespIgnore
 
         # Process the response
         bytes = str_to_array(data)
