@@ -72,6 +72,12 @@ class TvOne::CorioMaster
     def received(data, resolve, command)
         if data[1..5] == 'Error'
             logger.warn "CORIO error: #{data}"
+
+            # Attempt to login if we are not currently
+            if data =~ /Not Logged In/i
+                login
+            end
+
             return :abort if command
         else
             logger.debug { "CORIO sent: #{data}" }
