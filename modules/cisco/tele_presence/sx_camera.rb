@@ -140,7 +140,7 @@ class Cisco::TelePresence::SxCamera
         options[:name] = :joystick
 
         if is_centered
-            options[:clear_queue] = true
+            options[:retries] = 5
             options[:priority] = 99  # Make sure it is executed asap
 
             # Request the current position once the stop command
@@ -155,6 +155,8 @@ class Cisco::TelePresence::SxCamera
                 pantilt?
             end
         else
+            options[:retries] = 0
+            
             # Calculate direction
             dir_hori = :stop
             if pan_speed > 0
