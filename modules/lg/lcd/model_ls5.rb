@@ -43,7 +43,8 @@ class Lg::Lcd::ModelLs5
     end
 
     def on_update
-        @id = (setting(:display_id) || 1).to_s.rjust(2, '0')
+        @id_num = setting(:display_id) || 1
+        @id = @id.to_s.rjust(2, '0')
     end
 
     def connected
@@ -159,9 +160,12 @@ class Lg::Lcd::ModelLs5
     def do_poll
         if self[:connected]
             screen_mute?
-            input?
-            volume_mute?
-            volume?
+
+            if @id_num == 1
+                input?
+                volume_mute?
+                volume?
+            end
         elsif self[:power_target] == On
             power On
         end
