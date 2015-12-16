@@ -1,6 +1,22 @@
 require 'shellwords'
 require 'set'
 
+=begin
+
+Trying 10.243.218.xxx...
+Connected to 10.243.218.xxx.
+Escape character is '^]'.
+
+Linux 3.4.86-100 (localhost) (1)
+
+login: admin
+Password:
+Welcome to XXXXXX
+Cisco Codec Release TC7.3.3.c84180a
+SW Release Date: 2015-06-12
+*r Login successful
+
+=end
 
 module Cisco; end
 module Cisco::TelePresence; end
@@ -17,7 +33,8 @@ class Cisco::TelePresence::SxCamera
     generic_name :Camera
 
     # Communication settings
-    tokenize delimiter: "\r\n"
+    tokenize delimiter: "\r\n",
+             wait_ready: "login: "
     clear_queue_on_disconnect!
 
 
@@ -60,9 +77,11 @@ class Cisco::TelePresence::SxCamera
     def connected
         self[:power] = true
 
+        send "admin\r\n", wait: false
+        send "#{setting(:password)}\r\n", wait: false
 
         do_send "Echo off", wait: false, priority: 98
-        do_poll 
+        do_poll
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling Camera"
             do_poll
