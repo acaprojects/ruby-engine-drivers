@@ -44,7 +44,7 @@ class Lg::Lcd::ModelLs5
 
     def on_update
         @id_num = setting(:display_id) || 1
-        @id = @id.to_s.rjust(2, '0')
+        @id = @id_num.to_s.rjust(2, '0')
     end
 
     def connected
