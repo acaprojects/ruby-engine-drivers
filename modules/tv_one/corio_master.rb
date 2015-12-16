@@ -59,6 +59,16 @@ class TvOne::CorioMaster
             send "Preset.Take\r\n"
         end
     end
+    alias_method :switch_to, :preset
+
+    # For switcher like compatibility
+    def switch(map)
+        map.each do |key, value|
+            preset key
+        end
+    end
+
+
 
     # Runs any command provided
     def send_command(cmd)
