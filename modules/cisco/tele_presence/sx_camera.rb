@@ -1,5 +1,6 @@
 require 'shellwords'
 require 'set'
+require 'protocols/telnet'
 
 =begin
 
@@ -15,6 +16,12 @@ Welcome to XXXXXX
 Cisco Codec Release TC7.3.3.c84180a
 SW Release Date: 2015-06-12
 *r Login successful
+
+
+require 'socket'
+s = TCPSocket.open '10.243.218.235', 23
+result = s.recv(100)
+# => "\xFF\xFD\x18\xFF\xFD \xFF\xFD#\xFF\xFD'"
 
 =end
 
@@ -33,8 +40,8 @@ class Cisco::TelePresence::SxCamera
     generic_name :Camera
 
     # Communication settings
-    tokenize delimiter: "\r\n",
-             wait_ready: "login: "
+    tokenize delimiter: "\r",
+             wait_ready: "login:"
     clear_queue_on_disconnect!
 
 
@@ -61,7 +68,13 @@ class Cisco::TelePresence::SxCamera
         self[:zoom_min] = 0
 
         # Allow more ignores
-        defaults max_waits: 5 
+        defaults max_waits: 10
+
+        # Implement the Telnet protocol
+        new_telnet_client
+        config before_buffering: proc do |data|
+            @telnet.buffer data
+        end
 
         on_update
     end
@@ -77,8 +90,8 @@ class Cisco::TelePresence::SxCamera
     def connected
         self[:power] = true
 
-        send "admin\r\n", wait: false
-        send "#{setting(:password)}\r\n", wait: false
+        send "admin\r", wait: false
+        send "#{setting(:password)}\r", wait: false
 
         do_send "Echo off", wait: false, priority: 98
         do_poll
@@ -90,6 +103,9 @@ class Cisco::TelePresence::SxCamera
     
     def disconnected
         self[:power] = false
+
+        # Ensures the buffer is cleared
+        new_telnet_client
 
         @polling_timer.cancel unless @polling_timer.nil?
         @polling_timer = nil
@@ -333,6 +349,13 @@ class Cisco::TelePresence::SxCamera
     
     
     protected
+
+
+    def new_telnet_client
+        @telnet = Protocols::Telnet.new do |data|
+            send data, priority: 99, wait: false
+        end
+    end
 
 
     def params(opts = {})
