@@ -400,6 +400,16 @@ class Aca::MeetingRoom < Aca::Joiner
                         screen = system.get_implicit(screen_info[:module])
                         screen.up(screen_info[:index])
                     end
+
+                    # Raise the lifter if one exists
+                    if value[:lift]
+                        lift = system.get_implicit(value[:lift][:module])
+                        lift_cool_down = (value[:lift][:cool_down] || 10) * 1000
+
+                        schedule.in(lift_cool_down) do
+                            lift.up(value[:lift][:index] || 1)
+                        end
+                    end
                 end
 
                 # Turn off output at switch
