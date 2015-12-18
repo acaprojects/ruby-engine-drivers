@@ -153,7 +153,7 @@ class Cisco::TelePresence::SxCamera
     end
 
     def pan(value)
-        pan = in_range(pan.to_i, self[:pan_max], self[:pan_min])
+        pan = in_range(value.to_i, self[:pan_max], self[:pan_min])
         command('Camera PositionSet', params({
             :CameraId => @index,
             :Pan => pan
@@ -164,7 +164,7 @@ class Cisco::TelePresence::SxCamera
     end
 
     def tilt(value)
-        tilt = in_range(tilt.to_i, self[:tilt_max], self[:tilt_min])
+        tilt = in_range(value.to_i, self[:tilt_max], self[:tilt_min])
         command('Camera PositionSet', params({
             :CameraId => @index,
             :Tilt => tilt
