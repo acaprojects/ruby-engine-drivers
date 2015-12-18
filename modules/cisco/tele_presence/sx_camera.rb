@@ -72,9 +72,9 @@ class Cisco::TelePresence::SxCamera
 
         # Implement the Telnet protocol
         new_telnet_client
-        config before_buffering: proc do |data|
+        config before_buffering: proc { |data|
             @telnet.buffer data
-        end
+        }
 
         on_update
     end
@@ -90,10 +90,10 @@ class Cisco::TelePresence::SxCamera
     def connected
         self[:power] = true
 
-        send "admin\r", wait: false
-        send "#{setting(:password)}\r", wait: false
+        do_send((setting(:password) || :admin), wait: false, delay: 150, priority: 98)
+        do_send setting(:password), wait: false, delay: 150, priority: 97
+        do_send "Echo off", wait: false, priority: 96
 
-        do_send "Echo off", wait: false, priority: 98
         do_poll
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling Camera"
@@ -386,7 +386,7 @@ class Cisco::TelePresence::SxCamera
     end
 
     def do_send(command, options)
-        send "#{command}\r\n", options
+        send @telnet.prepare(command), options
     end
 end
 
