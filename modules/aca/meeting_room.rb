@@ -10,6 +10,8 @@ class Aca::MeetingRoom < Aca::Joiner
 
 
     def on_load
+        @waiting_for = {}
+
         # Call the Joiner load function
         super
     end
@@ -583,19 +585,46 @@ class Aca::MeetingRoom < Aca::Joiner
                 wall_details = @vidwalls[display]
                 wall_display = system.all(wall_details[:module]) if wall_details
 
-                # Check if we need to broadcast to turn it on
-                if setting(:broadcast) && check_arity(arity)
-                    disp_mod.power(On, setting(:broadcast))
-                    if wall_details
-                        wall_display.power(On, setting(:broadcast))
-                        wall_display.switch_to wall_details[:input]
+                turn_on_display = proc {
+                    # Check if we need to broadcast to turn it on
+                    if setting(:broadcast) && check_arity(arity)
+                        disp_mod.power(On, setting(:broadcast))
+                        if wall_details
+                            wall_display.power(On, setting(:broadcast))
+                            wall_display.switch_to wall_details[:input]
+                        end
+                    else
+                        disp_mod.power(On)
+                        if wall_details
+                            wall_display.power(On)
+                            wall_display.switch_to wall_details[:input]
+                        end
                     end
+                }
+
+                # Check if this display has a lifter attached
+                if disp_info[:lift]
+                    lift = system.get_implicit(disp_info[:lift][:module])
+                    lift_index = disp_info[:lift][:index] || 1
+                    status_var = :"#{disp_info[:lift][:binding] || :lifter}#{lift_index}"
+
+                    if lift[status_var] == :down
+                        turn_on_display.call
+                    else
+                        if @waiting_for[display]
+                            @waiting_for[display] = turn_on_display
+                        else
+                            @waiting_for[display] = turn_on_display
+                            schedule.in(disp_info[:lift][:time] || '7s') do
+                                @waiting_for[display].call
+                                @waiting_for.delete(display)
+                            end
+                        end
+                    end
+
+                    lift.down(lift_index)
                 else
-                    disp_mod.power(On)
-                    if wall_details
-                        wall_display.power(On)
-                        wall_display.switch_to wall_details[:input]
-                    end
+                    turn_on_display.call
                 end
 
                 # Set default levels if it was off
