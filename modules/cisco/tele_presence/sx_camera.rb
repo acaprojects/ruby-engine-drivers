@@ -53,8 +53,10 @@ class Cisco::TelePresence::SxCamera
         self[:tilt_speed_max] = 15
         self[:tilt_speed_min] = 1
 
-        self[:joy_left] = -15
-        self[:joy_right] = 15
+        # Pan speeds are insane, so we need to keep these values low.
+        # In fact we may be forced to use an up down left right key pad
+        self[:joy_left] = 3
+        self[:joy_right] = -3
         self[:joy_center] = 0
 
         self[:pan_max] = 65535    # Right
@@ -123,7 +125,10 @@ class Cisco::TelePresence::SxCamera
 
 
     def home
-        command "Camera PositionReset CameraId:#{@index}", name: :preset
+        command("Camera PositionReset CameraId:#{@index}", name: :preset).then do
+            autofocus
+            do_poll
+        end
     end
 
     def autofocus
@@ -142,6 +147,28 @@ class Cisco::TelePresence::SxCamera
             :Tilt => tilt
         }), name: :pantilt).then do
             self[:pan] = pan
+            self[:tilt] = tilt
+            autofocus
+        end
+    end
+
+    def pan(value)
+        pan = in_range(pan.to_i, self[:pan_max], self[:pan_min])
+        command('Camera PositionSet', params({
+            :CameraId => @index,
+            :Pan => pan
+        }), name: :pan).then do
+            self[:pan] = pan
+            autofocus
+        end
+    end
+
+    def tilt(value)
+        tilt = in_range(tilt.to_i, self[:tilt_max], self[:tilt_min])
+        command('Camera PositionSet', params({
+            :CameraId => @index,
+            :Tilt => tilt
+        }), name: :tilt).then do
             self[:tilt] = tilt
             autofocus
         end
@@ -254,7 +281,10 @@ class Cisco::TelePresence::SxCamera
         command('Camera PositionActivateFromPreset', params({
             :CameraId => @index,
             :PresetId => number
-        }), name: :preset)
+        }), name: :preset).then do
+            autofocus
+            do_poll
+        end
     end
 
     def save_position(number)
@@ -364,9 +394,9 @@ class Cisco::TelePresence::SxCamera
         cmd = ''
         opts.each do |key, value|
             next if value.blank?
-            cmd << key
+            cmd << key.to_s
             cmd << ':'
-            cmd << value
+            cmd << value.to_s
             cmd << ' '
         end
         cmd.chop!
