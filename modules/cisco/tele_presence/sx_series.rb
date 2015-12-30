@@ -1,42 +1,88 @@
-require 'shellwords'
-require 'set'
-
-
-module Cisco; end
-module Cisco::TelePresence; end
+load File.expand_path('./sx_telnet.rb', File.dirname(__FILE__))
 
 
 class Cisco::TelePresence::SxSeries
-    include ::Orchestrator::Constants
-    include ::Orchestrator::Transcoder
-
-
     # Discovery Information
-    tcp_port 4999   # GlobalCache IP -> Serial port
     descriptive_name 'Cisco TelePresence'
     generic_name :VidConf
 
-    # Communication settings
-    tokenize delimiter: "\r\n"
-
 
     def on_load
+        super
     end
     
     def on_update
     end
     
     def connected
-        @polling_timer = schedule.every('55s') do
-            logger.debug "-- Polling SX80"
+        super
+
+        call_status
+        @polling_timer = schedule.every('58s') do
+            logger.debug "-- Polling Cisco SX"
+            call_status
         end
     end
     
     def disconnected
+        super
+
         @polling_timer.cancel unless @polling_timer.nil?
         @polling_timer = nil
     end
 
+
+
+    # ================
+    # Common functions
+    # ================
+
+    def show_camera_pip(value)
+        feedback = is_affirmative?(value)
+        val = feedback ? 'On' : 'Off'
+
+        command('CamCtrlPip', params({
+            :Mode => val
+        }), name: :camera_pip).then do
+            self[:camera_pip] = feedback
+        end
+    end
+
+    def toggle_camera_pip
+        show_camera_pip !self[:camera_pip]
+    end
+
+    CallCommands ||= Set.new([:accept, :reject, :disconnect, :hold, :join, :resume, :ignore])
+    def call(cmd, call_id = nil, **options)
+        name = cmd.downcase.to_sym
+
+        command(:call, cmd, params({
+            :CallId => call_id
+        }), name: name).then do
+            call_status
+        end
+    end
+
+    def call_status
+        status(:call, max_waits: 100)
+    end
+
+    SearchDefaults = {
+        :PhonebookType => :Corporate,
+        :Limit => 10,
+        :ContactType => :Contact,
+        :SearchField => :Name
+    }
+    def search(text, opts = {})
+        opts = SearchDefaults.merge(opts)
+        opts[:SearchString] = text
+        command(:phonebook, :search, params(opts), name: :phonebook, max_waits: 100)
+    end
+
+
+    # ====================
+    # END Common functions
+    # ====================
 
 
     def audio(*args, **options)
@@ -47,12 +93,6 @@ class Cisco::TelePresence::SxSeries
         command :CallHistroy, cmd, params(options)
     end
 
-
-    CallCommands ||= Set.new([:accept, :reject, :disconnect, :hold, :join, :resume, :ignore])
-    def call(cmd, call_id = @last_call_id, options = {})
-        options[:CallId] = call_id
-        command :call, cmd, params(options)
-    end
 
     # Options include: Protocol, CallRate, CallType, DisplayName, Appearance
     def dial(number, options = {})
@@ -97,57 +137,91 @@ class Cisco::TelePresence::SxSeries
 
     
     
-    
+    ResponseType = {
+        '**' => :complete
+        '*r' => :call
+    }
     def received(data, resolve, command)
-        logger.debug "Tele sent #{data}"
-        
+        logger.debug { "Tele sent #{data}" }
 
-        
-        return :success
+        result = Shellwords.split data
+        response = ResponseType[result[0]]
+
+        if command
+            if response == :complete
+                # Update status variables
+                if @listing_phonebook
+                    @listing_phonebook = false
+
+                    # expose results
+                    self[:search_results] = @results
+                elsif @call_status
+                    @call_status[:id] = @last_call_id
+                    self[:call_status] = @call_status
+                    @call_status = nil
+                end
+                return :success
+            elsif response.nil?
+                return :ignore
+            end
+        end
+
+        return case response
+        when :call
+            process_call result
+        else
+            :success
+        end
     end
-    
-    
+
+
     protected
 
 
-    def params(opts = nil, **options)
-        opts ||= options
-        return nil if opts.empty?
+    def process_call(result)
+        type = result[1].downcase.to_sym
 
-        cmd = ''
-        opts.each do |key, value|
-            cmd << key
-            cmd << ':'
-            cmd << value
-            cmd << ' '
-        end
-        cmd.chop!
-        cmd
-    end
-    
+        case type
+        when :phonebooksearchresult
+            @listing_phonebook = true
 
-    def command(*args, **options)
-        args.reject! { |item| item.blank? }
+            if result[3] == 'Contact'
+                contact = @results[result[4].to_i - 1]
+                if contact.nil?
+                    contact = {
+                        methods: []
+                    }
+                    @results << contact
+                end
 
-        cmd = "xcommand #{args.join(' ')}"
-        value = options.delete(:value)
-        if value
-            if value.include? ' '
-                value = "\"#{value}\""
+                if result[5] == 'ContactMethod'
+                    method = contact[:methods][result[6].to_i - 1]
+                    if method.nil?
+                        method = {}
+                        contact[:methods] << method
+                    end
+
+                    entry = result[7].chop
+                    method[entry.downcase.to_sym] = result[8]
+                else
+                    entry = result[5].chop
+                    contact[entry.downcase.to_sym] = result[6]
+                end
+            else # ResultInfo
+                self[:results_total] = result[5].to_i
+                @results = []
             end
-            cmd << ': '
-            cmd << value
+        when :call
+            @call_status ||= {}
+            @last_call_id = result[2].to_i
+
+            # NOTE: this will fail for "Encryption Type:"
+            # however I don't think we'll ever really need to display this
+            entry = result[3].chop
+            @call_status[entry.downcase.to_sym] = result[4]
         end
-        do_send cmd, options
-    end
 
-    def status(*args, **options)
-        args.reject! { |item| item.blank? }
-        do_send "xstatus #{args.join(' ')}", options
-    end
-
-    def do_send(command, options)
-        send "#{command}\r\n", options
+        :ignore
     end
 end
 
