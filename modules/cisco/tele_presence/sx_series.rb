@@ -1,10 +1,14 @@
 load File.expand_path('./sx_telnet.rb', File.dirname(__FILE__))
 
 
-class Cisco::TelePresence::SxSeries
+class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
     # Discovery Information
     descriptive_name 'Cisco TelePresence'
     generic_name :VidConf
+
+    tokenize delimiter: "\r",
+             wait_ready: "login:"
+    clear_queue_on_disconnect!
 
 
     def on_load
@@ -17,6 +21,8 @@ class Cisco::TelePresence::SxSeries
     def connected
         super
 
+        # Configure in some sane defaults
+        do_send 'xConfiguration Standby Control: Off'
         call_status
         @polling_timer = schedule.every('58s') do
             logger.debug "-- Polling Cisco SX"
@@ -53,7 +59,7 @@ class Cisco::TelePresence::SxSeries
     end
 
     CallCommands ||= Set.new([:accept, :reject, :disconnect, :hold, :join, :resume, :ignore])
-    def call(cmd, call_id = nil, **options)
+    def call(cmd, call_id = @last_call_id, **options)
         name = cmd.downcase.to_sym
 
         command(:call, cmd, params({
@@ -64,11 +70,11 @@ class Cisco::TelePresence::SxSeries
     end
 
     def call_status
-        status(:call, max_waits: 100)
+        status(:call, name: :call)
     end
 
     SearchDefaults = {
-        :PhonebookType => :Corporate,
+        :PhonebookType => :Local, # Should probably make this a setting
         :Limit => 10,
         :ContactType => :Contact,
         :SearchField => :Name
@@ -76,13 +82,43 @@ class Cisco::TelePresence::SxSeries
     def search(text, opts = {})
         opts = SearchDefaults.merge(opts)
         opts[:SearchString] = text
-        command(:phonebook, :search, params(opts), name: :phonebook, max_waits: 100)
+        command(:phonebook, :search, params(opts), name: :phonebook, max_waits: 400)
     end
 
 
     # ====================
     # END Common functions
     # ====================
+
+
+    # ===========================================
+    # IR REMOTE KEYS (NOT AVAILABLE IN SX SERIES)
+    # ===========================================
+
+=begin
+    RemoteKeys = ['0','1','2','3','4','5','6','7','8','9',
+                  'Star','Square','Call','Disconnect',
+                  'Up','Down','Right','Left','Selfview',
+                  'Layout','PhoneBook','C','MuteMic','Presentation',
+                  'VolumeUp','VolumeDown','Ok','ZoomIn','ZoomOut','Grab',
+                  'F1','F2','F3','F4','F5','Home','Mute',
+                  'SrcAux','SrcCamera','SrcDocCam','SrcPc','SrcVcr']
+
+    #
+    # Automatically creates a callable function for each command
+    #   http://blog.jayfields.com/2007/10/ruby-defining-class-methods.html
+    #   http://blog.jayfields.com/2008/02/ruby-dynamically-define-method.html
+    #
+    RemoteKeys.each do |key|
+        define_method :"key_#{key.underscore}" do |**options|
+            command("Key Click Key:#{key}", **options)
+        end
+    end
+=end
+
+    # ==================
+    # END IR REMOTE KEYS
+    # ==================
 
 
     def audio(*args, **options)
@@ -138,8 +174,9 @@ class Cisco::TelePresence::SxSeries
     
     
     ResponseType = {
-        '**' => :complete
-        '*r' => :call
+        '**' => :complete,
+        '*r' => :results,
+        '*s' => :status
     }
     def received(data, resolve, command)
         logger.debug { "Tele sent #{data}" }
@@ -159,6 +196,14 @@ class Cisco::TelePresence::SxSeries
                     @call_status[:id] = @last_call_id
                     self[:call_status] = @call_status
                     @call_status = nil
+                elsif command[:name] == :call
+                    if self[:call_status].present?
+                        self[:previous_call] = self[:call_status][:callbacknumber]
+                    end
+
+                    self[:call_status] = {}
+                    @last_call_id = nil
+                    @call_status = nil
                 end
                 return :success
             elsif response.nil?
@@ -167,8 +212,10 @@ class Cisco::TelePresence::SxSeries
         end
 
         return case response
-        when :call
-            process_call result
+        when :status
+            process_status result
+        when :results
+            process_results result
         else
             :success
         end
@@ -178,15 +225,21 @@ class Cisco::TelePresence::SxSeries
     protected
 
 
-    def process_call(result)
-        type = result[1].downcase.to_sym
-
-        case type
-        when :phonebooksearchresult
+    def process_results(result)
+        if result[1].downcase.to_sym == :resultset
             @listing_phonebook = true
 
-            if result[3] == 'Contact'
-                contact = @results[result[4].to_i - 1]
+            case result[2]
+
+            # Looks like: *r ResultSet ResultInfo TotalRows: 3
+            when 'ResultInfo'
+                if result[3] == 'TotalRows:'
+                    self[:results_total] = result[4].to_i
+                    @results = []
+                end
+
+            when 'Contact'
+                contact = @results[result[3].to_i - 1]
                 if contact.nil?
                     contact = {
                         methods: []
@@ -194,31 +247,41 @@ class Cisco::TelePresence::SxSeries
                     @results << contact
                 end
 
-                if result[5] == 'ContactMethod'
-                    method = contact[:methods][result[6].to_i - 1]
+                if result[4] == 'ContactMethod'
+                    # Looks like: *r ResultSet Contact 1 ContactMethod 1 Number: "10.243.218.232"
+                    method = contact[:methods][result[5].to_i - 1]
                     if method.nil?
                         method = {}
                         contact[:methods] << method
                     end
 
-                    entry = result[7].chop
-                    method[entry.downcase.to_sym] = result[8]
+                    entry = result[6].chop
+                    method[entry.downcase.to_sym] = result[7]
                 else
-                    entry = result[5].chop
-                    contact[entry.downcase.to_sym] = result[6]
+                    # Looks like: *r ResultSet Contact 2 Name: "Some Room"
+                    entry = result[4].chop
+                    contact[entry.downcase.to_sym] = result[5]
                 end
-            else # ResultInfo
-                self[:results_total] = result[5].to_i
-                @results = []
             end
-        when :call
+        end
+
+        :ignore
+    end
+
+    def process_status(result)
+        if result[1].downcase.to_sym == :call
+            # Looks like: *s Call 32 CallbackNumber: "h323:10.243.218.234"
+
             @call_status ||= {}
             @last_call_id = result[2].to_i
 
-            # NOTE: this will fail for "Encryption Type:"
-            # however I don't think we'll ever really need to display this
-            entry = result[3].chop
-            @call_status[entry.downcase.to_sym] = result[4]
+            # NOTE: special case for "Encryption Type:"
+            entry = result[3].chop.downcase.to_sym
+            if entry == :encryptio
+                @call_status[:encryption] = result[5]
+            else
+                @call_status[entry] = result[4]
+            end
         end
 
         :ignore

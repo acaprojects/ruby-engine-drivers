@@ -1,9 +1,13 @@
 load File.expand_path('./sx_telnet.rb', File.dirname(__FILE__))
 
 
-class Cisco::TelePresence::SxCamera
+class Cisco::TelePresence::SxCamera < Cisco::TelePresence::SxTelnet
     descriptive_name 'Cisco TelePresence Camera'
     generic_name :Camera
+
+    tokenize delimiter: "\r",
+             wait_ready: "login:"
+    clear_queue_on_disconnect!
 
 
     def on_load
@@ -26,7 +30,7 @@ class Cisco::TelePresence::SxCamera
         self[:tilt_min] = -65535  # Down
         self[:tilt_center] = 0
 
-        self[:zoom_max] = 65535
+        self[:zoom_max] = 17284 # 65535
         self[:zoom_min] = 0
 
         super

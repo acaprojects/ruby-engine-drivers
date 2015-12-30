@@ -46,7 +46,7 @@ class Cisco::TelePresence::SxTelnet
 
     def on_load
         # Allow more ignores
-        defaults max_waits: 10
+        defaults max_waits: 100
 
         # Implement the Telnet protocol
         new_telnet_client
@@ -57,8 +57,8 @@ class Cisco::TelePresence::SxTelnet
 
     
     def connected
-        do_send((setting(:username) || :admin), wait: false, delay: 150, priority: 98)
-        do_send setting(:password), wait: false, delay: 150, priority: 97
+        do_send (setting(:username) || :admin), wait: false, delay: 200, priority: 98
+        do_send setting(:password), wait: false, delay: 200, priority: 97
         do_send "Echo off", wait: false, priority: 96
     end
     
@@ -86,7 +86,7 @@ class Cisco::TelePresence::SxTelnet
             next if value.blank?
             cmd << key.to_s
             cmd << ':'
-            val = value.to_s.gsub(/[^\w\s]/, '').strip
+            val = value.to_s.gsub(/[^\w\s\.\:]/, '').strip
             if val.include? ' '
                 cmd << '"'
                 cmd << val
@@ -113,6 +113,7 @@ class Cisco::TelePresence::SxTelnet
     end
 
     def do_send(command, options)
+        logger.debug { "requesting #{command}" }
         send @telnet.prepare(command), options
     end
 end
