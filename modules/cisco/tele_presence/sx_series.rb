@@ -58,6 +58,12 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         show_camera_pip !self[:camera_pip]
     end
 
+    # Options include: Protocol, CallRate, CallType, DisplayName, Appearance
+    def dial(number, options = {})
+        options[:Number] = number
+        command :dial, params(options)
+    end
+
     CallCommands ||= Set.new([:accept, :reject, :disconnect, :hold, :join, :resume, :ignore])
     def call(cmd, call_id = @last_call_id, **options)
         name = cmd.downcase.to_sym
@@ -83,6 +89,16 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         opts = SearchDefaults.merge(opts)
         opts[:SearchString] = text
         command(:phonebook, :search, params(opts), name: :phonebook, max_waits: 400)
+    end
+
+    # Options include: auto, custom, equal, fullscreen, overlay, presentationlargespeaker, presentationsmallspeaker, prominent, single, speaker_full
+    def layout(mode, target = :local)
+        self[:"layout_#{target}"] = mode
+
+        command(:Video, :PictureLayoutSet, params({
+            :Target => target,
+            :LayoutFamily => mode
+        }), name: :layout)
     end
 
 
@@ -127,13 +143,6 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
 
     def history(cmd, options = {})
         command :CallHistroy, cmd, params(options)
-    end
-
-
-    # Options include: Protocol, CallRate, CallType, DisplayName, Appearance
-    def dial(number, options = {})
-        options[:Number] = number
-        command :dial, params(options)
     end
 
     # left, right, up, down, zoomin, zoomout
