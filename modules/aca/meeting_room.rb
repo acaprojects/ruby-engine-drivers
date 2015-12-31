@@ -485,6 +485,9 @@ class Aca::MeetingRoom < Aca::Joiner
         return unless vc[:content]
         source = self[:sources][inp.to_sym]
         system[:Switcher].switch({source[:input] => vc[:content]})
+
+        # So we can keep the UI in sync
+        self[:vc_content_source] = inp
     end
 
 
