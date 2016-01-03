@@ -13,9 +13,13 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
 
     def on_load
         super
+
+        self[:presentation] = :none
+        on_update
     end
     
     def on_update
+        @default_pres = setting(:presentation) || 3
     end
     
     def connected
@@ -24,6 +28,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         # Configure in some sane defaults
         do_send 'xConfiguration Standby Control: Off'
         call_status
+        pip_mode?
         @polling_timer = schedule.every('5s') do
             logger.debug "-- Polling Cisco SX"
             call_status
@@ -47,7 +52,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         feedback = is_affirmative?(value)
         val = feedback ? 'On' : 'Off'
 
-        command('CamCtrlPip', params({
+        command('Video Selfview Set', params({
             :Mode => val
         }), name: :camera_pip).then do
             self[:camera_pip] = feedback
@@ -57,6 +62,11 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
     def toggle_camera_pip
         show_camera_pip !self[:camera_pip]
     end
+
+    def pip_mode?
+        status 'Video Selfview Mode'
+    end
+
 
     # Options include: Protocol, CallRate, CallType, DisplayName, Appearance
     def dial(number, options = {})
@@ -103,6 +113,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         }), name: :layout)
     end
 
+
     def send_DTMF(string, call_id = @last_call_id)
         command(:DTMFSend, params({
             :CallId => call_id,
@@ -110,6 +121,32 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         }))
     end
 
+
+    # Valid values: none, local, remote
+    PresModes = {
+        local: :LocalOnly,
+        remote: :LocalRemote
+    }
+    def presentation_mode(value, source = @default_source)
+        status = value.to_sym
+        mode = PresModes[status]
+
+        if mode
+            command('Presentation Start', params({
+                :SendingMode => mode,
+                :PresentationSource => source
+            }), name: :presentation).then do
+                self[:presentation] = status
+            end
+        else
+            command 'Presentation Stop'
+            self[:presentation] = :none
+        end
+    end
+
+    def content_available?
+        status 'Conference Presentation Mode'
+    end
 
     # ====================
     # END Common functions
@@ -164,31 +201,6 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         end
     end
 
-    # Source is a number from 0..15
-    def far_end_source(source, call_id = @last_call_id)
-        command :FarEndControl, :Source, :Select, "CallId:#{call_id} SourceId:#{source}"
-    end
-
-
-
-    # Also supports stop
-    def presentation(action = :start)
-
-    end
-
-    def save_preset(name)
-
-    end
-
-    def preset(name)
-
-    end
-
-    # pip / 
-    def video
-
-    end
-
     
     
     ResponseType = {
@@ -213,6 +225,11 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
                 elsif @call_status
                     @call_status[:id] = @last_call_id
                     self[:call_status] = @call_status
+                    if @call_status.empty?
+                        self[:content_available] = false
+                    else
+                        content_available?
+                    end
                     @call_status = nil
                 elsif command[:name] == :call
                     if self[:call_status].present?
@@ -244,7 +261,8 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
 
 
     def process_results(result)
-        if result[1].downcase.to_sym == :resultset
+        case result[1].downcase.to_sym
+        when :resultset
             @listing_phonebook = true
 
             case result[2]
@@ -287,7 +305,8 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
     end
 
     def process_status(result)
-        if result[1].downcase.to_sym == :call
+        case result[1].downcase.to_sym
+        when :call
             # Looks like: *s Call 32 CallbackNumber: "h323:10.243.218.234"
 
             @call_status ||= {}
@@ -299,6 +318,14 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
                 @call_status[:encryption] = result[5]
             else
                 @call_status[entry] = result[4]
+            end
+        when :conference
+            if result[2] == 'Presentation' && result[3] == 'Mode:'
+                self[:content_available] = result[4] != 'Off'
+            end
+        when :Video
+            if result[2] == 'Selfview' && result[3] == 'Mode:'
+                self[:camera_pip] = result[4] == 'On'
             end
         end
 
