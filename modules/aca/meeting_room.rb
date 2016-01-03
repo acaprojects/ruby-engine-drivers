@@ -402,12 +402,12 @@ class Aca::MeetingRoom < Aca::Joiner
                     end
 
                     # Raise the lifter if one exists
-                    if value[:lift]
-                        lift = system.get_implicit(value[:lift][:module])
-                        lift_cool_down = (value[:lift][:cool_down] || 10) * 1000
+                    if value[:lifter]
+                        lift = system.get_implicit(value[:lifter][:module])
+                        lift_cool_down = (value[:lifter][:cool_down] || 10) * 1000
 
                         schedule.in(lift_cool_down) do
-                            lift.up(value[:lift][:index] || 1)
+                            lift.up(value[:lifter][:index] || 1)
                         end
                     end
                 end
@@ -616,10 +616,10 @@ class Aca::MeetingRoom < Aca::Joiner
                 }
 
                 # Check if this display has a lifter attached
-                if disp_info[:lift]
-                    lift = system.get_implicit(disp_info[:lift][:module])
-                    lift_index = disp_info[:lift][:index] || 1
-                    status_var = :"#{disp_info[:lift][:binding] || :lifter}#{lift_index}"
+                if disp_info[:lifter]
+                    lift = system.get_implicit(disp_info[:lifter][:module])
+                    lift_index = disp_info[:lifter][:index] || 1
+                    status_var = :"#{disp_info[:lifter][:binding] || :lifter}#{lift_index}"
 
                     if lift[status_var] == :down
                         turn_on_display.call
@@ -628,7 +628,7 @@ class Aca::MeetingRoom < Aca::Joiner
                             @waiting_for[display] = turn_on_display
                         else
                             @waiting_for[display] = turn_on_display
-                            schedule.in(disp_info[:lift][:time] || '7s') do
+                            schedule.in(disp_info[:lifter][:time] || '7s') do
                                 @waiting_for[display].call
                                 @waiting_for.delete(display)
                             end
