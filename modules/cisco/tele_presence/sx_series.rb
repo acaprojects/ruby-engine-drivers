@@ -24,7 +24,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         # Configure in some sane defaults
         do_send 'xConfiguration Standby Control: Off'
         call_status
-        @polling_timer = schedule.every('58s') do
+        @polling_timer = schedule.every('5s') do
             logger.debug "-- Polling Cisco SX"
             call_status
         end
@@ -61,16 +61,18 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
     # Options include: Protocol, CallRate, CallType, DisplayName, Appearance
     def dial(number, options = {})
         options[:Number] = number
-        command :dial, params(options)
+        command(:dial, params(options), name: :dial, delay: 500).then do
+            call_status
+        end
     end
 
     CallCommands ||= Set.new([:accept, :reject, :disconnect, :hold, :join, :resume, :ignore])
-    def call(cmd, call_id = nil, **options)
+    def call(cmd, call_id = @last_call_id, **options)
         name = cmd.downcase.to_sym
 
         command(:call, cmd, params({
             :CallId => call_id
-        }), name: name).then do
+        }), name: name, delay: 500).then do
             call_status
         end
     end

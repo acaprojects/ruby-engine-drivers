@@ -12,7 +12,7 @@ class ScreenTechnics::Connect106
     generic_name :Screen
 
     # Communication settings
-    delay between_sends: 2000
+    delay between_sends: 3000
     keepalive false
     inactivity_timeout 1500
 
