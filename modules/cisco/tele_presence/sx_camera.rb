@@ -19,8 +19,8 @@ class Cisco::TelePresence::SxCamera < Cisco::TelePresence::SxTelnet
 
         # Pan speeds are insane, so we need to keep these values low.
         # In fact we may be forced to use an up down left right key pad
-        self[:joy_left] = 3
-        self[:joy_right] = -3
+        self[:joy_left] = -3
+        self[:joy_right] = 3
         self[:joy_center] = 0
 
         self[:pan_max] = 65535    # Right
