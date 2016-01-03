@@ -112,7 +112,7 @@ class Cisco::TelePresence::SxTelnet
         do_send "xstatus #{args.join(' ')}", options
     end
 
-    def do_send(command, options)
+    def do_send(command, options = {})
         logger.debug { "requesting #{command}" }
         send @telnet.prepare(command), options
     end
