@@ -322,6 +322,10 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         when :conference
             if result[2] == 'Presentation' && result[3] == 'Mode:'
                 self[:content_available] = result[4] != 'Off'
+                if result[4] == 'Receiving'
+                    # Then we are not sending anything
+                    self[:presentation] = :none
+                end
             end
         when :Video
             if result[2] == 'Selfview' && result[3] == 'Mode:'
