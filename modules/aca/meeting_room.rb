@@ -406,6 +406,9 @@ class Aca::MeetingRoom < Aca::Joiner
                         lift = system.get_implicit(value[:lifter][:module])
                         lift_cool_down = (value[:lifter][:cool_down] || 10) * 1000
 
+                        # ensure the display doesn't turn on (we might still be booting)
+                        @waiting_for = {}
+
                         schedule.in(lift_cool_down) do
                             lift.up(value[:lifter][:index] || 1)
                         end
@@ -629,8 +632,11 @@ class Aca::MeetingRoom < Aca::Joiner
                         else
                             @waiting_for[display] = turn_on_display
                             schedule.in(disp_info[:lifter][:time] || '7s') do
-                                @waiting_for[display].call
-                                @waiting_for.delete(display)
+                                action = @waiting_for[display]
+                                if action
+                                    @waiting_for.delete(display)
+                                    action.call
+                                end
                             end
                         end
                     end
