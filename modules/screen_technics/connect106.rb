@@ -14,7 +14,7 @@ class ScreenTechnics::Connect106
     # Communication settings
     delay between_sends: 3000
     keepalive false
-    inactivity_timeout 1500
+    inactivity_timeout 3000
 
 
     def on_load
@@ -35,23 +35,41 @@ class ScreenTechnics::Connect106
     end
 
     def down(index = 1)
-        stop(index)
+        if self[:"screen#{index}"] == :down
+            down_only(index)
+        else
+            stop(index)
+            down_only(index)
+        end
+    end
+
+    def down_only(index = 1)
         do_send({
             state: :down,
             body: {"Down#{index}" => "Down"},
             name: :"position#{index}",
             index: index
         })
+        self[:"screen#{index}"] = :down
     end
 
     def up(index = 1)
-        stop(index)
+        if self[:"screen#{index}"] == :up
+            up_only(index)
+        else
+            stop(index)
+            up_only(index)
+        end
+    end
+
+    def up_only(index = 1)
         do_send({
             state: :up,
             body: {"Up#{index}" => "Up"},
             name: :"position#{index}",
             index: index
         })
+        self[:"screen#{index}"] = :up
     end
 
     def stop(index = 1)
@@ -59,7 +77,8 @@ class ScreenTechnics::Connect106
             body: {"Stop#{index}" => "Stop"},
             name: :"stop#{index}",
             priority: 99,
-            clear_queue: true
+            clear_queue: true,
+            retries: 0
         })
     end
 
