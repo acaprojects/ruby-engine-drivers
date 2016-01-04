@@ -40,6 +40,7 @@ class ScreenTechnics::Connect
         else
             stop(index)
             down_only(index)
+            self[:"screen#{index}"] = :down
         end
     end
 
@@ -58,6 +59,7 @@ class ScreenTechnics::Connect
         else
             stop(index)
             up_only(index)
+            self[:"screen#{index}"] = :up
         end
     end
 
