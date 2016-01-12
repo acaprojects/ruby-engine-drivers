@@ -19,7 +19,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
     end
     
     def on_update
-        @default_pres = setting(:presentation) || 3
+        @default_source = setting(:presentation) || 3
     end
     
     def connected
@@ -229,6 +229,9 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
                         self[:content_available] = false
                     else
                         content_available?
+                        if @call_status[:status] == 'OnHold'
+                            self[:presentation] = :none
+                        end
                     end
                     @call_status = nil
                 elsif command[:name] == :call
