@@ -629,6 +629,15 @@ class Aca::MeetingRoom < Aca::Joiner
                             wall_display.switch_to wall_details[:input]
                         end
                     end
+
+                    # Set default levels if it was off
+                    if disp_info[:mixer_id]
+                        disp_mod.mute_audio if disp_mod.respond_to?(:mute_audio)
+                        disp_mod.volume(disp_mod[:volume_min] || 0) if disp_mod.respond_to?(:volume)
+                    else
+                        level = disp_info[:default_level] || @defaults[:output_level]
+                        disp_mod.volume level if level
+                    end
                 }
 
                 # Check if this display has a lifter attached
@@ -657,12 +666,6 @@ class Aca::MeetingRoom < Aca::Joiner
                     lift.down(lift_index)
                 else
                     turn_on_display.call
-                end
-
-                # Set default levels if it was off
-                if not disp_info[:mixer_id]
-                    level = disp_info[:default_level] || @defaults[:output_level]
-                    disp_mod.volume level if level
                 end
 
             elsif disp_mod.respond_to?(:mute)
