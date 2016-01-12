@@ -151,11 +151,13 @@ class Lightware::Switcher::LightwareProtocol
         logger.debug { "Matrix sent #{data}" }
 
         if data[0..2] == 'ERR'.freeze
-            err = "Matrix sent error #{data}: "
-            err << (RespErrors[data[3..-1].to_i] || 'unknown error code')
-            err << "\nfor command #{command[:data]}" if command
-            logger.warn err
-            return :abort
+            logger.debug {
+                err = "Matrix sent error #{data}: "
+                err << (RespErrors[data[3..-1].to_i] || 'unknown error code')
+                err << "\nfor command #{command[:data]}" if command
+                err
+            }
+            return :success
         end
 
         case data[0]

@@ -148,14 +148,25 @@ class Aca::MeetingRoom < Aca::Joiner
             output1 = self[:outputs].keys.first
             current = self[output1]
             if current && current[:source] != :none && current[:source] != :sharing_input
-                perform_action(mod: :System, func: :do_share, args: [true, current[:source]], skipMe: true)
+                perform_action(mod: :System, func: :do_share, args: [true, current[:source]], skipMe: true).then do
+                    # defaults = {
+                        # sharing_routes: {input: [outputs]}
+                        # on_sharing_preset: 'preset_name'
+                    # }
+                    system[:Mixer].trigger(@defaults[:on_sharing_trigger]) if @defaults[:on_sharing_trigger]
+                    system[:Switcher].switch(@defaults[:sharing_routes]) if @defaults[:sharing_routes]
+                end
             end
         end
+
+        promise
     end
 
     def unjoin
         perform_action(mod: :System, func: :enable_sharing, args: [false]).then do
-            super
+            super.then do
+                system[:Mixer].trigger(@defaults[:off_sharing_trigger]) if @defaults[:off_sharing_trigger]
+            end
         end
     end
 
@@ -163,7 +174,9 @@ class Aca::MeetingRoom < Aca::Joiner
         present_actual(source, display)
 
         # Switch Joined rooms to the sharing input (use skipme param)
-        perform_action(mod: :System, func: :do_share, args: [true, source.to_sym], skipMe: true)
+        perform_action(mod: :System, func: :do_share, args: [true, source.to_sym], skipMe: true).then do
+            system[:Switcher].switch(@defaults[:sharing_routes]) if @defaults[:sharing_routes]
+        end
     end
 
     def present_actual(source, display)

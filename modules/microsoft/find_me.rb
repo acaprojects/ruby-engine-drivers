@@ -136,7 +136,6 @@ class Microsoft::FindMe
     # POST REQUESTS
     # =============
     def schedule_meeting(user_alias, room_alias, start_time, end_time, subject = 'Room Booked')
-        # Ensure we have the latest booking details
         # Check this booking can be made
         # Make the booking
 
