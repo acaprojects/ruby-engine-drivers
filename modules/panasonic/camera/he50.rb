@@ -175,6 +175,28 @@ class Panasonic::Camera::He50
         end
     end
 
+    def adjust_tilt(direction)
+        speed = 0x50
+        if direction == 'down'
+            speed = 0x75
+        elsif direction == 'up'
+            speed = 0x25
+        end
+
+        joystick(0x50, speed)
+    end
+
+    def adjust_pan(direction)
+        speed = 0x50
+        if direction == 'right'
+            speed = 0x75
+        elsif direction == 'left'
+            speed = 0x25
+        end
+
+        joystick(speed, 0x50)
+    end
+
     def limit(direction, state = nil)
         dir = LIMITS[direction.to_sym]
         state = (is_affirmative?(set) ? 1 : 0) unless state.nil?

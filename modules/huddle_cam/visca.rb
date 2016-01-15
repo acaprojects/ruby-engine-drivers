@@ -214,6 +214,28 @@ class HuddleCam::Visca
         send_cmd cmd, name: :zoom
     end
 
+    def adjust_tilt(direction)
+        speed = 0
+        if direction == 'down'
+            speed = 0x7
+        elsif direction == 'up'
+            speed = -0x7
+        end
+
+        joystick(0, speed)
+    end
+
+    def adjust_pan(direction)
+        speed = 0
+        if direction == 'right'
+            speed = 0x7
+        elsif direction == 'left'
+            speed = -0x7
+        end
+
+        joystick(speed, 0)
+    end
+
     # Set autofocus ON
     def set_autofocus
         send_cmd "\x04\x38\x02", name: :set_autofocus
