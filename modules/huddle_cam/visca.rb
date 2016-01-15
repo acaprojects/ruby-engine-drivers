@@ -48,6 +48,7 @@ class HuddleCam::Visca
     def on_update
         @presets = setting(:presets) || {}
         self[:presets] = @presets.keys
+        self[:invert] = setting(:invert)
     end
     
     def connected
@@ -217,9 +218,9 @@ class HuddleCam::Visca
     def adjust_tilt(direction)
         speed = 0
         if direction == 'down'
-            speed = 0x7
+            speed = self[:invert] ? -0x10 : 0x10
         elsif direction == 'up'
-            speed = -0x7
+            speed = self[:invert] ? 0x10 : -0x10
         end
 
         joystick(0, speed)
@@ -228,9 +229,9 @@ class HuddleCam::Visca
     def adjust_pan(direction)
         speed = 0
         if direction == 'right'
-            speed = 0x7
+            speed = 0x10
         elsif direction == 'left'
-            speed = -0x7
+            speed = -0x10
         end
 
         joystick(speed, 0)
