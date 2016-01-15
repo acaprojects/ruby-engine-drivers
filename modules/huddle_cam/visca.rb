@@ -343,8 +343,7 @@ class HuddleCam::Visca
             end
         when :zoom
             hex = byte_to_hex(data[2..-1])
-            hex_new = ''
-            hex_new << hex[1] << hex[3] << hex[5] << hex[7]
+            hex_new = "#{hex[1]}#{hex[3]}#{hex[5]}#{hex[7]}"
             self[:zoom] = hex_new.to_i(16)
         when :exposure
             self[:exposure] = Exposure[data[-1]]
@@ -352,13 +351,11 @@ class HuddleCam::Visca
             self[:auto_focus] = bytes[-1] == 2
         when :pantilt
             hex = byte_to_hex(data[2..5])
-            pan_hex = ''
-            pan_hex << hex[1] << hex[3] << hex[5] << hex[7]
+            pan_hex = "#{hex[1]}#{hex[3]}#{hex[5]}#{hex[7]}"
             self[:pan] = pan_hex.to_i(16)
 
             hex = byte_to_hex(data[6..-1])
-            tilt_hex = ''
-            tilt_hex << hex[1] << hex[3] << hex[5] << hex[7]
+            tilt_hex = "#{hex[1]}#{hex[3]}#{hex[5]}#{hex[7]}"
             self[:tilt] = tilt_hex.to_i(16)
         end
 

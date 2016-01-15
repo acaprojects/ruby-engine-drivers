@@ -23,7 +23,7 @@ class Extron::Base
     def connected
         @polling_timer = schedule.every('1m') do
             logger.debug "Extron Maintaining Connection"
-            send('Q', :priority => 0)    # Low priority poll to maintain connection
+            send('Q', :priority => 0, :wait => false)    # Low priority poll to maintain connection
         end
 
         # Send password if required
