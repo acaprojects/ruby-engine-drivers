@@ -363,7 +363,6 @@ class Nec::Projector::NpSeries
             case data[1]
                 when 0x03
                     return process_input_switch(data, req)
-                when 0x00, 0x01
                     process_lamp_command(data, req)
                     return true
                 when 0x10, 0x11, 0x12, 0x13, 0x14, 0x15
@@ -514,13 +513,16 @@ class Nec::Projector::NpSeries
             0x02 => [:composite],
             0x03 => [:svideo],
             0x06 => [:hdmi, :dvi],
-            0x07 => [:viewer]
+            0x07 => [:viewer],
+            0x21 => [:hdmi],
+            0x22 => [:display_port]
         },
         0x02 => {
             0x01 => [:vga2, :dvi_a, :rgbhv],
             0x04 => [:component2],
             0x06 => [:display_port, :hdmi2],
-            0x07 => [:lan]
+            0x07 => [:lan],
+            0x21 => [:hdmi2]
         },
         0x03 => {
             0x04 => [:component, :component1]
