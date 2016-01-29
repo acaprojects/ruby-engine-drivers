@@ -276,7 +276,7 @@ class Nec::Projector::NpSeries
         :hdmi =>        0x1A,    # \
         :dvi =>            0x1A,    # | - These are the same
         :hdmi2 =>        0x1B,
-        :display_port => 0x1B,
+        :display_port => 0xA6,
 
         :lan =>            0x20,
         :viewer =>        0x1F
