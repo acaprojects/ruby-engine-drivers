@@ -363,6 +363,7 @@ class Nec::Projector::NpSeries
             case data[1]
                 when 0x03
                     return process_input_switch(data, req)
+                when 0x00, 0x01
                     process_lamp_command(data, req)
                     return true
                 when 0x10, 0x11, 0x12, 0x13, 0x14, 0x15
