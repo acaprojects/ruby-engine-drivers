@@ -11,22 +11,29 @@ class Microsoft::FindMe
 
     # Communication settings
     keepalive true
-    inactivity_timeout 10000
+    inactivity_timeout 15000
 
 
     def on_load
+        @fullnames = {}
+        @meetings = {}
+        @meetings_checked = {}
+
         on_update
     end
     
     def on_update
         # Configure NTLM authentication
-        config {
+        config({
             ntlm: {
-                user: setting(:username)
-                password: setting(:password)
+                user: setting(:username),
+                password: setting(:password),
                 domain: setting(:domain)
             }
-        }
+        })
+
+        # The environment this is used in has insane latency
+        defaults(timeout: 15000)
     end
     
     
@@ -67,18 +74,37 @@ class Microsoft::FindMe
         end
     end
 
-    def meetings(defer, building, level, start_time = Time.now, end_time = Time.end_of_day)
-        start_str = Time.parse(start_time.to_s).iso8601
-        end_str = Time.parse(end_time.to_s).iso8601
+    def meetings(building, level, start_time = Time.now, end_time = Time.now.end_of_day)
+        lookup = :"#{building}_#{level}"
+        last_checked = @meetings_checked[lookup]
 
-        # Example Response:
-        # [{"ConferenceRoomAlias":"cfsydinx","Start":"2015-11-11T23:30:00+00:00","End":"2015-11-12T00:00:00+00:00",
-        #   "Subject":"<meeting title>","Location":"Pty MR Syd L2 INXS (10) RT Int","BookingUserAlias":null,
-        #   "StartTimeZoneName":null,"EndTimeZoneName":null}]
-        get("/FindMeService/api/MeetingRooms/Level/#{building}/#{level}/#{start_str}/#{end_str}") do |data|
-            check_resp(data) do |result|
-                defer.resolve result
+        if last_checked && last_checked > Time.now
+            return @meetings[lookup]
+        else
+            defer = thread.defer
+
+            start_str = Time.parse(start_time.to_s).iso8601.split('+')[0]
+            end_str = Time.parse(end_time.to_s).iso8601.split('+')[0]
+
+            @meetings_checked[lookup] = 5.minutes.from_now
+            @meetings[lookup] = defer.promise
+
+            # Example Response:
+            # [{"ConferenceRoomAlias":"cfsydinx","Start":"2015-11-11T23:30:00+00:00","End":"2015-11-12T00:00:00+00:00",
+            #   "Subject":"<meeting title>","Location":"Pty MR Syd L2 INXS (10) RT Int","BookingUserAlias":null,
+            #   "StartTimeZoneName":null,"EndTimeZoneName":null}]
+            promise = get("/FindMeService/api/MeetingRooms/Meetings/#{building}/#{level}/#{start_str}/#{end_str}") do |data|
+                check_resp(data) do |result|
+                    defer.resolve result
+                end
             end
+            promise.catch do
+                @meetings_checked.delete lookup
+                @meetings.delete lookup
+                defer.reject "request failed"
+            end
+
+            defer.promise
         end
     end
 
@@ -98,7 +124,9 @@ class Microsoft::FindMe
         end
     end
 
-    def users_on(defer, building, level, extended_data = false)
+    def users_on(building, level, extended_data = false)
+        defer = thread.defer
+
         # Same response as above with or without ExtendedUserData
         uri = "/FindMeService/api/ObjectLocation/Level/#{building}/#{level}"
         uri << '?getExtendedData=true' if extended_data
@@ -108,18 +136,33 @@ class Microsoft::FindMe
                 defer.resolve users
             end
         end
+
+        defer.promise
     end
 
-    def users_fullname(defer, *aliases)
-        # Example Response: ['name1', 'name2']
-        get("/FindMeService/api/ObjectLocation/Users/#{aliases.join(',')}", name: :users) do |data|
-            check_resp(data) do |users|
-                defer.resolve users
+    def users_fullname(username)
+        defer = thread.defer
+
+        if @fullnames[username]
+            defer.resolve @fullnames[username]
+        else
+
+            # Supports comma seperated usernames however we'll only request one at a time
+            # Example Response: ['name1', 'name2']
+            get("/FindMeService/api/User/FullNames?param=#{username}", name: :users) do |data|
+                check_resp(data) do |users|
+                    @fullnames[username] = users[0]
+                    defer.resolve users[0]
+                end
             end
         end
+
+        defer.promise
     end
 
-    def user_image(defer, login_name)
+    def user_image(login_name)
+        defer = thread.defer
+
         # Returns binary JPEG image
         get("/FindMeService/api/User/Photo/#{login_name}", name: :users) do |data|
             if data[:headers].status == 200
@@ -129,6 +172,8 @@ class Microsoft::FindMe
                 :failed
             end
         end
+
+        defer.promise
     end
 
 
@@ -139,11 +184,15 @@ class Microsoft::FindMe
         # Check this booking can be made
         # Make the booking
 
-        start_str = Time.parse(start_time.to_s).iso8601
-        end_str = Time.parse(end_time.to_s).iso8601
+        start_str = Time.parse(start_time.to_s).iso8601.split('+')[0]
+        end_str = Time.parse(end_time.to_s).iso8601.split('+')[0]
 
         details = self["room_#{room_alias}"]
-        location = "Building #{details[:Building]} level #{details[:Level]}, #{details[:Name]} room"
+        location = if details
+            "Building #{details[:Building]} level #{details[:Level]}, room #{details[:Name]}"
+        else
+            "Room #{room_alias}"
+        end
 
         post('/FindMeService/api/MeetingRooms/ScheduleMeeting', {
             body: {
