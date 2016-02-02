@@ -212,9 +212,9 @@ class Cisco::TelePresence::SxCamera < Cisco::TelePresence::SxTelnet
     def adjust_tilt(direction)
         speed = 0
         if direction == 'down'
-            speed = 1
-        elsif direction == 'up'
             speed = -1
+        elsif direction == 'up'
+            speed = 1
         end
 
         joystick(0, speed)
