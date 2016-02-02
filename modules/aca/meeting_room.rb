@@ -370,7 +370,9 @@ class Aca::MeetingRoom < Aca::Joiner
             end
         else
             unjoin.then do
-                shutdown_actual
+                thread.schedule do
+                    shutdown_actual
+                end
             end
         end
     end
