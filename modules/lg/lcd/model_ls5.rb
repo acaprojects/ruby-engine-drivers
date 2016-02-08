@@ -44,6 +44,7 @@ class Lg::Lcd::ModelLs5
 
     def on_update
         @id_num = setting(:display_id) || 1
+        @autoswitch = setting(:autoswitch) || false
         @id = @id_num.to_s.rjust(2, '0')
     end
 
@@ -281,7 +282,7 @@ class Lg::Lcd::ModelLs5
         when :input
             self[:input] = Inputs[resp_value] || :unknown
             self[:input_target] = self[:input] if self[:input_target].nil?
-            if self[:input_target] == self[:input]
+            if self[:input_target] == self[:input] || @autoswitch
                 self[:input_stable] = true
             else
                 switch_to(self[:input_target])
