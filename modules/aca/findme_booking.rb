@@ -59,7 +59,7 @@ class Aca::FindmeBooking
                 end
             end
 
-            thread.all(*promises).finally do
+            thread.all(*promises).then do
                 # UI will assume these are sorted
                 self[:today] = bookings
             end
