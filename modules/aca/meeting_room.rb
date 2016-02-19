@@ -500,12 +500,32 @@ class Aca::MeetingRoom < Aca::Joiner
 
     def vc_content(outp, inp)
         vc = self[:sources][outp.to_sym]
-        return unless vc[:content]
+        return unless vc && vc[:content]
         source = self[:sources][inp.to_sym]
+        return unless source
+
+        # Perform any subsource selection
+        if source[:usb_output]
+            if system.exists? :USB_Switcher
+                system[:USB_Switcher].switch_to(source[:usb_output])
+            end
+        end
+
+        if source[:local_switch]
+            details = source[:local_switch]
+            switch = system.get_implicit(details[:switcher])
+            switch.switch({ details[:input] => 1 })
+        end
+
+        # Perform the primary switch
         system[:Switcher].switch({source[:input] => vc[:content]})
 
         # So we can keep the UI in sync
         self[:vc_content_source] = inp
+    end
+
+    def select_camera(input)
+        system[:VidConf].select_camera(input)
     end
 
 
@@ -697,6 +717,12 @@ class Aca::MeetingRoom < Aca::Joiner
                 end
             else
                 disp_mod.unmute if disp_mod[:mute] # if mute status is defined
+            end
+
+            # We are looking at a VC source so we need to
+            # Switch to any selected content source
+            if disp_source[:content] && self[:vc_content_source]
+                vc_content(source, self[:vc_content_source])
             end
         end
 
