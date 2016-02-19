@@ -86,7 +86,7 @@ class Microsoft::FindMe
             start_str = Time.parse(start_time.to_s).iso8601.split('+')[0]
             end_str = Time.parse(end_time.to_s).iso8601.split('+')[0]
 
-            @meetings_checked[lookup] = 5.minutes.from_now
+            @meetings_checked[lookup] = 1.minutes.from_now
             @meetings[lookup] = defer.promise
 
             # Example Response:
@@ -98,10 +98,10 @@ class Microsoft::FindMe
                     defer.resolve result
                 end
             end
-            promise.catch do
+            promise.catch do |err|
                 @meetings_checked.delete lookup
                 @meetings.delete lookup
-                defer.reject "request failed"
+                defer.reject err
             end
 
             defer.promise
