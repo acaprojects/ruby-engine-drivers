@@ -148,6 +148,20 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         status 'Conference Presentation Mode'
     end
 
+    def select_camera(index)
+        # NOTE:: Index should be a number
+        command('Video Input SetMainVideoSource', params({
+            :ConnectorId => index
+        }), name: :select_camera)
+    end
+
+    def select_presentation(index)
+        # NOTE:: Index should be a number
+        command('xConfiguration Video', params({
+            :DefaultPresentationSource => index
+        }), name: :select_presentation)
+    end
+
     # ====================
     # END Common functions
     # ====================
