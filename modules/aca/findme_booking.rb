@@ -46,7 +46,7 @@ class Aca::FindmeBooking
             bookings = []
 
             raw.each do |value|
-                correct_level = false if value[:ConferenceRoomAlias] !~ /\.#{self[:level]}\./
+                correct_level = false if value[:ConferenceRoomAlias] !~ /#{self[:level]}/
                 bookings << value if value[:ConferenceRoomAlias] == self[:room]
             end
 
