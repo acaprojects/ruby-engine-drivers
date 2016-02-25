@@ -96,13 +96,14 @@ class Microsoft::FindMe
             promise = get("/FindMeService/api/MeetingRooms/Meetings/#{building}/#{level}/#{start_str}/#{end_str}") do |data|
                 result = check_resp(data, defer) do |result|
                     defer.resolve result
-                    logger.debug { "Received #{result.length} bookings for:\n#{data.inspect}" }
+                    logger.debug { "Received #{result.length} bookings for #{building} level #{level}" }
                 end
                 if result == :failed
                     @meetings_checked.delete lookup
                     @meetings.delete lookup
                     logger.warn "Meeting request failed with #{data}"
                 end
+                result
             end
             promise.catch do |err|
                 @meetings_checked.delete lookup
@@ -122,11 +123,12 @@ class Microsoft::FindMe
         #   "LocationIdentifier":null,"Status":"Located","LocatedUsing":"FixedLocation","Type":"Person","Comments":null,
         #   "ExtendedUserData":{"Alias":"dwatson","DisplayName":"David Watson","EmailAddress":"David.Watson@microsoft.com","LyncSipAddress":"dwatson@microsoft.com"}}]
         get("/FindMeService/api/ObjectLocation/Users/#{users.join(',')}", name: :users) do |data|
-            check_resp(data) do |users|
+            result = check_resp(data) do |users|
                 users.each do |user|
                     self["user_#{user[:Alias]}"] = user
                 end
             end
+            result
         end
     end
 
@@ -138,9 +140,10 @@ class Microsoft::FindMe
         uri << '?getExtendedData=true' if extended_data
 
         get(uri) do |data|
-            check_resp(data, defer) do |users|
+            result = check_resp(data, defer) do |users|
                 defer.resolve users
             end
+            result
         end
 
         defer.promise
@@ -156,10 +159,11 @@ class Microsoft::FindMe
             # Supports comma seperated usernames however we'll only request one at a time
             # Example Response: ['name1', 'name2']
             promise = get("/FindMeService/api/User/FullNames?param=#{username}", name: :users) do |data|
-                check_resp(data, defer) do |users|
+                result = check_resp(data, defer) do |users|
                     @fullnames[username] = users[0]
                     defer.resolve users[0]
                 end
+                result
             end
             promise.catch do |err|
                 defer.reject err
