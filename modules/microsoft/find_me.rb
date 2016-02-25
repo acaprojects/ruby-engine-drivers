@@ -96,6 +96,7 @@ class Microsoft::FindMe
             promise = get("/FindMeService/api/MeetingRooms/Meetings/#{building}/#{level}/#{start_str}/#{end_str}") do |data|
                 result = check_resp(data, defer) do |result|
                     defer.resolve result
+                    logger.debug { "Received #{result.length} bookings for:\n#{data.inspect}" }
                 end
                 if result == :failed
                     @meetings_checked.delete lookup
