@@ -94,8 +94,13 @@ class Microsoft::FindMe
             #   "Subject":"<meeting title>","Location":"Pty MR Syd L2 INXS (10) RT Int","BookingUserAlias":null,
             #   "StartTimeZoneName":null,"EndTimeZoneName":null}]
             promise = get("/FindMeService/api/MeetingRooms/Meetings/#{building}/#{level}/#{start_str}/#{end_str}") do |data|
-                check_resp(data) do |result|
+                result = check_resp(data, defer) do |result|
                     defer.resolve result
+                end
+                if result == :failed
+                    @meetings_checked.delete lookup
+                    @meetings.delete lookup
+                    logger.warn "Meeting request failed with #{data}"
                 end
             end
             promise.catch do |err|
@@ -132,7 +137,7 @@ class Microsoft::FindMe
         uri << '?getExtendedData=true' if extended_data
 
         get(uri) do |data|
-            check_resp(data) do |users|
+            check_resp(data, defer) do |users|
                 defer.resolve users
             end
         end
@@ -149,11 +154,14 @@ class Microsoft::FindMe
 
             # Supports comma seperated usernames however we'll only request one at a time
             # Example Response: ['name1', 'name2']
-            get("/FindMeService/api/User/FullNames?param=#{username}", name: :users) do |data|
-                check_resp(data) do |users|
+            promise = get("/FindMeService/api/User/FullNames?param=#{username}", name: :users) do |data|
+                check_resp(data, defer) do |users|
                     @fullnames[username] = users[0]
                     defer.resolve users[0]
                 end
+            end
+            promise.catch do |err|
+                defer.reject err
             end
         end
 
@@ -169,6 +177,7 @@ class Microsoft::FindMe
                 defer.resolve data[:body]
                 :success
             else
+                defer.reject :failed
                 :failed
             end
         end
@@ -223,11 +232,17 @@ class Microsoft::FindMe
         symbolize_names: true
     }.freeze
 
-    def check_resp(data)
+    def check_resp(data, defer = nil)
         if data[:headers].status == 200
-            yield ::JSON.parse(data[:body], DECODE_OPTIONS)
-            :success
+            begin
+                yield ::JSON.parse(data[:body], DECODE_OPTIONS)
+                :success
+            rescue => e
+                defer.reject e if defer
+                :failed
+            end
         else
+            defer.reject :failed if defer
             :failed
         end
     end
