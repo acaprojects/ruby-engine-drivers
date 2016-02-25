@@ -50,6 +50,10 @@ class Aca::FindmeBooking
                 bookings << value if value[:ConferenceRoomAlias] == self[:room]
             end
 
+            if !correct_level
+                logger.warn "May have received the bookings for the wrong level\nExpecting #{self[:building]} level #{self[:level]} and received\n#{raw}"
+            end
+
             if bookings.length > 0 || correct_level
                 bookings.each do |booking|
                     username = booking[:BookingUserAlias]

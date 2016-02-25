@@ -244,11 +244,11 @@ class Microsoft::FindMe
                 :success
             rescue => e
                 defer.reject e if defer
-                :failed
+                :abort
             end
         else
             defer.reject :failed if defer
-            :failed
+            :abort
         end
     end
 end
