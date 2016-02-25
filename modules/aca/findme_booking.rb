@@ -41,27 +41,31 @@ class Aca::FindmeBooking
         # Fetches bookings from now to the end of the day
         findme = system[:FindMe]
         findme.meetings(self[:building], self[:level]).then do |raw|
+            correct_level = true
             promises = []
             bookings = []
 
             raw.each do |value|
+                correct_level = false if value[:ConferenceRoomAlias] !~ /\.#{self[:level]}\./
                 bookings << value if value[:ConferenceRoomAlias] == self[:room]
             end
 
-            bookings.each do |booking|
-                username = booking[:BookingUserAlias]
-                if username
-                    promise = findme.users_fullname(username)
-                    promise.then do |name|
-                        booking[:owner] = name
+            if bookings.length > 0 || correct_level
+                bookings.each do |booking|
+                    username = booking[:BookingUserAlias]
+                    if username
+                        promise = findme.users_fullname(username)
+                        promise.then do |name|
+                            booking[:owner] = name
+                        end
+                        promises << promise
                     end
-                    promises << promise
                 end
-            end
 
-            thread.all(*promises).then do
-                # UI will assume these are sorted
-                self[:today] = bookings
+                thread.all(*promises).then do
+                    # UI will assume these are sorted
+                    self[:today] = bookings
+                end
             end
         end
     end
