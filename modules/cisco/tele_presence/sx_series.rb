@@ -70,13 +70,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
 
     # Options include: Protocol, CallRate, CallType, DisplayName, Appearance
     def dial(number, options = {})
-        checkBooking = number.split('@')
-        if checkBooking.length > 1
-            options[:BookingId] = checkBooking[0]
-            options[:Number] = checkBooking[1]
-        else
-            options[:Number] = number
-        end
+        options[:Number] = number
 
         command(:dial, params(options), name: :dial, delay: 500).then do
             call_status
