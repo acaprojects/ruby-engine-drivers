@@ -86,7 +86,7 @@ class Cisco::TelePresence::SxTelnet
             next if value.blank?
             cmd << key.to_s
             cmd << ':'
-            val = value.to_s.gsub(/[^\w\s\.\:@]/, '').strip
+            val = value.to_s.gsub(/[^\w\s\.\:\@\#\*]/, '').strip
             if val.include? ' '
                 cmd << '"'
                 cmd << val
