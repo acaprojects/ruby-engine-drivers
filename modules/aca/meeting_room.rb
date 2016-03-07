@@ -494,8 +494,18 @@ class Aca::MeetingRoom < Aca::Joiner
         end
     end
 
-    def wake_pcs
-        system.all(:Computer).wake(setting(:broadcast))
+    def camera_preset(input, preset)
+        source = self[:sources][input.to_sym]
+        cam = system.get(source[:mod], source[:index])
+        if preset[:number]
+            cam.recall_position(preset[:number].to_i)
+        elsif preset[:lookup]
+            cam.preset(preset[:lookup])
+        end
+    end
+
+    def select_camera(input)
+        system[:VidConf].select_camera(input)
     end
 
     def vc_content(outp, inp)
@@ -524,8 +534,8 @@ class Aca::MeetingRoom < Aca::Joiner
         self[:vc_content_source] = inp
     end
 
-    def select_camera(input)
-        system[:VidConf].select_camera(input)
+    def wake_pcs
+        system.all(:Computer).wake(setting(:broadcast))
     end
 
 
