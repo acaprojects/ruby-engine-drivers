@@ -75,9 +75,9 @@ class HuddleCam::Visca
         target = is_affirmative?(state)
 
         # Execute command
-        if target == On
+        if target == On && self[:power] == Off
             send_cmd "\x04\x00\x02", name: :power, delay: 15000
-        else
+        elsif target == Off && self[:power] == On
             send_cmd "\x04\x00\x03", name: :power, delay: 15000
         end
 
