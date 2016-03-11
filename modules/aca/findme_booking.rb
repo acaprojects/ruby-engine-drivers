@@ -68,6 +68,13 @@ class Aca::FindmeBooking
 
     def commit_order(order_details)
         self[:order_status] = :pending
+        status = self[:catering_status]
+
+        if status && status[:progress] == 'visited'
+            status = status.dup
+            status[:progress] = 'cleaned'
+            self[:catering_status] = status
+        end
 
         if self[:catering]
             sys = system

@@ -30,6 +30,12 @@ class Aca::OrderBoard
         self[:completed] = 0
     end
 
+    def add_order(order)
+        waiting = self[:waiting].dup
+        waiting << order
+        self[:waiting] = waiting
+    end
+
 
     def progress(order_id)
         found = nil
