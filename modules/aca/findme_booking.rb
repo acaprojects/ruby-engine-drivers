@@ -31,9 +31,60 @@ class Aca::FindmeBooking
         self[:level] = setting(:level)
         self[:room] = setting(:room)
 
+        self[:catering] = setting(:catering_system_id)
+
+        # Load the last known values (persisted to the DB)
+        self[:waiter_call] = setting(:waiter_call_active) || false
+        self[:catering_status] = setting(:last_catering_status) || {}
+        self[:order_status] = :idle
+
         fetch_bookings
         @polling_timer.cancel unless @polling_timer.nil?
         @polling_timer = schedule.every(setting(:fetch_bookings) || '5m', method(:fetch_bookings))
+    end
+
+
+    def waiter_call(state)
+        status = is_affirmative?(state)
+
+        self[:waiter_call] = status
+        # Used to highlight the service button
+        if status
+            self[:order_status] = :accepted
+        else
+            self[:order_status] = :idle
+        end
+
+        define_setting(:waiter_call_active, status)
+    end
+
+    def catering_status(details)
+        self[:catering_status] = details
+        define_setting(:last_catering_status, details)
+    end
+
+    def commit_order(order_details)
+        self[:order_status] = :pending
+
+        if (self[:catering])
+            sys = system
+            @oid ||= 1
+            systems(self[:catering])[:Orders].add_order({
+                id: "#{sys.id}_#{@oid}",
+                created_at: Time.now.to_i,
+                room_id: sys.id,
+                room_name: sys.name,
+                order: order_details
+            })
+        end
+    end
+
+    def order_complete
+        self[:order_status] = :idle
+    end
+
+    def order_accepted
+        self[:order_status] = :accepted
     end
 
 
