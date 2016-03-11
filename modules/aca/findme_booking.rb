@@ -32,6 +32,9 @@ class Aca::FindmeBooking
         self[:room] = setting(:room)
 
         self[:catering] = setting(:catering_system_id)
+        if self[:catering]
+            self[:menu] = setting(:menu)
+        end
 
         # Load the last known values (persisted to the DB)
         self[:waiter_call] = setting(:waiter_call_active) || false
@@ -66,7 +69,7 @@ class Aca::FindmeBooking
     def commit_order(order_details)
         self[:order_status] = :pending
 
-        if (self[:catering])
+        if self[:catering]
             sys = system
             @oid ||= 1
             systems(self[:catering])[:Orders].add_order({
