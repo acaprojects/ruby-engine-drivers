@@ -745,6 +745,14 @@ class Aca::MeetingRoom < Aca::Joiner
             system[:Switcher].switch({disp_source[:input] => disp_info[:output]})
         end
 
+        # Perform any custom tasks
+        if disp_source[:custom_tasks]
+            disp_source[:custom_tasks].each do |task|
+                args = task[:args] || []
+                method = task[:method]
+                system.get_implicit(task[:module]).method_missing(method, *args)
+            end
+        end
 
         # Task 3: lower the screen if this display has one
         unless disp_info[:screen].nil?
