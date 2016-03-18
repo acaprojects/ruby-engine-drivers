@@ -82,7 +82,9 @@ class Samsung::Displays::DmSeries
     # power off the panel. This doesn't work in video walls
     # so if a nominal blank input is
     def power(power, broadcast = nil)
-        if is_negatory?(power)
+        off = is_negatory?(power)
+        self[:power] = !off
+        if off
             # Blank the screen before turning off panel
             #if self[:power]
             #    blank = setting(:blank)
@@ -139,6 +141,7 @@ class Samsung::Displays::DmSeries
         vol = 0 if vol < 0
         vol = 100 if vol > 100
 
+        self[:volume] = vol
         do_send(:volume, vol, options)
     end
 
