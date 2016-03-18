@@ -274,7 +274,7 @@ class Samsung::Displays::MdSeries
             command = COMMAND[command]
         end
 
-        data = [command, 0xFF, data.length] + data    # Build request (0xFF is screen id)
+        data = [command, @id, data.length] + data    # Build request (0xFF is screen id)
         checksum(data)                                # Add checksum
         data = [0xAA] + data                          # Add header
         send(array_to_str(data), options)
