@@ -78,6 +78,18 @@ class Aca::MeetingRoom < Aca::Joiner
             self[:channels] = @channels.keys if @channels
             self[:cameras] = @cameras.keys if @cameras
 
+            # Example definition:
+=begin
+            "blinds": [{
+                "title": "Glass",
+                "module": "DigitalIO_1",
+                "feedback": "relay1",
+                "closed_value": true,
+                "open_value": false,
+                "func": "relay",
+                "args": [1] # NOTE:: The open or closed value will be appended to the args list
+            }]
+=end
             self[:blinds] = setting(:blinds)
 
             # Get any default settings
