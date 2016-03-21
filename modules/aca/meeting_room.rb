@@ -78,6 +78,8 @@ class Aca::MeetingRoom < Aca::Joiner
             self[:channels] = @channels.keys if @channels
             self[:cameras] = @cameras.keys if @cameras
 
+            self[:blinds] = setting(:blinds)
+
             # Get any default settings
             @defaults = setting(:defaults) || {}
         rescue => e
