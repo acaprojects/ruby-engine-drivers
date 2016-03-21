@@ -43,7 +43,12 @@ class Aca::MeetingRoom < Aca::Joiner
 
             # Grab the list of inputs and outputs
             self[:sources] = setting(:sources)
-            self[:outputs] = setting(:outputs)
+
+            # We don't want to break things on update if inputs define audio settings
+            # and there is a presentation currently
+            @original_outputs = setting(:outputs)
+            self[:outputs] = (self[:outputs] || {}).deep_merge(@original_outputs)
+
             self[:mics] = setting(:mics)
             @sharing_output = self[:outputs].keys.first
 
@@ -483,6 +488,12 @@ class Aca::MeetingRoom < Aca::Joiner
             end
         end
 
+        # Mute source level audio
+        self[:sources].each do |key, source|
+            mute_source(mixer, source, true) if source[:mixer_id]
+        end
+        self[:outputs] = @original_outputs.dup # Shouldn't need to be deep
+
         system.all(:Computer).logoff
         system.all(:Camera).power(Off)
         system.all(:Visualiser).power(Off)
@@ -641,15 +652,63 @@ class Aca::MeetingRoom < Aca::Joiner
     protected
 
 
-    def show(source, display)
-        disp_info = self[:outputs][display]
-        disp_source = self[:sources][source]
+    def mute_source(mixer, details, mute_state)
+        args = {}
+        args[:ids] = details[:mute_id] || details[:mixer_id]
+        index = details[:mixer_mute_index] || details[:mixer_index]
+        args[:index] = index if index
+        args[:muted] = mute_state
 
+        mixer.mutes(args)
+    end
+
+    def update_audio(source, disp_id)
+        current = self[disp_id]
+        mixer = system[:Mixer]
+
+        if current && current[:source]
+            curr_source = current[:source]
+            found_count = 0
+
+            # Loop through displays and ensure this source
+            # is only on a single output
+            self[:outputs].keys.each do |key|
+                found_count += 1 if self[key.to_sym][:source] == curr_source
+            end
+
+            if found_count > 1
+                curr_info = self[:sources][current[:source]]
+                mute_source(mixer, curr_info, true) if curr_info[:mixer_id]
+            end
+        end
+
+        # Grab the audio info
+        orig = @original_outputs[disp_id]
+        ouput = source.merge(orig)
+        output.delete(:hide_audio)
+
+        # Update the front end
+        outputs = self[:outputs].dup
+        outputs[disp_id] = ouput
+        self[:outputs] = outputs
+
+        # Unmute this source
+        mute_source(mixer, ouput, false)
+    end
+
+    def show(source, display)
+        disp_source = self[:sources][source]
 
         # We might not actually want to switch anything (support tab)
         # Especially if the room only as a single display (switch on tab select)
         return if disp_source[:ignore]
 
+        # Check if the input source defines the audio
+        if disp_source[:mixer_id]
+            update_audio(disp_source, display)
+        end
+
+        disp_info = self[:outputs][display]
 
         # Task 1: switch the display on and to the correct source
         unless disp_info[:no_mod]
