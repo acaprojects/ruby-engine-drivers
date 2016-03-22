@@ -1,5 +1,7 @@
 module Aca; end
 class Aca::LightingManual
+    include ::Orchestrator::Constants
+
     # For use with meeting room logic, if triggers are not defined
     # Not really recommended for accurate feedback.
     # (Levels may need to be set across multiple groups, difficult to determine which preset is selected)
@@ -25,9 +27,12 @@ class Aca::LightingManual
             trigger.each do |area|
                 zones = area[:zones] || []
                 level = area[:level]
+                app = area[:channel]
 
                 zones.each do |zone|
-                    system[:Lights].light_level(zone, level)
+                    args = [zone, level]
+                    args << app if app
+                    system[:Lights].light_level(*args)
                 end
             end
             logger.debug { "Light level #{index} called" }
