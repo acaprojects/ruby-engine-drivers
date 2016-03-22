@@ -105,7 +105,7 @@ class Clipsal::CBus
 
 
 
-    def blinds(group, action, application = 0x38)
+    def blinds(application, group, action)
         group = group & 0xFF
         application = application & 0xFF
 
@@ -120,8 +120,8 @@ class Clipsal::CBus
                 action = Up
                 command << 0xFF
             else
-                # Stop (need to confirm this)
-                command << 0x05
+                # Stop
+                command << 5
             end
         end
 
