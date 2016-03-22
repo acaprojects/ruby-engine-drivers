@@ -15,6 +15,10 @@ class Aca::LightingManual
     implements :logic
 
 
+    def on_load
+        on_update
+    end
+
     def on_update
         @triggers = setting(:light_levels) || []
     end
