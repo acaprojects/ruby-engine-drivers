@@ -71,17 +71,21 @@ class Bss::Blu100
     #
     def fader(fader_ids, percent, index = 0)
         faders = fader_ids.is_a?(Array) ? fader_ids : [fader_ids]
+        indices = index.is_a?(Array) ? index : [index]
+
+        percent = percent.to_i
+        percent = 6553600 if percent > 6553600
+        percent = 0 if percent < 0
+
+        percent = number_to_data(percent)
+
         faders.each do |fader|
-            index_data = id_to_array(index, :gain)
+            indices.each do |val|
+                index_data = id_to_array(val, :gain)
 
-            percent = percent.to_i
-            percent = 6553600 if percent > 6553600
-            percent = 0 if percent < 0
-
-            percent = number_to_data(percent)
-
-            do_send([OPERATION_CODE[:set_percent]] + NODE + VIRTUAL + number_to_object(fader.to_i) + index_data + percent)
-            subscribe_percent(fader)
+                do_send([OPERATION_CODE[:set_percent]] + NODE + VIRTUAL + number_to_object(fader.to_i) + index_data + percent)
+                subscribe_percent(fader, val)
+            end
         end
     end
     # Named params version
@@ -91,13 +95,16 @@ class Bss::Blu100
 
     def mute(fader_ids, val = true, index = 1)
         faders = fader_ids.is_a?(Array) ? fader_ids : [fader_ids]
+        indices = index.is_a?(Array) ? index : [index]
+        actual = val ? 1 : 0
+
         faders.each do |fader|
-            actual = val ? 1 : 0
+            indices.each do |val|
+                index_data = id_to_array(val, :mute)
 
-            index_data = id_to_array(index, :mute)
-
-            do_send([OPERATION_CODE[:set_state]] + NODE + VIRTUAL + number_to_object(fader.to_i) + index_data + number_to_data(actual))
-            subscribe_state(fader)
+                do_send([OPERATION_CODE[:set_state]] + NODE + VIRTUAL + number_to_object(fader.to_i) + index_data + number_to_data(actual))
+                subscribe_state(fader, val)
+            end
         end
     end
     # Named params version
@@ -112,8 +119,12 @@ class Bss::Blu100
 
     def query_fader(fader_ids, index = 0)
         faders = fader_ids.is_a?(Array) ? fader_ids : [fader_ids]
+        indices = index.is_a?(Array) ? index : [index]
+
         faders.each do |fader|
-            subscribe_percent(fader, index)
+            indices.each do |val|
+                subscribe_percent(fader, val)
+            end
         end
     end
     # Named params version
@@ -123,8 +134,12 @@ class Bss::Blu100
 
     def query_mute(fader_ids, index = 1)
         faders = fader_ids.is_a?(Array) ? fader_ids : [fader_ids]
+        indices = index.is_a?(Array) ? index : [index]
+
         faders.each do |fader|
-            subscribe_state(fader, index)
+            indices.each do |val|
+                subscribe_state(fader, val)
+            end
         end
     end
     # Named params version
