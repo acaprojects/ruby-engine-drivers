@@ -64,7 +64,7 @@ class Clipsal::CBus
         application = application & 0xFF
         
         command = [0x05, application, 0x00]
-        if [On, 1, :on, 'on'].include?(state)
+        if is_affirmative? state
             state = On
             command << 0x79 # Group on
         else
@@ -77,9 +77,9 @@ class Clipsal::CBus
         
         do_send(command)
     end
-    
-    
-    def light_level(group, level, rate = 0b0001, application = 0x38)
+
+
+    def light_level(group, level, application = 0x38, rate = 0b0001)
         
         #
         # rates:
