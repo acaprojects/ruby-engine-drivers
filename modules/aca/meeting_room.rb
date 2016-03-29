@@ -591,7 +591,7 @@ class Aca::MeetingRoom < Aca::Joiner
     # Master Audio in Joining System
     # ------------------------------
     def share_volume(display, level)
-        perform_action(mod: :System, func: :volume_actual, args: [display, level.to_i])
+        perform_action(mod: :System, func: :volume_actual, args: [display, level.to_f.round])
     end
 
     def volume_actual(display, level)
@@ -677,23 +677,23 @@ class Aca::MeetingRoom < Aca::Joiner
             end
 
             if found_count > 1
-                curr_info = self[:sources][current[:source]]
-                mute_source(mixer, curr_info, true) if curr_info[:mixer_id]
+                curr_info = self[:sources][curr_source]
+                mute_source(mixer, curr_info, true) if curr_info && curr_info[:mixer_id]
             end
         end
 
         # Grab the audio info
         orig = @original_outputs[disp_id]
-        ouput = source.merge(orig)
+        output = source.merge(orig)
         output.delete(:hide_audio)
 
         # Update the front end
         outputs = self[:outputs].dup
-        outputs[disp_id] = ouput
+        outputs[disp_id] = output
         self[:outputs] = outputs
 
         # Unmute this source
-        mute_source(mixer, ouput, false)
+        mute_source(mixer, output, false)
     end
 
     def show(source, display)
