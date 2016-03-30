@@ -77,12 +77,14 @@ class Vaddio::Camera::ClearViewPtzTelnet
         params = direction.to_sym == :stop ? direction : "#{direction} #{speed}"
         send "camera pan #{params}\r", name: :pan
     end
+    alias_method :adjust_pan, :pan
 
     # direction: up, down, stop
     def tilt(direction, speed = 10)
         params = direction.to_sym == :stop ? direction : "#{direction} #{speed}"
         send "camera tilt #{params}\r", name: :tilt
     end
+    alias_method :adjust_tilt, :tilt
 
     def home
         send "camera home\r", name: :home
