@@ -39,6 +39,8 @@ class Vaddio::Camera::ClearViewPtzTelnet
     end
     
     def on_update
+        @presets = setting(:presets) || {}
+        self[:presets] = @presets.keys
     end
     
     def connected
@@ -93,7 +95,19 @@ class Vaddio::Camera::ClearViewPtzTelnet
     # number 1->6 inclusive
     # save command: store
     def preset(number, command = :recall)
-        send "camera preset #{command} #{number}\r", name: :preset
+        if number.is_a? String
+            name = number.to_sym
+            preset = @presets[name]
+            if preset
+                send "camera preset #{command} #{preset}\r", name: :preset
+            elsif name == :default
+                home
+            else
+                send "camera preset #{command} #{number}\r", name: :preset
+            end
+        else
+            send "camera preset #{command} #{number}\r", name: :preset
+        end
     end
 
     # direction: in, out, stop
