@@ -178,8 +178,8 @@ class Microsoft::FindMe
 
         # Returns binary JPEG image
         get("/FindMeService/api/User/Photo/#{login_name}", name: :users) do |data|
-            if data[:headers].status == 200
-                defer.resolve data[:body]
+            if data.status == 200
+                defer.resolve data.body
                 :success
             else
                 defer.reject :failed
@@ -220,7 +220,7 @@ class Microsoft::FindMe
                 :EndTimeZoneName => "AUS Eastern Standard Time"
             }
         }) do |data|
-            if data[:headers].status == 200
+            if data.status == 200
                 :success
             else
                 :failed
@@ -238,9 +238,9 @@ class Microsoft::FindMe
     }.freeze
 
     def check_resp(data, defer = nil)
-        if data[:headers].status == 200
+        if data.status == 200
             begin
-                yield ::JSON.parse(data[:body], DECODE_OPTIONS)
+                yield ::JSON.parse(data.body, DECODE_OPTIONS)
                 :success
             rescue => e
                 defer.reject e if defer
