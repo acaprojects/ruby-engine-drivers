@@ -71,7 +71,7 @@ class Tripleplay::XmlRpc
             call: json
         }
 
-        get("/triplecare/JsonXmlRpcHandler.php", opts) do |data, resolve|
+        get("/triplecare/JsonRpcHandler.php", opts) do |data, resolve|
             logger.debug { "received: #{data[:body]}" }
 
             if data[:body] == 'true'
