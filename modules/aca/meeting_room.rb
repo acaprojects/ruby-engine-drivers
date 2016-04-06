@@ -47,7 +47,7 @@ class Aca::MeetingRoom < Aca::Joiner
             # We don't want to break things on update if inputs define audio settings
             # and there is a presentation currently
             @original_outputs = setting(:outputs)
-            self[:outputs] = (self[:outputs] || {}).deep_merge(@original_outputs)
+            self[:outputs] = (self[:outputs] || ActiveSupport::HashWithIndifferentAccess.new).deep_merge(@original_outputs)
 
             self[:mics] = setting(:mics)
             @sharing_output = self[:outputs].keys.first
