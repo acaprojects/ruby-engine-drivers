@@ -7,11 +7,6 @@ class Tripleplay::XmlRpc
     include ::Orchestrator::Constants
 
 
-    DECODE_OPTIONS = {
-        symbolize_names: true
-    }.freeze
-
-
     # Discovery Information
     uri_base 'http://serverIP'
     descriptive_name 'Tripleplay Digital Signage and IPTV'
@@ -60,6 +55,11 @@ class Tripleplay::XmlRpc
     protected
 
 
+    # JSON decode options
+    DECODE_OPTIONS = {
+        symbolize_names: true
+    }.freeze
+
     def make_req(method, *params, **opts)
         json = {
             jsonrpc: '2.0',
@@ -71,14 +71,17 @@ class Tripleplay::XmlRpc
             call: json
         }
 
+        # Example response:
+        # {"jsonrpc":"2.0","id":null,"result":true}
         get("/triplecare/JsonRpcHandler.php", opts) do |data, resolve|
-            logger.debug { "received: #{data[:body]}" }
+            logger.debug { "received: #{data.body}" }
 
-            if data[:body] == 'true'
+            resp = ::JSON.parse(data.body, DECODE_OPTIONS)
+
+            if resp[:result] == true
                 yield if block_given?
                 :success
             else
-                resp = ::JSON.parse(data[:body], DECODE_OPTIONS)
                 logger.warn "error processing request: #{resp[:faultString]} (#{resp[:faultCode]})"
                 :abort
             end
