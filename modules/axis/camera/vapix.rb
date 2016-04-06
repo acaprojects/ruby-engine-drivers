@@ -57,8 +57,8 @@ class Axis::Camera::Vapix
 
 
     # Here for cross module compatibility
-    def power(state = nil, &blk)
-        blk.call true
+    def power(state = nil)
+        yield true if block_given?
     end
 
     def pantilt(pan = nil, tilt = nil)
