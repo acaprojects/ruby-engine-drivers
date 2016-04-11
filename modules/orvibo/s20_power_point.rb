@@ -33,9 +33,13 @@ class Orvibo::S20PowerPoint
     def on_update
         # This is the mac address of the server
         mac_address = setting(:mac_address)
-        if mac_address.nil? && CAN_MACADDR
-            # This may not be the correct address so a setting if preferred
-            mac_address = ::Mac.address
+        if mac_address.nil?
+            if CAN_MACADDR
+                # This may not be the correct address so a setting if preferred
+                mac_address = ::Mac.address
+            else
+                discover
+            end
         end
 
         if mac_address
@@ -57,26 +61,11 @@ class Orvibo::S20PowerPoint
 
 
     Commands = {
-        subscribe: '\x63\x6C',
-        power: '\x73\x66'
+        subscribe: "\x63\x6C",
+        power: "\x73\x66",
+        discovery: "\x71\x67"
     }
     Commands.merge!(Commands.invert)
-
-
-  
-    def received(data, resolve, command)
-        logger.debug { "received: 0x#{byte_to_hex(data)}" }
-
-        len = data[0..1]
-        cmd = data[2..3]
-
-        case Commands[cmd]
-        when :subscribe, :power
-            self[:power] = data[-1].ord == 1
-        end
-
-        :success
-    end
 
 
     # All Commands apart from discovery require a subscription first!
@@ -89,16 +78,55 @@ class Orvibo::S20PowerPoint
         do_send :power, "\x00\x00\x00\x00#{flag}"
     end
 
+    # Discovers configured devices on the network
+    # Can be used to find ones mac address too, if there are no routers inbetween
+    def discover
+        # For udp_broadcast information
+        # See: https://github.com/advancedcontrol/engine/blob/master/lib/orchestrator/datagram_server.rb
+        str = build_string :discovery
+        thread.udp_broadcast str, 10000, '255.255.255.255'
+    end
+
+
+    def received(data, resolve, command)
+        logger.debug { "received: 0x#{byte_to_hex(data)}" }
+
+        len = data[0..1]
+        cmd = data[2..3]
+
+        case Commands[cmd]
+        when :subscribe, :power
+            self[:power] = data[-1].ord == 1
+        when :discovery
+            data = [5..-1]
+            components = data.split MAC_Padding
+            remote_mac = byte_to_hex(components[1])
+            self[:power] = data[-1].ord == 1
+
+            @mac_address = components[0] if @mac_address.nil?
+
+            logger.info "Discovered device with this address mac: #{remote_mac}, state #{self[:power]}"
+        end
+
+        :success
+    end
+
 
     protected
 
 
-    def do_send(cmd, data)
+    def build_string(cmd, data = '')
         str = "#{Commands[cmd]}#{@mac_address}#{MAC_Padding}#{data}"
         len = str.length + 4
-        str = "#{Magic_Key}#{hex_to_byte(en.to_s(16).rjust(4, '0'))}#{str}"
+        "#{Magic_Key}#{hex_to_byte(en.to_s(16).rjust(4, '0'))}#{str}"
+    end
 
-        send str, name: cmd
+    def do_send(cmd, data)
+        if @mac_address.nil?
+            logger.error 'unable to send command without a MAC address'
+            return
+        end
+        send build_string(cmd, data), name: cmd
     end
 
     # This checks if we have received all the data for a response
