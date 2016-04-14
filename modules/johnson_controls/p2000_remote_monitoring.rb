@@ -4,6 +4,7 @@ module JohnsonControls; end
 
 # Works with both the HTTP and raw ASCII protocols
 class JohnsonControls::P2000RemoteMonitoring
+    include ::Orchestrator::Constants
 
     descriptive_name 'Johnson P2000 Remote Monitoring'
     generic_name :Security
