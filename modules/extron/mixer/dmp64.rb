@@ -47,6 +47,7 @@ class Extron::Mixer::Dmp64 < Extron::Base
         send("#{number}.")    # No Carriage return for presents
         # Response: Rpr#{number}
     end
+    alias_method :preset, :call_preset
 
     #
     # Input control
