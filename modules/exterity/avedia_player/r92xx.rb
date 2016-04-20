@@ -40,12 +40,26 @@ class Exterity::AvediaPlayer::R92xx
     def connected
         @ready = false
 
+        # Disable echo (Doesn't look like Exterity supports this option)
+        # send "#{Protocols::Telnet::IAC}#{Protocols::Telnet::DONT}#{Protocols::Telnet::OPT_ECHO}", wait: false, delay: 50, priority: 99
+
+        # Login
         do_send (setting(:username) || 'admin'), wait: false, delay: 200, priority: 98
         do_send (setting(:password) || 'labrador'), wait: false, delay: 200, priority: 97
+
+        # Select open shell option
         do_send '6', wait: false, delay: 200, priority: 96
+
+        # Launch command processor
         do_send './usr/bin/serialCommandInterface', wait: false, delay: 200, priority: 95
 
-        # TODO:: We need to disconnect if we don't see the serialCommandInterface after a certain amount of time
+        # We need to disconnect if we don't see the serialCommandInterface after a certain amount of time
+        schedule.in('5s') do
+            if not @ready
+                logger.error 'Exterity connection failed to be ready after 5 seconds. Check username and password.'
+                disconnect
+            end
+        end
 
         # We want to buffer the sub commands too
         @buffer = ::UV::BufferedTokenizer.new({
@@ -55,6 +69,7 @@ class Exterity::AvediaPlayer::R92xx
 
         @polling_timer = schedule.every('60s') do
             logger.debug '-- Polling Exterity Player'
+            tv_info
         end
     end
     
@@ -66,22 +81,57 @@ class Exterity::AvediaPlayer::R92xx
         @polling_timer = nil
     end
 
-    # TODO:: Channel selection and power control
+
+    def channel(number, _ = nil)
+        set :play_channel_number, number
+    end
+
+    def dump
+        do_send '^dump!', name: :dump
+    end
+
+    def help
+        do_send '^help!', name: :help
+    end
+
+    def reboot
+        remote :reboot
+    end
+
+    def tv_info
+        get :tv_info
+    end
+
+    def version
+        get :SoftwareVersion
+    end
+
+    def manual(cmd)
+        do_send cmd
+    end
     
     
     protected
 
 
-
     def received(data, resolve, command)
+        data = data.strip
+
         logger.debug { "Exterity sent #{data}" }
 
         if @ready
+            # Ignore echos
+            if command && command[:data].include?(data)
+                return :ignore
+            end
+
+            # Extract response
             @buffer.extract(data).each do |resp|
                 process_resp(resp, resolve, command)
             end
-        elsif data =~ /Exterity Control Interface/
+        elsif data =~ /Exterity Control Interface/i
             @ready = true
+            version
         end
 
         :success
@@ -90,11 +140,33 @@ class Exterity::AvediaPlayer::R92xx
     def process_resp(data, resolve, command)
         logger.debug { "Resp details #{data}" }
 
-        # TODO:: track status here
+        parts = data.split ':'
+
+        case parts[0].to_sym
+        when :error
+            if command
+                logger.warn "Error when requesting: #{command[:data].strip}"
+            else
+                logger.warn "Error response received"
+            end
+        when :tv_info
+            self[:tv_info] = parts[1]
+        when :SoftwareVersion
+            self[:version] = parts[1]
+        end
     end
 
-    def eci(command, options = {})
-        do_send("^#{command}!", options)
+    def set(command, data, options = {})
+        options[:name] = :"set_#{command}" unless options[:name]
+        do_send("^set:#{command}:#{data}!", options)
+    end
+
+    def get(status, options = {})
+        do_send("^get:#{status}!", options)
+    end
+
+    def remote(cmd, options = {})
+        do_send("^send:#{cmd}!", options)
     end
 
 
