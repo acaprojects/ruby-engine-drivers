@@ -79,7 +79,9 @@ class Cisco::TelePresence::SxCamera < Cisco::TelePresence::SxTelnet
 
 
     def home
-        command("Camera PositionReset CameraId:#{@index}", name: :preset).then do
+        # command("Camera PositionReset CameraId:#{@index}", name: :preset).then do
+        # Preset1 is a better home as it will usually pointed to a default position wheras PositionReset may not be a userfull view
+        recall_position(1).then do
             autofocus
             do_poll
         end
