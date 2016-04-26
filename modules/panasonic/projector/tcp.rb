@@ -47,9 +47,13 @@ class Panasonic::Projector::Tcp
                 lamp_hours?(priority: 0)
             end
         end
+
+        on_update
     end
 
     def on_update
+        @username = setting(:username) || 'admin1'
+        @password = setting(:password) || 'panasonic'
     end
     
     def connected
@@ -166,9 +170,9 @@ class Panasonic::Projector::Tcp
 
         # This is the ready response
         if data[0] == ' '
-            @mode = data[1]
-            if @mode == '1'
-                @pass = "#{setting(:username) || 'admin1'}:#{setting(:password) || 'panasonic'}:#{data[3..-1]}"
+            @use_pass = data[1] == '1'
+            if @use_pass
+                @pass = "#{@username}:#{@password}:#{data[3..-1]}"
                 @pass = Digest::MD5.hexdigest(@pass)
             end
 
@@ -271,7 +275,7 @@ class Panasonic::Projector::Tcp
 
     # Apply the password hash to the command if a password is required
     def apply_password(data, command)
-        if @mode == '1'
+        if @use_pass
             data = "#{@pass}#{data}"
         end
 
