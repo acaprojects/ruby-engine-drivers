@@ -54,7 +54,7 @@ class Aca::PcControl
         mac = setting(:mac_address)
         if mac
             # config is the database model representing this device
-            wake_device(mac, broadcast || '<broadcast>')
+            wake_device(mac, broadcast || '255.255.255.255')
         end
         logger.debug "Waking computer #{mac} #{broadcast}"
         nil
