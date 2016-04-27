@@ -676,7 +676,7 @@ class Aca::MeetingRoom < Aca::Joiner
                 found_count += 1 if self[key.to_sym][:source] == curr_source
             end
 
-            if found_count > 1
+            if found_count <= 1
                 curr_info = self[:sources][curr_source]
                 mute_source(mixer, curr_info, true) if curr_info && curr_info[:mixer_id]
             end
