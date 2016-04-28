@@ -14,6 +14,7 @@ class Samsung::Displays::MdSeries
 
     # Communication settings
     tokenize indicator: "\xAA", callback: :check_length
+    default_settings display_id: 0
 
 
     #
@@ -196,6 +197,8 @@ class Samsung::Displays::MdSeries
     end
 
     def received(response, resolve, command)
+        logger.debug { "Samsung sent #{byte_to_hex(response)}" }
+
         data = str_to_array(response)
         if data[2] == 3     # Check for correct data length
             status = data[3]
