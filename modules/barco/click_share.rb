@@ -4,8 +4,8 @@ class Barco::ClickShare
     include ::Orchestrator::Constants
 
 
-    # Discovery Information
-    uri_base 'https://clickshare.ip'
+    # Discovery Information (service is on port 4000)
+    uri_base 'https://clickshare.ip:4000'
     descriptive_name 'ClickShare Wireless Presenter'
     generic_name :WirelessPresenter
     default_settings username: 'integrator', password: 'integrator'
@@ -20,8 +20,12 @@ class Barco::ClickShare
     end
     
     def on_update
-        @username = setting(:username)
-        @password = setting(:password)
+        config({
+            digest: {
+                user:     setting(:username),
+                password: setting(:password)
+            }
+        })
     end
 
     def room_name(value = nil)
@@ -112,12 +116,17 @@ class Barco::ClickShare
         if resp.body && resp.body.length > 0
             data = begin
                 ::JSON.parse(resp.body, DECODE_OPTIONS)
-            rescue
+            rescue => e
+                if resp.body != 'Unauthorized'
+                    logger.debug { "error decoding response body: #{resp.body}" }
+                end
                 nil
             end
         end
 
-        case data[:status] || resp.status
+        status = data.nil? ? resp.status : (data[:status] || resp.status)
+
+        case status
         when 200
             yield data
             return :success
@@ -136,12 +145,6 @@ class Barco::ClickShare
 
     
     def do_send(path, value: nil, options: {})
-        options = opts.merge({
-            headers: {
-                'authorization' => [@username, @password]
-            }
-        })
-
         if value
             if value.is_a? Hash
                 options[:body] = "value=#{value.to_json}"
@@ -150,13 +153,13 @@ class Barco::ClickShare
             end
 
             put(path, options) do |resp|
-                process_response do |data|
+                process_response(resp) do |data|
                     yield data if block_given?
                 end
             end
         else
             get(path, options) do |resp|
-                process_response do |data|
+                process_response(resp) do |data|
                     yield data if block_given?
                 end
             end
