@@ -9,8 +9,19 @@ class Samsung::Displays::MdSeries
 
     # Discovery Information
     tcp_port 1515
-    descriptive_name 'Samsung MD Series LCD'
+    descriptive_name 'Samsung MD & DM Series LCD'
     generic_name :Display
+
+# Markdown description
+description <<-DESC
+For DM displays configure the following options:
+
+1. Network Standby = OFF (reduces the chance of a display crashing)
+2. Set Auto Standby = OFF
+3. Set Eco Solution, Auto Off = OFF
+
+Hard Power off displays each night and wake on lan them in the morning.
+DESC
 
     # Communication settings
     tokenize indicator: "\xAA", callback: :check_length
@@ -101,7 +112,12 @@ class Samsung::Displays::MdSeries
     end
 
     def hard_off
-        do_send(:hard_off, 0)
+        do_send(:hard_off, 0).finally do
+            # Actually takes awhile to shutdown!
+            schedule.in('10s') do
+                disconnect
+            end
+        end
     end
 
     def power?(options = {}, &block)

@@ -8,7 +8,7 @@ class Samsung::Displays::DmSeries
 
     # Discovery Information
     tcp_port 1515
-    descriptive_name 'Samsung DM (does not respond)'
+    descriptive_name 'Samsung DM (do not use)'
     generic_name :Display
 
     #tokenize indicator: "\xAA", callback: :check_length
