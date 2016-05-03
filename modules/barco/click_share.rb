@@ -11,7 +11,7 @@ class Barco::ClickShare
     default_settings username: 'integrator', password: 'integrator'
 
     # Communication settings
-    keepalive false
+    keepalive true
     inactivity_timeout 1500
 
 
