@@ -21,6 +21,7 @@ class Aca::LifterLogicManual
         # {"up": [[index, state, time]]}
         @up_config = setting(:up)
         @down_config = setting(:down)
+        @stop_config = setting(:stop)
 
         # {"rotate": [{"active": [index, state, time], "inactive": [index, state, time]}]}
         @rotate_config = setting(:rotate)
@@ -57,6 +58,17 @@ class Aca::LifterLogicManual
         pulse(mod, *cmd) if cmd.length > 2
 
         self[:"lifter#{index}"] = :down
+    end
+
+    def stop(index = 1)
+        pos = index - 1
+        mod = system.get(@module, @index)
+        cmd = @stop_config[pos]
+
+        logger.debug "stopping..."
+
+        pulse(mod, *cmd)
+        pulse(mod, *cmd) if cmd.length > 2
     end
 
     def rotate(state, index = 1)
