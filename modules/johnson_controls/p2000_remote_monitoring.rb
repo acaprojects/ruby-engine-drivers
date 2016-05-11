@@ -39,7 +39,7 @@ class JohnsonControls::P2000RemoteMonitoring
         def on_read(data, *args)
             begin
                 @buffer.extract(data).each do |request|
-                    process_command(request)
+                    process_signal(request)
                 end
             rescue => e
                 logger.print_error(e, "error extracting data from: #{data.inspect} in on_read callback")
@@ -163,4 +163,3 @@ class JohnsonControls::P2000RemoteMonitoring
         self[panel_id] = data
     end
 end
-
