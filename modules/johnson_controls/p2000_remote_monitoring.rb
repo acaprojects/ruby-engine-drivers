@@ -9,7 +9,11 @@ class JohnsonControls::P2000RemoteMonitoring
     descriptive_name 'Johnson P2000 Remote Monitoring'
     generic_name :Security
     default_settings port: 38000
-    implements :logic
+
+    # UDP is stateless. We won't actually send or receive anything
+    # effectively wanted a logic module that could be added to multiple
+    # systems as this is a special case module
+    udp_port 38000
 
 
     module SignalServer
@@ -39,6 +43,7 @@ class JohnsonControls::P2000RemoteMonitoring
         def on_read(data, *args)
             begin
                 @buffer.extract(data).each do |request|
+                    logger.debug { "P2000 Sent: #{request}" }
                     process_signal(request)
                 end
             rescue => e
@@ -100,8 +105,6 @@ class JohnsonControls::P2000RemoteMonitoring
     }
 
     def received(xml)
-        logger.debug { "P2000 Sent: #{xml}" }
-
         xml_doc  = Nokogiri::XML(xml)
         type = xml_doc.xpath("//MessageBase//MessageType").children.to_s.to_i
         subtype = xml_doc.xpath("//MessageBase//MessageSubType").children.to_s.to_i
@@ -160,6 +163,7 @@ class JohnsonControls::P2000RemoteMonitoring
         }
 
         # Make this information available to listeners
-        self[panel_id] = data
+        self[term_id.to_s] = data
+        self[term_name] = data
     end
 end
