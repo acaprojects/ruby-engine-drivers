@@ -60,7 +60,7 @@ class JohnsonControls::P2000RemoteMonitoring
             end
             begin
                 signal = "<P2000Message>#{raw}</P2000Message>"
-                @mod.received signal
+                @mod.parse signal
             rescue => e
                 logger.print_error(e, "error parsing request in process_signal: #{raw.inspect}")
             end
@@ -104,7 +104,7 @@ class JohnsonControls::P2000RemoteMonitoring
         65 => :HostGrant
     }
 
-    def received(xml)
+    def parse(xml)
         xml_doc  = Nokogiri::XML(xml)
         type = xml_doc.xpath("//MessageBase//MessageType").children.to_s.to_i
         subtype = xml_doc.xpath("//MessageBase//MessageSubType").children.to_s.to_i
