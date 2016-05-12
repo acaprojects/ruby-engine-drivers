@@ -107,7 +107,8 @@ class Aca::FindmeBooking
         self[:catering_status] = details
 
         # We'll turn off the green light on the waiter call button
-        if self[:waiter_status] != :idle && status[:progress] == 'visited'
+        if self[:waiter_status] != :idle && details[:progress] == 'visited'
+            self[:waiter_call] = false
             self[:waiter_status] = :idle
             define_setting(:waiter_status, self[:waiter_status])
         end
