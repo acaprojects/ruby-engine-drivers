@@ -35,6 +35,9 @@ class Aca::FindmeBooking
     default_settings({
         update_every: '5m',
 
+        # Card reader IDs if we want to listen for swipe events
+        card_readers: ['reader_id_1', 'reader_id_2']
+
         # Optional LDAP creds for looking up emails
         ldap_creds: {
             host: 'ldap.org.com',
