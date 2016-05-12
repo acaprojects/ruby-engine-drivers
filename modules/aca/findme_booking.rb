@@ -14,7 +14,7 @@ class Aca::FindmeBooking
     generic_name :Bookings
     implements :logic
 
-    
+
     # The room we are interested in
     default_settings update_every: '5m'
 
@@ -37,9 +37,38 @@ class Aca::FindmeBooking
         end
 
         # Load the last known values (persisted to the DB)
-        self[:waiter_call] = setting(:waiter_call_active) || false
+        self[:waiter_status] = (setting(:waiter_status) || :idle).to_sym
+        self[:waiter_call] = self[:waiter_status] != :idle
+
         self[:catering_status] = setting(:last_catering_status) || {}
         self[:order_status] = :idle
+
+
+        # unsubscribe to all swipe IDs if any are subscribed
+        if @subs.present?
+            @subs.each do |sub|
+                unsubscribe(sub)
+            end
+
+            @subs = nil
+        end
+
+        # Are there any swipe card integrations
+        if system.exists? :Security
+            readers = setting(:card_readers)
+            if readers.present?
+                security = system[:Security]
+
+                readers = readers.is_a?(Array) ? readers : [readers]
+                sys = system
+                @subs = []
+                readers.each do |id|
+                    @subs << sys.subscribe(:Security, 1, id.to_s) do |notice|
+                        swipe_occured(notice.value)
+                    end
+                end
+            end
+        end
 
         fetch_bookings
         @polling_timer.cancel unless @polling_timer.nil?
@@ -47,22 +76,42 @@ class Aca::FindmeBooking
     end
 
 
+    # ======================================
+    # Waiter call information
+    # ======================================
     def waiter_call(state)
         status = is_affirmative?(state)
 
         self[:waiter_call] = status
+
         # Used to highlight the service button
         if status
-            self[:order_status] = :accepted
+            self[:waiter_status] = :pending
         else
-            self[:order_status] = :idle
+            self[:waiter_status] = :idle
         end
 
-        define_setting(:waiter_call_active, status)
+        define_setting(:waiter_status, self[:waiter_status])
     end
 
+    def call_acknowledged
+        self[:waiter_status] = :accepted
+        define_setting(:waiter_status, self[:waiter_status])
+    end
+
+
+    # ======================================
+    # Catering Management
+    # ======================================
     def catering_status(details)
         self[:catering_status] = details
+
+        # We'll turn off the green light on the waiter call button
+        if self[:waiter_status] != :idle && status[:progress] == 'visited'
+            self[:waiter_status] = :idle
+            define_setting(:waiter_status, self[:waiter_status])
+        end
+
         define_setting(:last_catering_status, details)
     end
 
@@ -89,15 +138,19 @@ class Aca::FindmeBooking
         end
     end
 
-    def order_complete
-        self[:order_status] = :idle
-    end
-
     def order_accepted
         self[:order_status] = :accepted
     end
 
+    def order_complete
+        self[:order_status] = :idle
+    end
 
+
+
+    # ======================================
+    # ROOM BOOKINGS:
+    # ======================================
     def fetch_bookings(*args)
         # Fetches bookings from now to the end of the day
         findme = system[:FindMe]
@@ -139,7 +192,7 @@ class Aca::FindmeBooking
         now = Time.now
         day_num = day.to_i
         current = now.wday
-        
+
         if day_num != now.wday && @day_checked[day_num] < (now - 5.minutes)
             promise = @day_checking[day_num]
             return promise if promise
@@ -165,5 +218,28 @@ class Aca::FindmeBooking
     # TODO:: Provide a way to indicate if this succeeded or failed
     def schedule_meeting(user, starting, ending, subject)
         system[:FindMe].schedule_meeting(user, self[:room], starting, ending, subject)
+    end
+
+
+    # ======================================
+    # Meeting Helper Functions
+    # ======================================
+
+    def start_meeting(meeting_ref, user_id = nil)
+
+    end
+
+    def cancel_meeting(meeting_ref, user_id = nil)
+
+    end
+
+
+    protected
+
+
+    def swipe_occured(info)
+        # Update the user details
+        self[:fullname] = "#{info[:firstname]} #{info[:lastname]}"
+        self[:username] = info[:staff_id]
     end
 end
