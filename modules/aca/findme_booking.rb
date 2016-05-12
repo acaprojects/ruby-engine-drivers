@@ -1,3 +1,6 @@
+require 'thread_safe'
+
+
 module Aca; end
 
 # NOTE:: Requires Settings:
@@ -8,6 +11,19 @@ module Aca; end
 
 class Aca::FindmeBooking
     include ::Orchestrator::Constants
+    EMAIL_CACHE = ::ThreadSafe::Cache.new
+    CAN_LDAP = begin
+        require 'net/ldap'
+        true
+    rescue LoadError
+        false
+    end
+    CAN_EWS = begin
+        require 'viewpoint'
+        true
+    rescue LoadError
+        false
+    end
 
 
     descriptive_name 'Findme Room Bookings'
@@ -16,7 +32,31 @@ class Aca::FindmeBooking
 
 
     # The room we are interested in
-    default_settings update_every: '5m'
+    default_settings({
+        update_every: '5m',
+
+        # Optional LDAP creds for looking up emails
+        ldap_creds: {
+            host: 'ldap.org.com',
+            port: 636,
+            encryption: {method: :simple_tls},
+            auth: {
+                  method: :simple,
+                  username: 'service account',
+                  password: 'password'
+            }
+        },
+        tree_base: "ou=User,ou=Accounts,dc=org,dc=com",
+
+        # Optional EWS for creating and removing bookings
+        ews_creds: [
+            'https://company.com/EWS/Exchange.asmx',
+            'service account',
+            'password',
+            { http_opts: { ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE } }
+        ],
+        ews_room: 'room@email.address'
+    })
 
 
     def on_load
@@ -27,13 +67,33 @@ class Aca::FindmeBooking
     end
 
     def on_update
+        self[:swiped] ||= 0
+        @last_swipe_at = 0
+
         self[:building] = setting(:building)
         self[:level] = setting(:level)
         self[:room] = setting(:room)
 
+        # Is there catering available for this room?
         self[:catering] = setting(:catering_system_id)
         if self[:catering]
             self[:menu] = setting(:menu)
+        end
+
+        # Do we want to look up the users email address?
+        if CAN_LDAP
+            @ldap_creds = setting(:ldap_creds)
+            @tree_base = setting(:tree_base) if @ldap_creds
+        else
+            logger.warn "net/ldap gem not available" if setting(:ldap_creds)
+        end
+
+        # Do we want to use exchange web services to manage bookings
+        if CAN_EWS
+            @ews_creds = setting(:ews_creds)
+            @ews_room = setting(:ews_room) if @ews_creds
+        else
+            logger.warn "viewpoint gem not available" if setting(:ews_creds)
         end
 
         # Load the last known values (persisted to the DB)
@@ -42,6 +102,8 @@ class Aca::FindmeBooking
 
         self[:catering_status] = setting(:last_catering_status) || {}
         self[:order_status] = :idle
+
+        self[:last_meeting_started] = setting(:last_meeting_started)
 
 
         # unsubscribe to all swipe IDs if any are subscribed
@@ -198,8 +260,6 @@ class Aca::FindmeBooking
             promise = @day_checking[day_num]
             return promise if promise
 
-            # TODO:: Calculate the start and end times for this particular day
-
             # Clear the old data
             symbol = :"day_#{day_num}"
             self[symbol] = nil
@@ -217,21 +277,40 @@ class Aca::FindmeBooking
     end
 
     # TODO:: Provide a way to indicate if this succeeded or failed
-    def schedule_meeting(user, starting, ending, subject)
-        system[:FindMe].schedule_meeting(user, self[:room], starting, ending, subject)
-    end
+    #def schedule_meeting(user, starting, ending, subject)
+    #    system[:FindMe].schedule_meeting(user, self[:room], starting, ending, subject)
+    #end
+    #
+    # NOTE:: We're using EWS directly now
 
 
     # ======================================
     # Meeting Helper Functions
     # ======================================
 
-    def start_meeting(meeting_ref, user_id = nil)
-
+    def start_meeting(meeting_ref)
+        self[:last_meeting_started] = meeting_ref
+        define_setting(:last_meeting_started, meeting_ref)
     end
 
-    def cancel_meeting(meeting_ref, user_id = nil)
+    def cancel_meeting(start_time)
+        task {
+            delete_ews_booking start_time
+        }.then(proc { |count|
+            logger.debug { "successfully removed #{count} bookings" }
+        }, proc { |error|
+            logger.print_error error, 'removing ews booking'
+        })
+    end
 
+    def create_meeting(end_time)
+        task {
+            make_ews_booking end_time
+        }.then(proc { |id|
+            logger.debug { "successfully created booking: #{id}" }
+        }, proc { |error|
+            logger.print_error error, 'creating ad hoc booking'
+        })
     end
 
 
@@ -240,7 +319,133 @@ class Aca::FindmeBooking
 
     def swipe_occured(info)
         # Update the user details
+        @last_swipe_at = Time.now.to_i
         self[:fullname] = "#{info[:firstname]} #{info[:lastname]}"
         self[:username] = info[:staff_id]
+        email = nil
+
+        if self[:username] && @ldap_creds
+            email = EMAIL_CACHE[self[:username]]
+            if email
+                set_email(email)
+                logger.debug { "email #{email} found in cache" }
+            else
+                # Cache username here as self[:username] might change while we
+                #  looking up the previous username
+                username = self[:username]
+
+                logger.debug { "looking up email for #{username} - #{self[:fullname]}" }
+                task {
+                    ldap_lookup_email username
+                }.then do |email|
+                    if email
+                        logger.debug { "email #{email} found in LDAP" }
+                        EMAIL_CACHE[username] = email
+                        set_email(email)
+                    else
+                        logger.warn "no email found in LDAP for #{username}"
+                        set_email nil
+                    end
+                end
+            end
+        else
+            logger.warn "no staff ID for user #{self[:fullname]}"
+            set_email nil
+        end
     end
+
+    def set_email(email)
+        self[:email] = email
+        self[:swiped] += 1
+    end
+
+    # ====================================
+    # LDAP lookup to occur in worker thread
+    # ====================================
+    def ldap_lookup_email(username)
+        ldap = Net::LDAP.new @ldap_creds
+
+        login_filter = Net::LDAP::Filter.eq('sAMAccountName', username)
+        object_filter = Net::LDAP::Filter.eq('objectClass', '*')
+        treebase = @tree_base
+        search_attributes = ['mail']
+
+        email = nil
+        ldap.bind
+        ldap.search({
+            base: treebase,
+            filter: object_filter & login_filter,
+            attributes: search_attributes
+        }) do |entry|
+            email = get_attr(entry, 'mail')
+        end
+
+        # Returns email as a promise
+        email
+    end
+
+    def get_attr(entry, attr_name)
+        if attr_name != "" && attr_name != nil
+            entry[attr_name].is_a?(Array) ? entry[attr_name].first : entry[attr_name]
+        end
+    end
+    # ====================================
+
+
+    # =======================================
+    # EWS Requests to occur in a worker thread
+    # =======================================
+    def make_ews_booking(end_time)
+        subject = 'Ad hoc Booking'
+        start_time = Time.now
+        user_email = self[:email]
+
+        booking = {
+            subject: subject,
+            start: start_time,
+            end: end_time
+        }
+
+        if user_email
+            booking[:required_attendees] = [{
+                attendee: { mailbox: { email_address: user_email } }
+            }]
+        end
+
+        opts = {}
+        opts[:act_as] = @ews_room if @ews_room
+
+        cli = Viewpoint::EWSClient.new(*@ews_creds)
+        folder = cli.get_folder(:calendar, opts)
+        appointment = folder.create_item(booking)
+
+        # Return the booking IDs
+        appointment.item_id
+    end
+
+    def delete_ews_booking(start_time)
+        delete_at = Time.parse(start_time.to_s).to_i
+
+        opts = {}
+        opts[:act_as] = @ews_room if @ews_room
+
+        count = 0
+
+        cli = Viewpoint::EWSClient.new(*@ews_creds)
+        folder = cli.get_folder(:calendar, opts)
+        items = folder.items_between(Date.today.iso8601, Date.tomorrow.tomorrow.iso8601)
+        items.each do |meeting|
+            meeting_time = Time.parse(meeting.ews_item[:start][:text])
+
+            # Remove any meetings that match the start time provided
+            if meeting_time.to_i == delete_at
+                meeting.delete!(:recycle, send_meeting_cancellations: 'SendOnlyToAll')
+                count += 1
+            end
+        end
+
+        # Return the number of meetings removed
+        count
+    end
+    # =======================================
 end
