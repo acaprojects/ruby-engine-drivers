@@ -133,8 +133,13 @@ class Aca::FindmeBooking
                 sys = system
                 @subs = []
                 readers.each do |id|
+                    ignore_first_swipe = true
                     @subs << sys.subscribe(:Security, 1, id.to_s) do |notice|
-                        swipe_occured(notice.value)
+                        if ignore_first_swipe
+                            ignore_first_swipe = false
+                        else
+                            swipe_occured(notice.value)
+                        end
                     end
                 end
             end
