@@ -331,6 +331,7 @@ class Aca::FindmeBooking
         end
 
         end_time = duration.to_i.minutes.from_now.ceil(15.minutes)
+        start_time = Time.now
 
         # Make sure we don't overlap the next booking
         if next_start && next_start < end_time
@@ -338,9 +339,11 @@ class Aca::FindmeBooking
         end
 
         task {
-            make_ews_booking end_time
+            make_ews_booking start_time, end_time
         }.then(proc { |id|
             logger.debug { "successfully created booking: #{id}" }
+            # We want to start the meeting automatically
+            start_meeting(start_time.to_i * 1000)
         }, proc { |error|
             logger.print_error error, 'creating ad hoc booking'
         })
@@ -429,9 +432,8 @@ class Aca::FindmeBooking
     # =======================================
     # EWS Requests to occur in a worker thread
     # =======================================
-    def make_ews_booking(end_time)
+    def make_ews_booking(start_time, end_time)
         subject = 'Ad hoc Booking'
-        start_time = Time.now
         user_email = self[:email]
 
         booking = {
