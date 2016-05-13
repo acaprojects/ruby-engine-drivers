@@ -1,5 +1,14 @@
 require 'thread_safe'
 
+# For rounding up to the nearest 15min
+# See: http://stackoverflow.com/questions/449271/how-to-round-a-time-down-to-the-nearest-15-minutes-in-ruby
+class ActiveSupport::TimeWithZone
+    def ceil(seconds = 60)
+        return self if seconds.zero?
+        Time.at(((self - self.utc_offset).to_f / seconds).ceil * seconds).in_time_zone + self.utc_offset
+    end
+end
+
 
 module Aca; end
 
@@ -316,7 +325,18 @@ class Aca::FindmeBooking
         })
     end
 
-    def create_meeting(end_time)
+    def create_meeting(duration, next_start = nil)
+        if next_start
+            next_start = Time.parse(next_start.to_s)
+        end
+
+        end_time = duration.to_i.minutes.from_now.ceil(15.minutes)
+
+        # Make sure we don't overlap the next booking
+        if next_start && next_start < end_time
+            end_time = next_start
+        end
+
         task {
             make_ews_booking end_time
         }.then(proc { |id|
