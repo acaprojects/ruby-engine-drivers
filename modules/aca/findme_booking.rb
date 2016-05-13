@@ -34,15 +34,16 @@ class Aca::FindmeBooking
     # The room we are interested in
     default_settings({
         update_every: '5m',
+        cancel_meeting_after: 900,
 
         # Card reader IDs if we want to listen for swipe events
-        card_readers: ['reader_id_1', 'reader_id_2']
+        card_readers: ['reader_id_1', 'reader_id_2'],
 
         # Optional LDAP creds for looking up emails
         ldap_creds: {
             host: 'ldap.org.com',
             port: 636,
-            encryption: {method: :simple_tls},
+            encryption: :simple_tls,
             auth: {
                   method: :simple,
                   username: 'service account',
@@ -56,7 +57,7 @@ class Aca::FindmeBooking
             'https://company.com/EWS/Exchange.asmx',
             'service account',
             'password',
-            { http_opts: { ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE } }
+            { http_opts: { ssl_verify_mode: 0 } }
         ],
         ews_room: 'room@email.address'
     })
@@ -86,7 +87,10 @@ class Aca::FindmeBooking
         # Do we want to look up the users email address?
         if CAN_LDAP
             @ldap_creds = setting(:ldap_creds)
-            @tree_base = setting(:tree_base) if @ldap_creds
+            if @ldap_creds
+                @tree_base = setting(:tree_base)
+                @ldap_user = @ldap_creds.delete :auth
+            end
         else
             logger.warn "net/ldap gem not available" if setting(:ldap_creds)
         end
@@ -107,6 +111,7 @@ class Aca::FindmeBooking
         self[:order_status] = :idle
 
         self[:last_meeting_started] = setting(:last_meeting_started)
+        self[:cancel_meeting_after] = setting(:cancel_meeting_after)
 
 
         # unsubscribe to all swipe IDs if any are subscribed
@@ -367,6 +372,7 @@ class Aca::FindmeBooking
     # ====================================
     def ldap_lookup_email(username)
         ldap = Net::LDAP.new @ldap_creds
+        ldap.authenticate @ldap_user[:username], @ldap_user[:password] if @ldap_user
 
         login_filter = Net::LDAP::Filter.eq('sAMAccountName', username)
         object_filter = Net::LDAP::Filter.eq('objectClass', '*')
