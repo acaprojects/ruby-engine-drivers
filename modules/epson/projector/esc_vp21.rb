@@ -108,6 +108,7 @@ class Epson::Projector::EscVp21
 
         # Seems to only return ':' for this command
         self[:volume] = vol
+        self[:unmute_volume] = vol if vol > 0 # Store the 'pre mute' volume, so it can be restored on unmute  
         do_send(:VOL, vol, options)
     end
     
@@ -126,6 +127,17 @@ class Epson::Projector::EscVp21
         do_send(:MUTE, :OFF, {:name => :video_mute})
         do_send(:MUTE)
     end
+    
+    # Audio mute
+    def mute_audio(state = true)
+        val = is_affirmative?(state) ? 0 : self[:unmute_volume]
+        volume(val)
+    end
+
+    def unmute_audio
+        mute_audio(false)
+    end
+    
 
     def input?
         do_send(:SOURCE, {
@@ -202,7 +214,9 @@ class Epson::Projector::EscVp21
         when :MUTE
             self[:mute] = data[1] == 'ON'
         when :VOL
-            self[:volume] = data[1].to_i
+            vol = data[1].to_i
+            self[:volume] = vol
+            self[:unmute_volume] = vol if vol > 0 # Store the 'pre mute' volume, so it can be restored on unmute      
         when :LAMP
             self[:lamp_usage] = data[1].to_i
         when :SOURCE
