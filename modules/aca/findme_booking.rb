@@ -43,7 +43,9 @@ class Aca::FindmeBooking
     # The room we are interested in
     default_settings({
         update_every: '5m',
-        cancel_meeting_after: 900,
+        
+        # Moved to System or Zone Setting
+        # cancel_meeting_after: 900 
 
         # Card reader IDs if we want to listen for swipe events
         card_readers: ['reader_id_1', 'reader_id_2'],
@@ -86,6 +88,9 @@ class Aca::FindmeBooking
         self[:building] = setting(:building)
         self[:level] = setting(:level)
         self[:room] = setting(:room)
+        
+        # Because restarting the modules results in a 'swipe' of the last read card
+        ignore_first_swipe = true
 
         # Is there catering available for this room?
         self[:catering] = setting(:catering_system_id)
@@ -142,7 +147,6 @@ class Aca::FindmeBooking
                 sys = system
                 @subs = []
                 readers.each do |id|
-                    ignore_first_swipe = true
                     @subs << sys.subscribe(:Security, 1, id.to_s) do |notice|
                         if ignore_first_swipe
                             ignore_first_swipe = false
@@ -156,7 +160,7 @@ class Aca::FindmeBooking
 
         fetch_bookings
         @polling_timer.cancel unless @polling_timer.nil?
-        @polling_timer = schedule.every(setting(:fetch_bookings) || '5m', method(:fetch_bookings))
+        @polling_timer = schedule.every(setting(:update_every) || '5m', method(:fetch_bookings))
     end
 
 
@@ -320,6 +324,8 @@ class Aca::FindmeBooking
             delete_ews_booking start_time
         }.then(proc { |count|
             logger.debug { "successfully removed #{count} bookings" }
+            # Refresh the panel
+            fetch_bookings       
         }, proc { |error|
             logger.print_error error, 'removing ews booking'
         })
@@ -344,6 +350,8 @@ class Aca::FindmeBooking
             logger.debug { "successfully created booking: #{id}" }
             # We want to start the meeting automatically
             start_meeting(start_time.to_i * 1000)
+            # Refresh the panel
+            fetch_bookings
         }, proc { |error|
             logger.print_error error, 'creating ad hoc booking'
         })
