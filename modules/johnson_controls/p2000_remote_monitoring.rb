@@ -162,6 +162,11 @@ class JohnsonControls::P2000RemoteMonitoring
             term_name: term_name
         }
 
+        # Set an intermediary nil value so that EVERY swipe registers as an event to subscribers
+        # Otherwise, subscribers will not register another event when the same card is swiped twice in a row (they just get a "No Change" event)
+        self[term_id.to_s] = nil
+        self[term_name] = nil
+
         # Make this information available to listeners
         self[term_id.to_s] = data
         self[term_name] = data
