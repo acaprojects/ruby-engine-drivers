@@ -441,7 +441,6 @@ class Aca::FindmeBooking
     # EWS Requests to occur in a worker thread
     # =======================================
     def make_ews_booking(start_time, end_time)
-        subject = 'Ad hoc Booking'
         user_email = self[:email]
 
         booking = {
