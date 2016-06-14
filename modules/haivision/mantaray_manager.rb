@@ -51,7 +51,7 @@ class Haivision::MantarayManager
     end
 
     def query_box(box_id)
-        get("/api/devices/#{box_id}", name: "#{box_id}_#{info}") do |resp|
+        get("/api/devices/#{box_id}", name: "#{box_id}_info") do |resp|
             result, data = process_response(resp)
             if result == :success
                 self[:"#{box_id}_power"] = !data[:standbyMode]
