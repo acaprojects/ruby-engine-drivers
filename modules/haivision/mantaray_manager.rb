@@ -118,16 +118,17 @@ class Haivision::MantarayManager
     def process_response(data)
         if [201, 200].include? data.status
             begin
-                :success, ::JSON.parse(data.body, DECODE_OPTIONS)[:data]
+                resp = ::JSON.parse(data.body, DECODE_OPTIONS)[:data]
+                [:success, resp]
             rescue => e
                 logger.print_error e, 'parsing response'
-                :abort, nil
+                [:abort, nil]
             end
         elsif data.status == 401
             login
-            :retry, nil
+            [:retry, nil]
         else
-            :abort, nil
+            [:abort, nil]
         end
     end
 
