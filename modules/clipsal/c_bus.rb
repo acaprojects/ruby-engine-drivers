@@ -34,17 +34,17 @@ class Clipsal::CBus
     tokenize delimiter: "\x0D"
     wait_response false
     delay between_sends: 100
-    
+
     def on_load
     end
-    
+
     def on_unload
     end
-    
+
     def on_update
     end
-    
-    
+
+
     def connected
         send("|||\r", priority: 99)    # Ensure we are in smart mode
         @polling_timer = schedule.every('60s') do
@@ -52,17 +52,17 @@ class Clipsal::CBus
             send("|||\r", priority: 0)    # Ensure we are in smart mode
         end
     end
-    
+
     def disconnected
         @polling_timer.cancel unless @polling_timer.nil?
         @polling_timer = nil
     end
-    
-    
+
+
     def lighting(group, state, application = 0x38)
         group = group & 0xFF
         application = application & 0xFF
-        
+
         command = [0x05, application, 0x00]
         if is_affirmative? state
             state = On
@@ -74,13 +74,25 @@ class Clipsal::CBus
         command << group
 
         self["lighting_group_#{group}"] = state
-        
+
         do_send(command)
     end
 
 
+    # Allows custom feedback for non-lighting devices connected to CBus
+    def toggle_group(application, group, state = nil, feedback = nil)
+        lighting(group, true, application)
+        schedule.in('1s') do
+            lighting(group, false, application)
+            stat = feedback ? feedback.to_s.to_sym : :"toggle_group_#{group}"
+
+            self[stat] = state.nil? ? true : state
+        end
+    end
+
+
     def light_level(group, level, application = 0x38, rate = 0b0001)
-        
+
         #
         # rates:
         # => 0 == instant
@@ -91,10 +103,10 @@ class Clipsal::CBus
         group = group & 0xFF
         level = level & 0xFF
         application = application & 0xFF
-        
+
         stop_fading(group)
         command = [0x05, application, 0x00, rate, group, level]
-        
+
         do_send(command)
     end
 
@@ -130,35 +142,35 @@ class Clipsal::CBus
 
         do_send(command)
     end
-    
-    
+
+
     def trigger(group, action)
         group = group.to_i & 0xFF
         action = action.to_i & 0xFF
         command = [0x05, 0xCA, 0x00, 0x02, group, action]
-        
+
         self["trigger_group_#{group}"] = action
 
         do_send(command)
     end
-    
-    
+
+
     def trigger_kill(group)
         group = group.to_i
-        
+
         group = group & 0xFF
         command = [0x05, 0xCA, 0x00, 0x01, group]
         do_send(command)
     end
-    
-    
+
+
     def received(data, resolve, command)
         # Debug here will sometimes have the \n char
         # This is removed by the hex_to_byte function
         logger.debug { "CBus sent #{data}" }
-        
+
         data = str_to_array(hex_to_byte(data))
-        
+
         if !check_checksum(data)
             logger.warn "CBus checksum failed"
             return :failed
@@ -171,13 +183,13 @@ class Clipsal::CBus
         end
         # 0x03 == Point -> Point -> MultiPoint
         # 0x06 == Point -> Point
-        
+
         application = data[2]    # The application being referenced
         commands = data[4..-2]    # Remove the header + checksum
-        
+
         while commands.length > 0
             current = commands.shift
-            
+
             case application
             when 0xCA            # Trigger group
                 case current
@@ -233,14 +245,14 @@ class Clipsal::CBus
                 break    # We haven't programmed this application
             end
         end
-        
+
         return :success
     end
-    
-    
+
+
     protected
-    
-    
+
+
     def checksum(data)
         check = 0
         data.each do |byte|
@@ -250,7 +262,7 @@ class Clipsal::CBus
         check = ((check ^ 0xFF) + 1) & 0xFF
         return check
     end
-    
+
     def check_checksum(data)
         check = 0
         data.each do |byte|
@@ -258,12 +270,11 @@ class Clipsal::CBus
         end
         return (check % 0x100) == 0x00
     end
-    
-    
+
+
     def do_send(command, options = {})
         string = byte_to_hex(command << checksum(command)).upcase
         logger.debug { "Requesting CBus: #{string}" }
         send("\\#{string}\r", options)
     end
 end
-
