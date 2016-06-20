@@ -32,7 +32,7 @@ DESC
     # Control system events
     def on_load
         on_update
-        
+
         self[:volume_min] = 0
         self[:volume_max] = 100
         self[:power] = false
@@ -41,10 +41,10 @@ DESC
         self[:type] = :lcd
         self[:input_stable] = true
     end
-    
+
     def on_unload
     end
-    
+
     def on_update
         @id = setting(:display_id) || 0xFF
     end
@@ -86,7 +86,8 @@ DESC
         :wall_mode => 0x5C,     # Video wall mode
         :safety => 0x5D,
         :wall_on => 0x84,       # Video wall enabled
-        :wall_user => 0x89      # Video wall user control
+        :wall_user => 0x89,     # Video wall user control
+        :speaker => 0x68
     }
     COMMAND.merge!(COMMAND.invert)
 
@@ -181,6 +182,15 @@ DESC
         end
     end
 
+    Speaker_Modes = {
+        internal: 0,
+        external: 1
+    }
+    Speaker_Modes.merge!(Speaker_Modes.invert)
+    def speaker_select(mode, options = {})
+        do_send(:speaker, Speaker_Modes[mode.to_sym], options)
+    end
+
 
     #
     # Maintain connection
@@ -202,7 +212,7 @@ DESC
         if mac
             # config is the database model representing this device
             wake_device(mac, broadcast)
-            logger.debug { 
+            logger.debug {
                 info = "Wake on Lan for MAC #{mac}"
                 info << " directed to VLAN #{broadcast}" if broadcast
                 info
@@ -239,6 +249,8 @@ DESC
                             switch_to(self[:input_target])
                         end
                     end
+                when :speaker
+                    self[:input] = Speaker_Modes[value]
                 end
 
                 return :success
@@ -299,4 +311,3 @@ DESC
         send(array_to_str(data), options)
     end
 end
-
