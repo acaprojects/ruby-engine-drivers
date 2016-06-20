@@ -43,9 +43,9 @@ class Aca::FindmeBooking
     # The room we are interested in
     default_settings({
         update_every: '5m',
-        
+
         # Moved to System or Zone Setting
-        # cancel_meeting_after: 900 
+        # cancel_meeting_after: 900
 
         # Card reader IDs if we want to listen for swipe events
         card_readers: ['reader_id_1', 'reader_id_2'],
@@ -88,7 +88,7 @@ class Aca::FindmeBooking
         self[:building] = setting(:building)
         self[:level] = setting(:level)
         self[:room] = setting(:room)
-        
+
         # Because restarting the modules results in a 'swipe' of the last read card
         ignore_first_swipe = true
 
@@ -316,20 +316,47 @@ class Aca::FindmeBooking
 
     def start_meeting(meeting_ref)
         self[:last_meeting_started] = meeting_ref
+        self[:meeting_pending] = meeting_ref
+        self[:meeting_ending] = false
         define_setting(:last_meeting_started, meeting_ref)
     end
 
-    def cancel_meeting(start_time)
+    def cancel_meeting(start_time, meeting_ref = nil)
         task {
             delete_ews_booking start_time
         }.then(proc { |count|
             logger.debug { "successfully removed #{count} bookings" }
+            self[:last_meeting_started] = meeting_ref
+            self[:meeting_pending] = meeting_ref
+            self[:meeting_ending] = false
+
             # Refresh the panel
-            fetch_bookings       
+            fetch_bookings
         }, proc { |error|
             logger.print_error error, 'removing ews booking'
         })
     end
+
+    # If last meeting started !== meeting pending then
+    #  we'll show a warning on the in room touch panel
+    def set_meeting_pending(meeting_ref)
+        self[:meeting_ending] = false
+        self[:meeting_pending] = meeting_ref
+    end
+
+    # Meeting ending warning indicator
+    # (When meeting_ending !== last_meeting_started then the warning hasn't been cleared)
+    # The warning is only displayed when meeting_ending === true
+    def set_end_meeting_warning
+        if self[:meeting_ending] != self[:last_meeting_started]
+            self[:meeting_ending] = true
+        end
+    end
+
+    def clear_end_meeting_warning
+        self[:meeting_ending] = self[:last_meeting_started]
+    end
+    # ---------
 
     def create_meeting(duration, next_start = nil)
         if next_start
