@@ -44,6 +44,7 @@ class Aca::LifterLogicAuto
 
         self[:"lifter#{index}"] = :up
     end
+    alias_method :close, :up
 
     def down(index = 1)
         pos = index - 1
@@ -55,6 +56,7 @@ class Aca::LifterLogicAuto
 
         self[:"lifter#{index}"] = :down
     end
+    alias_method :open, :down
 
     def rotate(state, index = 1)
         pos = index - 1

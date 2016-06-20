@@ -48,6 +48,7 @@ class Aca::LifterLogicManual
 
         self[:"lifter#{index}"] = :up
     end
+    alias_method :close, :up
 
     def down(index = 1)
         pos = index - 1
@@ -59,6 +60,7 @@ class Aca::LifterLogicManual
 
         self[:"lifter#{index}"] = :down
     end
+    alias_method :open, :down
 
     def stop(index = 1)
         pos = index - 1
