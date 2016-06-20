@@ -326,9 +326,12 @@ class Aca::FindmeBooking
             delete_ews_booking start_time
         }.then(proc { |count|
             logger.debug { "successfully removed #{count} bookings" }
-            self[:last_meeting_started] = meeting_ref
-            self[:meeting_pending] = meeting_ref
-            self[:meeting_ending] = false
+
+            if meeting_ref
+                self[:last_meeting_started] = meeting_ref
+                self[:meeting_pending] = meeting_ref
+                self[:meeting_ending] = false
+            end
 
             # Refresh the panel
             fetch_bookings
