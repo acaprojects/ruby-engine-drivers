@@ -250,7 +250,7 @@ DESC
                         end
                     end
                 when :speaker
-                    self[:input] = Speaker_Modes[value]
+                    self[:speaker] = Speaker_Modes[value]
                 end
 
                 return :success
