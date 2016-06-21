@@ -80,9 +80,9 @@ class Clipsal::CBus
 
 
     # Allows custom feedback for non-lighting devices connected to CBus
-    def toggle_group(application, group, state = nil, feedback = nil)
+    def toggle_group(application, group, state = nil, feedback = nil, wait = 300)
         lighting(group, true, application)
-        schedule.in('1s') do
+        schedule.in(wait) do
             lighting(group, false, application)
             stat = feedback ? feedback.to_s.to_sym : :"toggle_group_#{group}"
 
