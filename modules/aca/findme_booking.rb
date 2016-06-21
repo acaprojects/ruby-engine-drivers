@@ -318,6 +318,7 @@ class Aca::FindmeBooking
         self[:last_meeting_started] = meeting_ref
         self[:meeting_pending] = meeting_ref
         self[:meeting_ending] = false
+        self[:meeting_pending_notice] = false
         define_setting(:last_meeting_started, meeting_ref)
     end
 
@@ -331,6 +332,7 @@ class Aca::FindmeBooking
                 self[:last_meeting_started] = meeting_ref
                 self[:meeting_pending] = meeting_ref
                 self[:meeting_ending] = false
+                self[:meeting_pending_notice] = false
             end
 
             # Refresh the panel
@@ -345,14 +347,16 @@ class Aca::FindmeBooking
     def set_meeting_pending(meeting_ref)
         self[:meeting_ending] = false
         self[:meeting_pending] = meeting_ref
+        self[:meeting_pending_notice] = true
     end
 
     # Meeting ending warning indicator
     # (When meeting_ending !== last_meeting_started then the warning hasn't been cleared)
     # The warning is only displayed when meeting_ending === true
-    def set_end_meeting_warning
+    def set_end_meeting_warning(extendable = false)
         if self[:meeting_ending] != self[:last_meeting_started]
             self[:meeting_ending] = true
+            self[:meeting_canbe_extended] = extendable
         end
     end
 
