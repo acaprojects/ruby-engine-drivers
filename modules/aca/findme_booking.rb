@@ -334,9 +334,6 @@ class Aca::FindmeBooking
                 self[:meeting_ending] = false
                 self[:meeting_pending_notice] = false
             end
-
-            # Refresh the panel
-            fetch_bookings
         }, proc { |error|
             logger.print_error error, 'removing ews booking'
         })
@@ -384,8 +381,6 @@ class Aca::FindmeBooking
             logger.debug { "successfully created booking: #{id}" }
             # We want to start the meeting automatically
             start_meeting(start_time.to_i * 1000)
-            # Refresh the panel
-            fetch_bookings
         }, proc { |error|
             logger.print_error error, 'creating ad hoc booking'
         })
