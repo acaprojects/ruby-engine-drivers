@@ -25,6 +25,11 @@ class Haivision::MantarayManager
 
     def on_load
         on_update
+
+        # Keep the session alive
+        schedule.every('60s') do
+            login
+        end
     end
 
     def on_update
