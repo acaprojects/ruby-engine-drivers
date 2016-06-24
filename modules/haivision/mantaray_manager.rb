@@ -84,6 +84,12 @@ class Haivision::MantarayManager
         end
     end
 
+    def reboot(box_id)
+        send_cmd(:reboot, {
+            command: :reboot
+        }, box_id)
+    end
+
     def channel(chan_id, box_id)
         chan = @channels[chan_id.to_sym] || chan_id.to_s
 
