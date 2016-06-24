@@ -17,24 +17,21 @@ class Haivision::FurnaceServer
     inactivity_timeout 1500
 
 
-    def on_load
-        on_update
-    end
-    
-
     # =====================================
     # Hook into HTTP request via middleware
     # =====================================
     def on_update
+        connected
+    end
+
+    # This is called directly after on_load.
+    # Middleware is not available until connected
+    def connected
         @oauth = Protocols::OAuth.new({
             key:    setting(:consumer_key),
             secret: setting(:consumer_secret),
             site:   remote_address
         })
-        update_middleware
-    end
-
-    def connected
         update_middleware
     end
     # =====================================
