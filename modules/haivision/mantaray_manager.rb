@@ -76,7 +76,11 @@ class Haivision::MantarayManager
             command: req
         }, box_id) do
             self[:"#{box_id}_power"] = result
-            query_box(box_id) if result
+            if result
+                schedule.in('2s') do
+                    query_box(box_id)
+                end
+            end
         end
     end
 
@@ -88,7 +92,9 @@ class Haivision::MantarayManager
             parameters: { channelId: chan }
         }, box_id) do
             self[:"#{box_id}_channel"] = chan
-            query_box(box_id)
+            schedule.in('2s') do
+                query_box(box_id)
+            end
         end
     end
 
