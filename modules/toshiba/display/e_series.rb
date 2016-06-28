@@ -13,11 +13,23 @@ class Toshiba::Display::ESeries
     generic_name :Display
 
     # Communication settings
-    tokenize indicator: "\x1D", msg_length: 2
     delay between_sends: 100
 
 
+    def on_load
+        on_update
+    end
+
+    def on_update
+        @buffer ||= ''
+        defaults({
+            max_waits: 5
+        })
+    end
+
     def connected
+        @buffer = ''
+
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling Display"
             do_poll
@@ -35,24 +47,19 @@ class Toshiba::Display::ESeries
 
 
     def power(state)
-        result = self[:power]
         if is_affirmative?(state)
-            if result == Off
-                do_send([0x2A, 0xD3, 0x01, 0x00, 0x00, 0x06, 0x00, 0x00], name: :power)
-            end
+            self[:power] = true
+            do_send([0x19, 0xD3, 0x02, 0x00, 0x00, 0x60, 0x02, 0x00], name: :power)
         else
-            if result == On
-                do_send([0xBA, 0xD2, 0x01, 0x00, 0x00, 0x06, 0x01, 0x00], name: :power)
-            end
+            self[:power] = false
+            do_send([0x19, 0xD3, 0x02, 0x00, 0x00, 0x60, 0x01, 0x00], name: :power)
         end
-
-        power?
     end
 
     def power?(options = {}, &block)
         options[:emit] = block if block_given?
         options[:name] = :power_query
-        do_send([0x19, 0xD3, 0x02, 0x00, 0x00, 0x06, 0x00, 0x00], options)
+        do_send([0x19, 0xD3, 0x02, 0x00, 0x00, 0x60, 0x00, 0x00], options)
     end
 
     INPUTS = {
@@ -129,7 +136,6 @@ class Toshiba::Display::ESeries
     def do_poll
         power? do
             if self[:power]
-                screen_mute?
                 audio_mute?
                 volume?
                 input?
@@ -171,22 +177,42 @@ class Toshiba::Display::ESeries
 
 
     def received(data, resolve, command)
+        # Buffer data if required
+        if command && (@buffer.length > 0 || data[0] == "\x1D")
+            @buffer << data
+            
+            if @buffer.length >= 3
+                data = @buffer[0..2]
+                @buffer = @buffer[3..-1]
+            else
+                return :ignore
+            end
+        end
+
         logger.debug {
             cmd = "Toshiba sent 0x#{byte_to_hex(data)}"
             cmd << " for command #{command[:name]}" if command
             cmd
         }
 
+        # 06 == Success, 15 == No Action
+        if data[0] == "\x06" || data[0] == "\x15"
+            return :success
+        elsif data.length == 1
+            # We have an unknown response code
+            return :abort 
+        end
+
         if command
             case command[:name]
             when :vol_query
-                self[:volume] = data[1].ord
+                self[:volume] = data[2].ord
             when :audio_query
-                self[:audio_mute] = data == "\0\0"
+                self[:audio_mute] = data == "\x1D\0\0"
             when :screen_query
-                self[:display_mute] = data = "\0\0"
+                self[:display_mute] = data == "\x1D\0\0"
             when :input_query
-                self[:input] = case data[1].ord
+                self[:input] = case data[2].ord
                 when 2
                     :vga
                 when 3
@@ -196,7 +222,7 @@ class Toshiba::Display::ESeries
                 end
             when :power_query
                 # FFS the manual says the response for on and off
-                # is the same...
+                # is the same... and it is! Worst hardware ever...
                 #self[:power] = 
             end
         end
