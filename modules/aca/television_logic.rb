@@ -56,7 +56,7 @@ class Aca::TelevisionLogic
         chan_id << @box_id if @box_id
 
         if chan_id[0]
-            system[:IPTV].channel(*chan_id)
+            system.all(:IPTV).channel(*chan_id)
             self[:channelName] = channel
             define_setting(:start_channel, channel) if save
         else
