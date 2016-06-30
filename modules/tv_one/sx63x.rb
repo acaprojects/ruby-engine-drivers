@@ -65,15 +65,14 @@ class TvOne::Sx63x
         logger.debug { "TV One Switcher sent #{data}" }
 
         case data[0]
-            when 'P'
-                self[:power] = data[1] == '1'
-            when 'I'
-                self[:input] = data[1].to_i
-            when 'S'
-                self[:enhance] = data[1] == '1'
-            else
-                logger.info "Unknown response #{data}"
-            end
+        when 'P'
+            self[:power] = data[1] == '1'
+        when 'I'
+            self[:input] = data[1].to_i
+        when 'S'
+            self[:enhance] = data[1] == '1'
+        else
+            logger.info "Unknown response #{data}"
         end
 
         return :success
