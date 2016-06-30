@@ -37,8 +37,8 @@ class Extron::Switcher::SwUsb < Extron::Base
             device_ready
         else
             case data[0..2].to_sym
-            when :Chn    # Audio mute
-                self[:input] = data = data[3].to_i
+            when :Chn
+                self[:input] = data[3].to_i
             else
                 if data[0] == 'E'
                     logger.info "Extron Error #{ERRORS[data[1..2].to_i]}"
