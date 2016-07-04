@@ -28,9 +28,15 @@ class Aca::FindmeBooking
         false
     end
     CAN_EWS = begin
-        require 'viewpoint'
+        require 'viewpoint2'
         true
     rescue LoadError
+        begin
+            require 'viewpoint'
+            true
+        rescue LoadError
+            false
+        end
         false
     end
 
