@@ -83,7 +83,15 @@ class Exterity::AvediaPlayer::R92xx
 
 
     def channel(number, _ = nil)
-        set :play_channel_number, number
+        if [Integer, Fixnum].include? number.class
+            set :playChannelNumber, number
+        else
+            stream number
+        end
+    end
+
+    def stream(uri, _ = nil)
+        set :playChannelUri, uri
     end
 
     def dump
