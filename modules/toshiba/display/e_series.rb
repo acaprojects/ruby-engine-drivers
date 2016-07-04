@@ -124,7 +124,7 @@ class Toshiba::Display::ESeries
     def volume(value, **options)
         options[:name] = :volume
 
-        value = in_range(value, 0x1D, 0)
+        value = in_range(value.to_i, 0x1D, 0)
         promise = do_send([0x31, 0xD3, 0x03, 0x00, 0x01, 0x20, 0x01, value], options)
 
         self[:volume] = value
