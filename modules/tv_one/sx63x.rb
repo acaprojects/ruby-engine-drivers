@@ -24,8 +24,6 @@ class TvOne::Sx63x
             logger.debug "Ensuring TVOne switcher is on"
             power true
         end
-
-        login
     end
     
     def disconnected
