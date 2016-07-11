@@ -92,6 +92,7 @@ class Aca::FindmeBooking
         self[:level] = setting(:level)
         self[:room] = setting(:room)
         self[:touch_enabled] = setting(:touch_enabled) || false
+        self[:room_name] = setting(:room_name) || system.name
 
         # Because restarting the modules results in a 'swipe' of the last read card
         ignore_first_swipe = true
