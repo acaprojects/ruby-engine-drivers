@@ -81,9 +81,6 @@ class Aca::FindmeBooking
 
 
     def on_load
-        @day_checked = [0, 1, 2, 3, 4, 5, 6]
-        @day_checking = [nil, nil, nil, nil, nil, nil, nil]
-
         on_update
     end
 
@@ -118,7 +115,10 @@ class Aca::FindmeBooking
         # Do we want to use exchange web services to manage bookings
         if CAN_EWS
             @ews_creds = setting(:ews_creds)
-            @ews_room = setting(:ews_room) if @ews_creds
+            @ews_room = (setting(:ews_room) || system.email) if @ews_creds
+            # supports: SMTP, PSMTP, SID, UPN (user principle name)
+            # NOTE:: Using UPN we might be able to remove the LDAP requirement
+            @ews_connect_type = (setting(:ews_connect_type) || :SMTP).to_sym
         else
             logger.warn "viewpoint gem not available" if setting(:ews_creds)
         end
@@ -247,73 +247,13 @@ class Aca::FindmeBooking
     # ROOM BOOKINGS:
     # ======================================
     def fetch_bookings(*args)
-        # Fetches bookings from now to the end of the day
-        findme = system[:FindMe]
-        findme.meetings(self[:building], self[:level]).then do |raw|
-            correct_level = true
-            promises = []
-            bookings = []
-
-            raw.each do |value|
-                correct_level = false if value[:ConferenceRoomAlias] !~ /#{self[:level]}/
-                bookings << value if value[:ConferenceRoomAlias] == self[:room]
-            end
-
-            if !correct_level
-                logger.warn "May have received the bookings for the wrong level\nExpecting #{self[:building]} level #{self[:level]} and received\n#{raw}"
-            end
-
-            if bookings.length > 0 || correct_level
-                bookings.each do |booking|
-                    username = booking[:BookingUserAlias]
-                    if username
-                        promise = findme.users_fullname(username)
-                        promise.then do |name|
-                            booking[:owner] = name
-                        end
-                        promises << promise
-                    end
-                end
-
-                thread.all(*promises).then do
-                    # UI will assume these are sorted
-                    self[:today] = bookings
-                end
-            end
+        logger.debug { "looking up todays emails for #{@ews_room}" }
+        task {
+            todays_bookings
+        }.then do |bookings|
+            self[:today] = bookings
         end
     end
-
-    def bookings_for(day)
-        now = Time.now
-        day_num = day.to_i
-        current = now.wday
-
-        if day_num != now.wday && @day_checked[day_num] < (now - 5.minutes)
-            promise = @day_checking[day_num]
-            return promise if promise
-
-            # Clear the old data
-            symbol = :"day_#{day_num}"
-            self[symbol] = nil
-
-            # We are looking for bookings on another day
-            promise = system[:FindMe].meetings(self[:building], self[:level])
-            @day_checking[day_num] = promise
-            promise.then do |bookings|
-                self[symbol] = bookings[self[:room]]
-            end
-            promise.finally do
-                @day_checking[day_num] = nil
-            end
-        end
-    end
-
-    # TODO:: Provide a way to indicate if this succeeded or failed
-    #def schedule_meeting(user, starting, ending, subject)
-    #    system[:FindMe].schedule_meeting(user, self[:room], starting, ending, subject)
-    #end
-    #
-    # NOTE:: We're using EWS directly now
 
 
     # ======================================
@@ -494,11 +434,12 @@ class Aca::FindmeBooking
             }]
         end
 
-        opts = {}
-        opts[:act_as] = @ews_room if @ews_room
+        #opts = {}
+        #opts[:act_as] = @ews_room if @ews_room
 
         cli = Viewpoint::EWSClient.new(*@ews_creds)
-        folder = cli.get_folder(:calendar, opts)
+        cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
+        folder = cli.get_folder(:calendar)  # , opts)
         appointment = folder.create_item(booking)
 
         # Return the booking IDs
@@ -508,14 +449,15 @@ class Aca::FindmeBooking
     def delete_ews_booking(start_time)
         delete_at = Time.parse(start_time.to_s).to_i
 
-        opts = {}
-        opts[:act_as] = @ews_room if @ews_room
+        #opts = {}
+        #opts[:act_as] = @ews_room if @ews_room
 
         count = 0
 
         cli = Viewpoint::EWSClient.new(*@ews_creds)
-        folder = cli.get_folder(:calendar, opts)
-        items = folder.items_between(Date.today.iso8601, Date.tomorrow.tomorrow.iso8601)
+        cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
+        folder = cli.get_folder(:calendar) # , opts)
+        items = folder.items_between(Date.today.iso8601, Date.tomorrow.iso8601)
         items.each do |meeting|
             meeting_time = Time.parse(meeting.ews_item[:start][:text])
 
@@ -528,6 +470,23 @@ class Aca::FindmeBooking
 
         # Return the number of meetings removed
         count
+    end
+
+    def todays_bookings
+        cli = Viewpoint::EWSClient.new(*@ews_creds)
+        cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
+        folder = cli.get_folder(:calendar)
+
+        items = folder.items_between(Date.today.iso8601, Date.tomorrow.iso8601)
+        items.collect do |meeting|
+            item = meeting.ews_item
+            {
+                :Start => item[:start][:text],
+                :End => item[:start][:text],
+                :Subject => item[:subject][:text],
+                :owner => item[:organizer][:elems][0][:mailbox][:elems][0][:name][:text]
+            }
+        end
     end
     # =======================================
 end
