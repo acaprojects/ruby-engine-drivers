@@ -121,6 +121,7 @@ class Aca::FindmeBooking
             # supports: SMTP, PSMTP, SID, UPN (user principle name)
             # NOTE:: Using UPN we might be able to remove the LDAP requirement
             @ews_connect_type = (setting(:ews_connect_type) || :SMTP).to_sym
+            @timezone = setting(:room_timezone)
         else
             logger.warn "viewpoint gem not available" if setting(:ews_creds)
         end
@@ -315,11 +316,11 @@ class Aca::FindmeBooking
 
     def create_meeting(duration, next_start = nil)
         if next_start
-            next_start = Time.parse(next_start.to_s)
+            next_start = Time.at((next_start / 1000).to_i)
         end
 
-        end_time = duration.to_i.minutes.from_now.ceil(15.minutes)
         start_time = Time.now
+        end_time = duration.to_i.minutes.from_now.ceil(15.minutes)
 
         # Make sure we don't overlap the next booking
         if next_start && next_start < end_time
@@ -459,7 +460,9 @@ class Aca::FindmeBooking
         cli = Viewpoint::EWSClient.new(*@ews_creds)
         cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
         folder = cli.get_folder(:calendar) # , opts)
-        items = folder.items_between(Date.today.iso8601, Date.tomorrow.iso8601)
+
+        now = Time.now.utc
+        items = folder.items_between(now.yesterday.iso8601, now.tomorrow.tomorrow.iso8601)
         items.each do |meeting|
             meeting_time = Time.parse(meeting.ews_item[:start][:text])
 
@@ -479,12 +482,21 @@ class Aca::FindmeBooking
         cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
         folder = cli.get_folder(:calendar)
 
-        items = folder.items_between(Date.today.iso8601, Date.tomorrow.iso8601)
+        now = Time.now.utc
+        items = folder.items_between(now.yesterday.iso8601, now.tomorrow.tomorrow.iso8601)
         items.collect do |meeting|
             item = meeting.ews_item
+            start = item[:start][:text]
+            ending = item[:end][:text]
+
+            if @timezone
+                start = Time.parse(start).in_time_zone(@timezone).iso8601[0..18]
+                ending = Time.parse(ending).in_time_zone(@timezone).iso8601[0..18]
+            end
+
             {
-                :Start => item[:start][:text],
-                :End => item[:start][:text],
+                :Start => start,
+                :End => ending,
                 :Subject => item[:subject][:text],
                 :owner => item[:organizer][:elems][0][:mailbox][:elems][0][:name][:text]
             }
