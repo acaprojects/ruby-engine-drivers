@@ -271,18 +271,16 @@ class Aca::FindmeBooking
         define_setting(:last_meeting_started, meeting_ref)
     end
 
-    def cancel_meeting(start_time, meeting_ref = nil)
+    def cancel_meeting(start_time)
         task {
-            delete_ews_booking start_time
+            delete_ews_booking (start_time / 1000).to_i
         }.then(proc { |count|
             logger.debug { "successfully removed #{count} bookings" }
 
-            if meeting_ref
-                self[:last_meeting_started] = meeting_ref
-                self[:meeting_pending] = meeting_ref
-                self[:meeting_ending] = false
-                self[:meeting_pending_notice] = false
-            end
+            self[:last_meeting_started] = start_time
+            self[:meeting_pending] = start_time
+            self[:meeting_ending] = false
+            self[:meeting_pending_notice] = false
         }, proc { |error|
             logger.print_error error, 'removing ews booking'
         })
@@ -449,12 +447,7 @@ class Aca::FindmeBooking
         appointment.item_id
     end
 
-    def delete_ews_booking(start_time)
-        delete_at = Time.parse(start_time.to_s).to_i
-
-        #opts = {}
-        #opts[:act_as] = @ews_room if @ews_room
-
+    def delete_ews_booking(delete_at)
         count = 0
 
         cli = Viewpoint::EWSClient.new(*@ews_creds)
