@@ -51,7 +51,7 @@ class Nec::Projector::NpSeries
 
     # Discovery Information
     tcp_port 7142
-    descriptive_name 'NEC LCD Monitor'
+    descriptive_name 'NEC Projector'
     generic_name :Display
 
     # Communication settings
