@@ -130,6 +130,7 @@ class Aca::Joiner
             end
         end
         promise.finally do
+            self[:is_joined] = true
             commit_join(:join, @system_id, rooms)
             finish_joining
         end
@@ -149,6 +150,7 @@ class Aca::Joiner
 
         # Inform the remote systems
         promise = inform(:unjoin, rooms).finally do
+            self[:is_joined] = false
             commit_join(:unjoin)
             finish_joining
         end
@@ -189,11 +191,14 @@ class Aca::Joiner
             remaining = []
         end
 
+        self[:is_joined] = true
+
         # Commit the newly joined rooms
         commit_join(:join, initiator, rooms, remaining)
     end
 
     def notify_unjoin
+        self[:is_joined] = false
         commit_join(:unjoin)
     end
 
