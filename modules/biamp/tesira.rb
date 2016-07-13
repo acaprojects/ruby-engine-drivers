@@ -17,12 +17,13 @@ class Biamp::Tesira
 
     # Communication settings
     tokenize delimiter: "\r\n",
-             wait_ready: "login:"
+             wait_ready: /login:|server/i
 
     # Nexia requires some breathing room
     delay between_sends: 30, on_receive: 30
 
     default_settings({
+        no_password: true
         username: 'default',
         password: 'default'
     })
@@ -44,8 +45,14 @@ class Biamp::Tesira
     
     
     def connected
-        do_send (setting(:username) || :admin), wait: false, delay: 200, priority: 98
-        do_send setting(:password), wait: false, delay: 200, priority: 97
+        # Echo off
+        echo_off = Protocols::Telnet::IAC + Protocols::Telnet::DONT + Protocols::Telnet::OPT_ECHO
+        send(echo_off, wait: false, delay: 200)
+
+        if setting(:no_password)
+            do_send (setting(:username) || :admin), wait: false, delay: 200, priority: 98
+            do_send setting(:password), wait: false, delay: 200, priority: 97
+        end
         do_send "SESSION set verbose false", priority: 96
         
         @polling_timer = schedule.every('60s') do
@@ -63,7 +70,7 @@ class Biamp::Tesira
     
     
     def preset(number_or_name)
-        if [Fixnum, Integer].include? number.class
+        if [Fixnum, Integer].include? number_or_name.class
             do_send "DEVICE recallPreset #{number_or_name}"
         else
             do_send build(:DEVICE, :recallPresetByName, number_or_name)
@@ -76,6 +83,10 @@ class Biamp::Tesira
 
     def reboot
         do_send "DEVICE reboot"
+    end
+
+    def get_aliases
+        do_send "SESSION get aliases"
     end
 
     MIXERS = {
@@ -116,8 +127,10 @@ class Biamp::Tesira
     def fader(fader_id, level, index = 1, type = :fader)
         # value range: -100 ~ 12
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
+        fader_type = FADERS[type.to_sym]
+
         faders.each do |fad|
-            do_send build(fader_id, :set, FADERS[type.to_sym], index, level), type: :fader
+            do_send build(fader_id, :set, fader_type, index, level), type: :fader
         end
     end
     # Named params version
@@ -137,7 +150,7 @@ class Biamp::Tesira
 
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
         faders.each do |fad|
-            do_send build(fader_id, :set, FADERS[type.to_sym], index, value), type: :mute
+            do_send build(fader_id, :set, mute_type, index, value), type: :mute
         end
     end
     # Named params version
