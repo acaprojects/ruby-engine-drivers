@@ -23,7 +23,7 @@ class Biamp::Tesira
     delay between_sends: 30, on_receive: 30
 
     default_settings({
-        no_password: true
+        no_password: true,
         username: 'default',
         password: 'default'
     })
