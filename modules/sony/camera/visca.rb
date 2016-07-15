@@ -57,7 +57,7 @@ class Sony::Camera::Visca
     
     def connected
         @polling_timer = schedule.every('60s') do
-            logger.debug "-- Polling Huddle Camera"
+            logger.debug "-- Polling Sony Camera"
             power? do
                 if self[:power] == On
                     zoom?
@@ -275,14 +275,14 @@ class Sony::Camera::Visca
 
     # Recall a preset from the camera
     def recall_position(number)
-        number = in_range(number, 9, 1)
+        number = in_range(number, 5)
         cmd = "\x04\x3f\x02"
         cmd << number
         send_cmd cmd, name: :recall_position
     end
 
     def save_position(number)
-        number = in_range(number, 9, 1)
+        number = in_range(number, 5)
         cmd = "\x04\x3f\x01"
         cmd << number
         # No name as we might want to queue this
@@ -320,7 +320,7 @@ class Sony::Camera::Visca
     RespComplete = "\x90\x51".freeze
     RespIgnore = "\x90\x41".freeze
     def received(data, resolve, command)
-        logger.debug { "Huddle sent 0x#{byte_to_hex(data)}" }
+        logger.debug { "Sony sent 0x#{byte_to_hex(data)}" }
 
         # Process command responses
         if command && command[:inq].nil?
