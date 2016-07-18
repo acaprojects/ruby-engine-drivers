@@ -30,7 +30,7 @@ class Toshiba::Display::ESeries
     def connected
         @buffer = ''
 
-        @polling_timer = schedule.every('60s') do
+        @polling_timer = schedule.every('30s') do
             logger.debug "-- Polling Display"
             do_poll
         end
@@ -59,7 +59,7 @@ class Toshiba::Display::ESeries
     def power?(options = {}, &block)
         options[:emit] = block if block_given?
         options[:name] = :power_query
-        do_send([0x19, 0xD3, 0x02, 0x00, 0x00, 0x60, 0x00, 0x00], options)
+        do_send([0x19, 0xD8, 0x03, 0x00, 0x00, 0x60, 0x07, 0x00], options)
     end
 
     INPUTS = {
@@ -221,9 +221,7 @@ class Toshiba::Display::ESeries
                     :unknown
                 end
             when :power_query
-                # FFS the manual says the response for on and off
-                # is the same... and it is! Worst hardware ever...
-                #self[:power] = 
+                self[:power] = data != "\x1D\0\0"
             end
         end
 
