@@ -19,11 +19,11 @@ class Aca::Recorder
     end
 
     def on_update
-        @default_group = 
+        @default_group = setting(:default_group)
     end
 
 
-    def start(group_id = nil, name = nil, mode = :fullscreen, primary = :presentation, location = nil, secondary = nil)
+    def start(name = nil, group_id = @default_group, mode = :fullscreen, primary = :presentation, location = nil, secondary = nil)
         params = {}
         params[:name] = name if name
         params[:group_id] = group_id if group_id
