@@ -1,5 +1,5 @@
 require 'set'
-
+module Aca; end
 
 class Aca::Recorder
     include ::Orchestrator::Constants
@@ -19,6 +19,7 @@ class Aca::Recorder
     end
 
     def on_update
+        @default_group = 
     end
 
 
