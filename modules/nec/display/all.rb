@@ -147,7 +147,7 @@ class Nec::Display::All
     INPUTS.merge!(INPUTS.invert)
 
     def switch_to(input)
-        input = input.to_sym if input.class == String
+        input = input.to_sym
         self[:target_input] = input
         self[:target_audio] = nil
 
