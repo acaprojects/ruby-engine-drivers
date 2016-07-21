@@ -21,17 +21,22 @@ class Aca::Meetings::EwsDialInText
         wait_time: '30s'
 
     def on_load
+        @stop = false
         @started = false
         on_update
+    end
+
+    def on_unload
+        @stop = true
     end
     
     def on_update
         @mappings = setting(:meeting_rooms)
         @indicator = setting(:indicator)
         @emails = Set.new(@mappings.keys.map { |email| email.to_s })
-        @wait_time = setting(:wait_time)
+        @wait_time = setting(:wait_time) || '30s'
 
-        @appender = Aca::Meetings::Appender.new(*setting(:config)) do |booking_request, appender|
+        @appender = Aca::Meetings::EwsAppender.new(*setting(:config)) do |booking_request, appender|
             # This callback occurs on the thread pool
             begin
                 find_primary_email(booking_request, appender)
@@ -76,27 +81,35 @@ class Aca::Meetings::EwsDialInText
                 # =========================
                 # Scan for chnaged bookings
                 # =========================
-                logger.debug "Scanning calendars for location changes"
 
-                # Load a reference to all of the systems in question
-                @emails.each do |email|
-                    if !sys_info[email]
-                        get_system_settings(email, sys_info)
+                begin
+                    logger.debug "Scanning calendars for location changes"
+
+                    # Load a reference to all of the systems in question
+                    @emails.each do |email|
+                        if !sys_info[email]
+                            get_system_settings(email, sys_info)
+                        end
                     end
+                rescue => e
+                    logger.print_error e, "getting system settings"
                 end
 
                 # Scan each of the calendars for bookings that might have changed
                 task {
-                    sys_info.each_with_index do |info, email|
+                    sys_info.each do |email, info|
+                        logger.debug { "- Checking calendar #{email}" }
                         check_room_bookings(sys_info, email, info)
                     end
                 }.finally do
                     logger.debug { "Scanning complete. Waiting #{@wait_time} before next check" }
 
                     # Schedule the next scan
-                    schedule.in(@wait_time) do
-                        @scanning = false
-                        start_scanning
+                    unless @stop
+                        schedule.in(@wait_time) do
+                            @scanning = false
+                            start_scanning unless @stop
+                        end
                     end
                 end
             end
@@ -124,10 +137,8 @@ class Aca::Meetings::EwsDialInText
         calendar = ews.get_folder(:calendar)
         entries = calendar.items_between(Time.now.midnight.iso8601, 1.weeks.from_now.iso8601)
 
-        logger.debug { "- Checking calendar #{email}" }
-
         organizers = {}
-        items.each do |booking|
+        entries.each do |booking|
             booking.get_all_properties!
             org_email = booking.ews_item[:organizer][:elems][0][:mailbox][:elems][1][:email_address][:text]
             organizers[org_email] ||= []
@@ -135,7 +146,7 @@ class Aca::Meetings::EwsDialInText
         end
 
         # Note:: the impersonation is changed here
-        organizers.each_with_index do |bookings, org_email|
+        organizers.each do |org_email, bookings|
             bookings.each do |booking|
                 resources, booking = @appender.get_resources({
                     organizer: org_email,
