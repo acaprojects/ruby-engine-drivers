@@ -84,7 +84,11 @@ class Aca::Meetings::EwsAppender
             end
         end
 
-        el.replace("<span>#{dial_in_text}</span>")
+        if el
+            el.replace("<span>#{dial_in_text}</span>")
+        else
+            html_doc.at('body').children.last.after("<br /><br /><span>#{dial_in_text}</span>")
+        end
 
         # Add our input and update the item
         booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => 'SendToAllAndSaveCopy'})
