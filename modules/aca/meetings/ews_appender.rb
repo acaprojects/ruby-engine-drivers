@@ -6,7 +6,7 @@ require 'viewpoint2'
 require 'nokogiri'
 
 
-class Aca::Meetings::Appender
+class Aca::Meetings::EwsAppender
     def initialize(uri, user, password, callback = nil, &blk)
         @callback = callback || blk
 
@@ -15,6 +15,8 @@ class Aca::Meetings::Appender
         @moderator = Viewpoint::EWSClient.new uri, user, password, { "http_opts": { "ssl_verify_mode": 0 } }
         @appender = self
     end
+
+    attr_reader :cli
 
     def moderate_bookings
         # Get our bookings
@@ -53,7 +55,7 @@ class Aca::Meetings::Appender
         html_doc = Nokogiri::HTML(booking.body)
 
         # Add the appended text
-        html_doc.at('body').children.last.after("<br /><br />#{additional_content}")
+        html_doc.at('body').children.last.after("<br /><br /><span class=\"dial_in_text\">#{additional_content}</span>")
 
         # Add our input and update the item
         booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => 'SendToAllAndSaveCopy'})
@@ -64,9 +66,20 @@ class Aca::Meetings::Appender
         end
     end
 
+    def update_booking(organizer, booking_id, dial_in_text)
+        # Impersonate the organizer so that we can retrieve the right calendar items
+        @cli.set_impersonation(Viewpoint::EWS::ConnectingSID[:SMTP], organizer)
+        booking = @cli.get_item(booking_id, { :item_shape => { :base_shape => 'AllProperties' } })
 
-    protected
+        # Grab the body of the booking and parse it
+        html_doc = Nokogiri::HTML(booking.body)
 
+        # Update the appended text
+        html_doc.at('span.dial_in_text').replace("<span class=\"dial_in_text\">#{dial_in_text}</span>")
+
+        # Add our input and update the item
+        booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => 'SendToAllAndSaveCopy'})
+    end
 
     # Just a little helper method to retreive fields from EWS reponses
     def get_elem(elems, key) 
@@ -86,6 +99,10 @@ class Aca::Meetings::Appender
             end
         end
     end
+
+
+    protected
+
 
     def find_attachments
         inbox = @moderator.get_folder(:inbox)
