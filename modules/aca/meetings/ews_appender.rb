@@ -73,12 +73,18 @@ class Aca::Meetings::EwsAppender
 
         # Grab the body of the booking and parse it
         html_doc = Nokogiri::HTML(booking.body)
+
+        smallest = nil
+        el = nil
         html_doc.css('span').each do |element|
-            if element.inner_html =~ /#{indicator}/
-                element.replace("<span>#{dial_in_text}</span>")
-                break
+            text = element.inner_html
+            if text =~ /#{indicator}/ && (smallest.nil? || smallest > text.length)
+                smallest = text.length
+                el = element
             end
         end
+
+        el.replace("<span>#{dial_in_text}</span>")
 
         # Add our input and update the item
         booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => 'SendToAllAndSaveCopy'})
