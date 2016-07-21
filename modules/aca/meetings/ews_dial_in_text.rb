@@ -17,6 +17,7 @@ class Aca::Meetings::EwsDialInText
             'room@org.com' => 'system_id'
         },
         config: ['https://org.com/EWS/Exchange.asmx', 'username', 'password'],
+        indicator: 'text to prevent moderation',
         wait_time: '30s'
 
     def on_load
@@ -26,6 +27,7 @@ class Aca::Meetings::EwsDialInText
     
     def on_update
         @mappings = setting(:meeting_rooms)
+        @indicator = setting(:indicator)
         @emails = Set.new(@mappings.keys.map { |email| email.to_s })
         @wait_time = setting(:wait_time)
 
@@ -53,9 +55,11 @@ class Aca::Meetings::EwsDialInText
         sys_info = {}
 
         # Moderate bookings in the thread pool
+        logger.debug 'Checking for moderated emails...'
         task {
             @appender.moderate_bookings
         }.finally do
+            logger.debug { "Found #{@pending.length} emails for moderation" }
             @pending.each do |booking|
                 # Grab system reference and custom text
                 booking.dial_in_text = get_system_settings(booking.email, sys_info)
@@ -72,6 +76,7 @@ class Aca::Meetings::EwsDialInText
                 # =========================
                 # Scan for chnaged bookings
                 # =========================
+                logger.debug "Scanning calendars for location changes"
 
                 # Load a reference to all of the systems in question
                 @emails.each do |email|
@@ -86,6 +91,8 @@ class Aca::Meetings::EwsDialInText
                         check_room_bookings(sys_info, email, info)
                     end
                 }.finally do
+                    logger.debug { "Scanning complete. Waiting #{@wait_time} before next check" }
+
                     # Schedule the next scan
                     schedule.in(@wait_time) do
                         @scanning = false
@@ -112,25 +119,36 @@ class Aca::Meetings::EwsDialInText
 
     # NOTE:: this is always running in the thread pool
     def check_room_bookings(sys_info, email, info)
-        update_required = []
-
         ews = @appender.cli
         ews.set_impersonation(Viewpoint::EWS::ConnectingSID[:SMTP], email)
         calendar = ews.get_folder(:calendar)
-        entries = calendar.items_between(DateTime.now, 2.weeks.from_now, { item_shape: { additional_properties: { field_uRI: 'calendar:Resources'}, base_shape: 'AllProperties' } })
+        entries = calendar.items_between(Time.now.midnight.iso8601, 1.weeks.from_now.iso8601)
+
+        logger.debug { "- Checking calendar #{email}" }
+
+        organizers = {}
         items.each do |booking|
-            resources = booking.ews_item[:resources][:elems].map{|e| e[:attendee][:elems][0][:mailbox][:elems][1][:email_address][:text] }
-            detection = resources.select { |email| sys_info[email] }.collect { |email| sys_info[email].detection }.join('|')
-            if not booking.body =~ /(#{detection})/
-                # We need to update this booking
-                update_required << booking
-            end
+            booking.get_all_properties!
+            org_email = booking.ews_item[:organizer][:elems][0][:mailbox][:elems][1][:email_address][:text]
+            organizers[org_email] ||= []
+            organizers[org_email] << booking
         end
 
         # Note:: the impersonation is changed here
-        update_required.each do |booking|
-            organizer = @appender.get_elem(booking.ews_item[:meeting_request][:elems], :organizer)
-            @appender.update_booking(organizer, booking.id, info.dial_in_text)
+        organizers.each_with_index do |bookings, org_email|
+            bookings.each do |booking|
+                resources, booking = @appender.get_resources({
+                    organizer: org_email,
+                    start: booking.ews_item[:start][:text],
+                    uid: booking.ews_item[:u_i_d][:text]
+                })
+
+                detection = resources.select { |email| sys_info[email] }.collect { |email| sys_info[email].detection }.join('|')
+                if not booking.body =~ /(#{detection})/
+                    logger.debug { "--> Updating location of appointment: Organiser #{org_email}" }
+                    @appender.update_booking(org_email, booking.id, @indicator, info.dial_in_text)
+                end
+            end
         end
     end
 

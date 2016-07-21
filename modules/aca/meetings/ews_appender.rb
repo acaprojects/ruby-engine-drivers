@@ -55,7 +55,7 @@ class Aca::Meetings::EwsAppender
         html_doc = Nokogiri::HTML(booking.body)
 
         # Add the appended text
-        html_doc.at('body').children.last.after("<br /><br /><span class=\"dial_in_text\">#{additional_content}</span>")
+        html_doc.at('body').children.last.after("<br /><br /><span>#{additional_content}</span>")
 
         # Add our input and update the item
         booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => 'SendToAllAndSaveCopy'})
@@ -66,16 +66,19 @@ class Aca::Meetings::EwsAppender
         end
     end
 
-    def update_booking(organizer, booking_id, dial_in_text)
+    def update_booking(organizer, booking_id, indicator, dial_in_text)
         # Impersonate the organizer so that we can retrieve the right calendar items
         @cli.set_impersonation(Viewpoint::EWS::ConnectingSID[:SMTP], organizer)
         booking = @cli.get_item(booking_id, { :item_shape => { :base_shape => 'AllProperties' } })
 
         # Grab the body of the booking and parse it
         html_doc = Nokogiri::HTML(booking.body)
-
-        # Update the appended text
-        html_doc.at('span.dial_in_text').replace("<span class=\"dial_in_text\">#{dial_in_text}</span>")
+        html_doc.css('span').each do |element|
+            if element.inner_html =~ /#{indicator}/
+                element.replace("<span>#{dial_in_text}</span>")
+                break
+            end
+        end
 
         # Add our input and update the item
         booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => 'SendToAllAndSaveCopy'})
@@ -96,6 +99,39 @@ class Aca::Meetings::EwsAppender
               else
                  return elem[key][:text]
               end
+            end
+        end
+    end
+
+    def get_resources(attachment)
+        # Get the organiser's calendar ID
+        @cli.set_impersonation(Viewpoint::EWS::ConnectingSID[:SMTP], attachment[:organizer])
+        calendar_id = @cli.get_folder(:calendar).id
+
+        calendar_items = @cli.find_items folder_id: calendar_id, shape: :id_only do |query|
+            query.restriction = {
+                is_equal_to: [
+                {
+                    "field_uRI" => "calendar:Start",
+                    "field_uRI_or_constant" => {
+                        constant: { value:  attachment[:start] }
+                    }
+                }]
+            }
+        end
+
+        calendar_items.each do |booking|
+            if booking.get_all_properties![:u_i_d][:text] == attachment[:uid]
+                resource_booking = @cli.get_item(booking.id, { :item_shape => { :additional_properties => { :field_uRI => 'calendar:Resources'}, :base_shape => 'AllProperties'}})
+                # elems = resource_booking.attachments[0].get_all_properties![:meeting_request][:elems]
+                elems = resource_booking.ews_item[:resources]
+                resources = if elems 
+                    elems[:elems].map{|e| e[:attendee][:elems][0][:mailbox][:elems][1][:email_address][:text] }
+                else
+                    []
+                end
+
+                return [resources, booking]
             end
         end
     end
@@ -130,42 +166,14 @@ class Aca::Meetings::EwsAppender
                     :item => item
                 }
 
-                resources, booking_id = get_resources(attachment)
+                resources, booking = get_resources(attachment)
                 attachment[:resources] = resources
-                attachment[:booking_id] = booking_id
+                attachment[:booking_id] = booking.id
 
                 attachments.push(attachment)
             end
         end
 
         return attachments
-    end
-
-    def get_resources(attachment)
-        # Get the organiser's calendar ID
-        @cli.set_impersonation(Viewpoint::EWS::ConnectingSID[:SMTP], attachment[:organizer])
-        calendar_id = @cli.get_folder(:calendar).id
-
-        calendar_items = @cli.find_items folder_id: calendar_id, shape: :id_only do |query|
-            query.restriction = {
-                is_equal_to: [
-                {
-                    "field_uRI" => "calendar:Start",
-                    "field_uRI_or_constant" => {
-                        constant: { value:  attachment[:start] }
-                    }
-                }]
-            }
-        end
-
-        calendar_items.each do |booking|
-            if booking.get_all_properties![:u_i_d][:text] == attachment[:uid]
-                resource_booking = @cli.get_item(booking.id, { :item_shape => { :additional_properties => { :field_uRI => 'calendar:Resources'}, :base_shape => 'AllProperties'}})
-                # elems = resource_booking.attachments[0].get_all_properties![:meeting_request][:elems]
-                resources = resource_booking.ews_item[:resources][:elems].map{|e| e[:attendee][:elems][0][:mailbox][:elems][1][:email_address][:text] }
-
-                return [resources, booking.id]
-            end
-        end
     end
 end
