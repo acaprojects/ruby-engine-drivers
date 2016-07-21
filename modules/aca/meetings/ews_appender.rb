@@ -126,7 +126,7 @@ class Aca::Meetings::EwsAppender
                 # elems = resource_booking.attachments[0].get_all_properties![:meeting_request][:elems]
                 elems = resource_booking.ews_item[:resources]
                 resources = if elems 
-                    elems[:elems].map{|e| e[:attendee][:elems][0][:mailbox][:elems][1][:email_address][:text] }
+                    elems[:elems].map{ |e| e[:attendee][:elems][0][:mailbox][:elems][1][:email_address][:text] }
                 else
                     []
                 end
@@ -134,6 +134,8 @@ class Aca::Meetings::EwsAppender
                 return [resources, booking]
             end
         end
+
+        return [[], nil]
     end
 
 
@@ -167,6 +169,8 @@ class Aca::Meetings::EwsAppender
                 }
 
                 resources, booking = get_resources(attachment)
+                next if resources.empty? || booking.nil?
+                
                 attachment[:resources] = resources
                 attachment[:booking_id] = booking.id
 

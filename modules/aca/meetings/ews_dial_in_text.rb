@@ -99,7 +99,12 @@ class Aca::Meetings::EwsDialInText
                 task {
                     sys_info.each do |email, info|
                         logger.debug { "- Checking calendar #{email}" }
-                        check_room_bookings(sys_info, email, info)
+
+                        begin
+                            check_room_bookings(sys_info, email, info)
+                        rescue => e
+                            logger.print_error e, "checking #{email}"
+                        end
                     end
                 }.finally do
                     logger.debug { "Scanning complete. Waiting #{@wait_time} before next check" }
@@ -147,18 +152,29 @@ class Aca::Meetings::EwsDialInText
 
         # Note:: the impersonation is changed here
         organizers.each do |org_email, bookings|
-            bookings.each do |booking|
-                resources, booking = @appender.get_resources({
-                    organizer: org_email,
-                    start: booking.ews_item[:start][:text],
-                    uid: booking.ews_item[:u_i_d][:text]
-                })
+            begin
+                bookings.each do |booking|
+                    begin
+                        resources, booking = @appender.get_resources({
+                            organizer: org_email,
+                            start: booking.ews_item[:start][:text],
+                            uid: booking.ews_item[:u_i_d][:text]
+                        })
 
-                detection = resources.select { |email| sys_info[email] }.collect { |email| sys_info[email].detection }.join('|')
-                if not booking.body =~ /(#{detection})/
-                    logger.debug { "--> Updating location of appointment: Organiser #{org_email}" }
-                    @appender.update_booking(org_email, booking.id, @indicator, info.dial_in_text)
+                        next if resources.empty? || booking.nil?
+
+                        detection = resources.select { |email| sys_info[email] }.collect { |email| sys_info[email].detection }.join('|')
+                        if not booking.body =~ /(#{detection})/
+                            logger.debug { "--> Updating location of appointment: Organiser #{org_email}" }
+                            @appender.update_booking(org_email, booking.id, @indicator, info.dial_in_text)
+                        end
+
+                    rescue => e
+                        logger.print_error e, "unable to find meeting resources"
+                    end
                 end
+            rescue => e
+                logger.print_error e, "might not have permission to impersonate"
             end
         end
     end
