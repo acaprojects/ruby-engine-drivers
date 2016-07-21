@@ -55,7 +55,7 @@ class Aca::Meetings::EwsAppender
         html_doc = Nokogiri::HTML(booking.body)
 
         # Add the appended text
-        html_doc.at('body').children.last.after("<br /><br /><span>#{additional_content}</span>")
+        html_doc.at('body').children.last.after("<br /><br /><div>#{additional_content}</div>")
 
         # Add our input and update the item
         booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => 'SendToAllAndSaveCopy'})
@@ -76,7 +76,7 @@ class Aca::Meetings::EwsAppender
 
         smallest = nil
         el = nil
-        html_doc.css('span').each do |element|
+        html_doc.css('div').each do |element|
             text = element.inner_html
             if text =~ /#{indicator}/ && (smallest.nil? || smallest > text.length)
                 smallest = text.length
@@ -85,9 +85,9 @@ class Aca::Meetings::EwsAppender
         end
 
         if el
-            el.replace("<span>#{dial_in_text}</span>")
+            el.replace("<div>#{dial_in_text}</div>")
         else
-            html_doc.at('body').children.last.after("<br /><br /><span>#{dial_in_text}</span>")
+            html_doc.at('body').children.last.after("<br /><br /><div>#{dial_in_text}</div>")
         end
 
         # Add our input and update the item
