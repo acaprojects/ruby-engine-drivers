@@ -41,7 +41,6 @@ class Aca::Meetings::EwsDialInText
         @emails = Set.new(@mappings.keys.map { |email| email.to_s })
         @wait_time = setting(:wait_time) || '30s'
         @template = setting(:template)
-        @timezone = setting(:room_timezone)
 
         @appender = Aca::Meetings::EwsAppender.new(*setting(:config)) do |booking_request, appender|
             # This callback occurs on the thread pool
@@ -74,17 +73,18 @@ class Aca::Meetings::EwsDialInText
             logger.debug { "Found #{@pending.length} emails for moderation" }
             @pending.each do |booking|
                 # Grab system reference and custom text
-                booking.dial_in_text = get_system_settings(booking.email, sys_info)
+                booking.room_info = get_system_settings(booking.email, sys_info)
             end
 
             # Append bookings in the thread pool
             task {
                 @pending.each do |booking|
-                    if booking.dial_in_text
-                        text = finish_template(booking.info, booking.dial_in_text)
+                    if booking.room_info && booking.room_info.dial_in_text
+                        text = finish_template(booking.info, booking.room_info)
                         booking.appender.append_booking(booking.info, text)
                     end
                 end
+                @pending = []
             }.finally do
                 # =========================
                 # Scan for chnaged bookings
@@ -130,8 +130,8 @@ class Aca::Meetings::EwsDialInText
     end
 
 
-    Booking = Struct.new(:email, :info, :appender, :dial_in_text)
-    RoomInfo = Struct.new(:system, :detection, :dial_in_text)
+    Booking = Struct.new(:email, :info, :appender, :room_info)
+    RoomInfo = Struct.new(:system, :detection, :dial_in_text, :timezone)
 
     # NOTE:: this is always running in the thread pool
     # Called by @appender.moderate_bookings
@@ -178,7 +178,7 @@ class Aca::Meetings::EwsDialInText
                         if not booking.body =~ /(#{detection})/
                             logger.debug { "--> Updating location of appointment: Organiser #{org_email}" }
 
-                            text = finish_template(email_info, info.dial_in_text)
+                            text = finish_template(email_info, info)
                             @appender.update_booking(org_email, booking.id, @indicator, text)
                         end
 
@@ -204,9 +204,10 @@ class Aca::Meetings::EwsDialInText
 
                 # Dial in text is a key value hash
                 dial_in_text = config.settings[:meetings][:dial_in_text]
+                room_timezone = config.settings[:meetings][:room_timezone]
                 final_text = @template % dial_in_text
 
-                sys_info[email] = RoomInfo.new(sys, config.settings[:meetings][:detect_using], final_text)
+                sys_info[email] = RoomInfo.new(sys, config.settings[:meetings][:detect_using], final_text, room_timezone)
                 final_text
             else
                 logger.warn "System #{sys.id} (#{email}) was not available to approve email"
@@ -218,19 +219,21 @@ class Aca::Meetings::EwsDialInText
         end
     end
 
-    def finish_template(info, text)
+    def finish_template(info, room_info)
+        text = room_info.dial_in_text
+        timezone = room_info.timezone
         start  = Time.parse(info[:start])
         ending = Time.parse(info[:end])
-        if @timezone
-            start  = start.in_time_zone @timezone
-            ending = ending.in_time_zone @timezone
+        if timezone
+            start  = start.in_time_zone timezone
+            ending = ending.in_time_zone timezone
         end
         duration = ending - start
 
-        text.gsub!(/\$\{start_time\:(.*?)\}/) { start.strftime($1) }
-        text.gsub!(/\$\{end_time\:(.*?)\}/) { ending.strftime($1) }
-        text.gsub!('${subject}', info[:subject])
-        text.gsub!('${duration}', distance_of_time_in_words(start, ending))
-        text.gsub!('${timezone}', ActiveSupport::TimeZone[@timezone].to_s)
+        text.gsub(/\$\{start_time\:(.*?)\}/) { start.strftime($1) }.
+            gsub(/\$\{end_time\:(.*?)\}/) { ending.strftime($1) }.
+            gsub('${subject}', info[:subject]).
+            gsub('${duration}', distance_of_time_in_words(start, ending)).
+            gsub('${timezone}', ActiveSupport::TimeZone[timezone].to_s)
     end
 end
