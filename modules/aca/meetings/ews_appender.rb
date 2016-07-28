@@ -56,8 +56,8 @@ class Aca::Meetings::EwsAppender
         # Grab the body of the booking and parse it
         html_doc = Nokogiri::HTML(booking.body)
 
-        # Add the appended text
-        html_doc.at('body').children.last.after("<br /><br /><div>#{additional_content}</div>")
+        # Add the appended text (assumes that content will be contained in a table)
+        html_doc.at('body').children.last.after("<br /><br />#{additional_content}")
 
         # Add our input and update the item
         booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => 'SendToAllAndSaveCopy'})
@@ -76,20 +76,21 @@ class Aca::Meetings::EwsAppender
         # Grab the body of the booking and parse it
         html_doc = Nokogiri::HTML(booking.body)
 
-        smallest = nil
+        # We actually want the largest table element that contains the text
+        # as tables can contain sub-tables and tables are not modified by exchange so much
         el = nil
-        html_doc.css('div').each do |element|
+        html_doc.css('table').each do |element|
             text = element.inner_html
-            if text =~ /#{indicator}/ && (smallest.nil? || smallest > text.length)
-                smallest = text.length
+            if text =~ /#{indicator}/
                 el = element
+                break
             end
         end
 
         if el
-            el.replace("<div>#{dial_in_text}</div>")
+            el.replace("#{dial_in_text}")
         else
-            html_doc.at('body').children.last.after("<br /><br /><div>#{dial_in_text}</div>")
+            html_doc.at('body').children.last.after("<br /><br />#{dial_in_text}")
         end
 
         # Add our input and update the item
