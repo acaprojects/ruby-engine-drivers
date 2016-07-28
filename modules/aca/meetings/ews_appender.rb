@@ -37,8 +37,10 @@ class Aca::Meetings::EwsAppender
                 location: e[:location],
                 attendees: e[:attendees],
                 start: e[:start],
+                end: e[:end],
                 resources: e[:resources],
-                booking_id: e[:booking_id]
+                booking_id: e[:booking_id],
+                subject: e[:subject]
             }
         }.uniq.each{ |a|
             a[:moderation_emails] = email_ids[a[:uid]]
@@ -175,6 +177,7 @@ class Aca::Meetings::EwsAppender
                     :location => get_elem(elems, :location),
                     :subject => get_elem(elems, :subject),
                     :start => get_elem(elems, :start),
+                    :end => get_elem(elems, :end),
                     :item => item
                 }
 

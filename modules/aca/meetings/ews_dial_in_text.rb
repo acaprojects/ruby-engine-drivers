@@ -4,10 +4,14 @@ module Aca::Meetings; end
 
 load File.expand_path('./ews_appender.rb', File.dirname(__FILE__))
 require 'set'
+require 'action_view'
+require 'action_view/helpers'
 
 
 class Aca::Meetings::EwsDialInText
     include ::Orchestrator::Constants
+    # http://apidock.com/rails/ActionView/Helpers/DateHelper/distance_of_time_in_words
+    include ::ActionView::Helpers::DateHelper
 
     descriptive_name 'ACA Room Booking Text Appender'
     generic_name :MeetingAppender
@@ -18,6 +22,7 @@ class Aca::Meetings::EwsDialInText
         },
         config: ['https://org.com/EWS/Exchange.asmx', 'username', 'password'],
         indicator: 'text to prevent moderation',
+        template: 'text you %{want} to replace',
         wait_time: '30s'
 
     def on_load
@@ -35,6 +40,8 @@ class Aca::Meetings::EwsDialInText
         @indicator = setting(:indicator)
         @emails = Set.new(@mappings.keys.map { |email| email.to_s })
         @wait_time = setting(:wait_time) || '30s'
+        @template = setting(:template)
+        @timezone = setting(:room_timezone)
 
         @appender = Aca::Meetings::EwsAppender.new(*setting(:config)) do |booking_request, appender|
             # This callback occurs on the thread pool
@@ -74,7 +81,8 @@ class Aca::Meetings::EwsDialInText
             task {
                 @pending.each do |booking|
                     if booking.dial_in_text
-                        booking.appender.append_booking(booking.info, booking.dial_in_text)
+                        text = finish_template(booking.info, booking.dial_in_text)
+                        booking.appender.append_booking(booking.info, text)
                     end
                 end
             }.finally do
@@ -155,18 +163,23 @@ class Aca::Meetings::EwsDialInText
             begin
                 bookings.each do |booking|
                     begin
-                        resources, booking = @appender.get_resources({
+                        email_info = {
                             organizer: org_email,
                             start: booking.ews_item[:start][:text],
-                            uid: booking.ews_item[:u_i_d][:text]
-                        })
+                            uid: booking.ews_item[:u_i_d][:text],
+                            end: booking.ews_item[:end][:text],
+                            subject: booking.ews_item[:subject][:text]
+                        }
+                        resources, booking = @appender.get_resources(email_info)
 
                         next if resources.empty? || booking.nil?
 
                         detection = resources.select { |email| sys_info[email] }.collect { |email| sys_info[email].detection }.join('|')
                         if not booking.body =~ /(#{detection})/
                             logger.debug { "--> Updating location of appointment: Organiser #{org_email}" }
-                            @appender.update_booking(org_email, booking.id, @indicator, info.dial_in_text)
+
+                            text = finish_template(email_info, info.dial_in_text)
+                            @appender.update_booking(org_email, booking.id, @indicator, text)
                         end
 
                     rescue => e
@@ -188,10 +201,13 @@ class Aca::Meetings::EwsDialInText
 
             if sys.available?
                 config = sys.config
-                dial_in_text = config.settings[:meetings][:dial_in_text]
 
-                sys_info[email] = RoomInfo.new(sys, config.settings[:meetings][:detect_using], dial_in_text)
-                dial_in_text
+                # Dial in text is a key value hash
+                dial_in_text = config.settings[:meetings][:dial_in_text]
+                final_text = @template % dial_in_text
+
+                sys_info[email] = RoomInfo.new(sys, config.settings[:meetings][:detect_using], final_text)
+                final_text
             else
                 logger.warn "System #{sys.id} (#{email}) was not available to approve email"
                 nil
@@ -200,5 +216,21 @@ class Aca::Meetings::EwsDialInText
             logger.warn "No mapping found for moderated account #{email}"
             nil
         end
+    end
+
+    def finish_template(info, text)
+        start  = Time.parse(info[:start])
+        ending = Time.parse(info[:end])
+        if @timezone
+            start  = start.in_time_zone @timezone
+            ending = ending.in_time_zone @timezone
+        end
+        duration = ending - start
+
+        text.gsub!(/\$\{start_time\:(.*?)\}/) { start.strftime($1) }
+        text.gsub!(/\$\{end_time\:(.*?)\}/) { ending.strftime($1) }
+        text.gsub!('${subject}', info[:subject])
+        text.gsub!('${duration}', distance_of_time_in_words(start, ending))
+        text.gsub!('${timezone}', ActiveSupport::TimeZone[@timezone].to_s)
     end
 end
