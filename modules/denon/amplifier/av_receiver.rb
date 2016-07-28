@@ -83,16 +83,19 @@ class Denon::Amplifier::AvReceiver
     end
     
     
-    def mute
-        send_request(COMMANDS[:mute], 'ON') unless self[:mute]
+    def mute(state = true)
+        will_mute = is_affirmative?(state)
+        req = will_mute ? 'ON' : 'OFF'
+        return if self[:mute] == will_mute
+        send_request(COMMANDS[:mute], req)
     end
     alias_method :mute_audio, :mute
     
     def unmute
-        send_request(COMMANDS[:mute], 'OFF') if self[:mute]
+        mute false
     end
     alias_method :unmute_audio, :unmute
-    
+
     
     def volume(value)
         value = in_range(value.to_i, 196)
