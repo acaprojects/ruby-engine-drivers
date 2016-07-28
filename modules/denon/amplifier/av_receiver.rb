@@ -26,12 +26,15 @@ class Denon::Amplifier::AvReceiver
     delay between_sends: 30
     delay on_receive: 30
 
+
     def on_load
         self[:volume_min] = 0
         self[:volume_max] = 196 # == 98 * 2    - Times by 2 so we can account for the half steps
+        on_update
     end
     
     def on_update
+        defaults max_waits: 10, timeout: 3000
     end
     
     
@@ -46,7 +49,8 @@ class Denon::Amplifier::AvReceiver
         
         @polling_timer = schedule.every('60s') do
             logger.debug "-- Polling Denon AVR"
-            power?(:priority => 99)
+            power?(priority: 0)
+            send_query(COMMANDS[:input], priority: 0)
         end
     end
     
@@ -97,18 +101,19 @@ class Denon::Amplifier::AvReceiver
     alias_method :unmute_audio, :unmute
 
     
-    def volume(value)
-        value = in_range(value.to_i, 196)
+    def volume(level)
+        value = in_range(level.to_i, 196)
         return if self[:volume] == value
 
         # The denon is weird 99 is volume off, 99.5 is the minimum volume, 0 is the next lowest volume and 985 is the loudest volume
         # => So we are treating 99, 995 and 0 as 0
         step = value % 2
-        value = value / 2
-        value = value.to_s.rjust(2, '0')
-        value += '5' if step != 0
+        actual = value / 2
+        req = actual.to_s.rjust(2, '0')
+        req += '5' if step != 0
 
-        send_request(COMMANDS[:volume], value, name: :volume)    # Name prevents needless queuing of commands
+        send_request(COMMANDS[:volume], req, name: :volume)    # Name prevents needless queuing of commands
+        self[:volume] = value
     end
     
     
@@ -117,9 +122,11 @@ class Denon::Amplifier::AvReceiver
     #
     #INPUTS = [:cd, :tuner, :dvd, :bd, :tv, :"sat/cbl", :dvr, :game, :game2, :"v.aux", :dock]
     def switch_to(input)
-        if input.to_sym != self[:input]
+        status = input.to_s.downcase.to_sym
+        if status != self[:input]
             input = input.to_s.upcase
             send_request(COMMANDS[:input], input, name: :input)
+            self[:input] = status
         end
     end
     
@@ -154,10 +161,8 @@ class Denon::Amplifier::AvReceiver
         else
             return :ignore
         end
-        
-        
-        return :success if command.present? && comm == command[:data][0..1].to_sym
-        return :ignore    # As the system can send events we may not be listening for
+
+        return :success
     end
     
     
@@ -165,10 +170,12 @@ class Denon::Amplifier::AvReceiver
     
     
     def send_request(command, param, options = {})
+        logger.debug { "Requesting #{command}#{param}" }
         send("#{command}#{param}\r", options)
     end
     
     def send_query(command, options = {})
+        logger.debug { "Requesting #{command}" }
         send("#{command}?\r", options)
     end
 end
