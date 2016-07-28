@@ -84,8 +84,9 @@ class Aca::Meetings::EwsDialInText
                         booking.appender.append_booking(booking.info, text)
                     end
                 end
-                @pending = []
             }.finally do
+                @pending = []
+
                 # =========================
                 # Scan for chnaged bookings
                 # =========================
@@ -204,11 +205,10 @@ class Aca::Meetings::EwsDialInText
 
                 # Dial in text is a key value hash
                 dial_in_text = config.settings[:meetings][:dial_in_text]
-                room_timezone = config.settings[:meetings][:room_timezone]
-                final_text = @template % dial_in_text
+                room_timezone = config.settings[:meetings][:timezone]
+                final_text = @template.gsub(/\%\{(.*?)\}/) { dial_in_text[$1.to_sym] }
 
                 sys_info[email] = RoomInfo.new(sys, config.settings[:meetings][:detect_using], final_text, room_timezone)
-                final_text
             else
                 logger.warn "System #{sys.id} (#{email}) was not available to approve email"
                 nil
@@ -230,10 +230,11 @@ class Aca::Meetings::EwsDialInText
         end
         duration = ending - start
 
-        text.gsub(/\$\{start_time\:(.*?)\}/) { start.strftime($1) }.
-            gsub(/\$\{end_time\:(.*?)\}/) { ending.strftime($1) }.
-            gsub('${subject}', info[:subject]).
-            gsub('${duration}', distance_of_time_in_words(start, ending)).
-            gsub('${timezone}', ActiveSupport::TimeZone[timezone].to_s)
+        text = text.gsub(/\$\{start_time\:(.*?)\}/) { start.strftime($1) }
+        text = text.gsub(/\$\{end_time\:(.*?)\}/) { ending.strftime($1) }
+        text = text.gsub('${subject}', info[:subject])
+        text = text.gsub('${duration}', distance_of_time_in_words(start, ending))
+        text = text.gsub('${timezone}', ActiveSupport::TimeZone[timezone].to_s)
+        text
     end
 end
