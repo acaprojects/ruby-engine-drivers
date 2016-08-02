@@ -29,6 +29,7 @@ class Aca::Recorder
         params[:group_id] = group_id if group_id
         params[:mode] = mode
         params[:primary] = primary
+        params[:secondary] = secondary
         post('/start', {
             query: params
         }) do |resp|
