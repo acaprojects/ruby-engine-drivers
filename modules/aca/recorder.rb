@@ -23,7 +23,7 @@ class Aca::Recorder
     end
 
 
-    def start(name = nil, group_id = @default_group, mode = :fullscreen, primary = :presentation, location = nil, secondary = nil)
+    def start(name = nil, group_id = @default_group, mode = :pip, primary = :presentation, location = :bottom_right, secondary = :camera)
         params = {}
         params[:name] = name if name
         params[:group_id] = group_id if group_id
