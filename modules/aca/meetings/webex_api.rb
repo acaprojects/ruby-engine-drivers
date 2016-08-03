@@ -25,8 +25,8 @@ class Aca::Meetings::WebexApi
 
 
     def initialize(username, password)
-        @@username = username
-        @@password = password
+        @username = username
+        @password = password
     end
 
     def create_booking(subject:, description:, pin:, attendee:, start:, duration:, timezone:, host: nil, **options)
@@ -48,7 +48,7 @@ class Aca::Meetings::WebexApi
                     xml.body {
                         xml.bodyContent('xsi:type' => 'java:com.webex.service.binding.meeting.CreateMeeting') {
                             xml.accessControl {
-                                xml.meeting@password pin
+                                xml.meetingPassword pin
                             }
                             xml.metaData {
                                 xml.confName subject
@@ -132,7 +132,7 @@ class Aca::Meetings::WebexApi
             timezone:  xml_response.remove_namespaces!.css('timeZone').text,
             duration:  xml_response.remove_namespaces!.css('duration').text,
             host_id:  xml_response.remove_namespaces!.css('hostWebExID').text,
-            password: xml_response.remove_namespaces!.css('meeting@password').text
+            password: xml_response.remove_namespaces!.css('meetingPassword').text
         }
 
         return booking_response
