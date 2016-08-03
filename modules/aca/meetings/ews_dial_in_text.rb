@@ -267,7 +267,7 @@ class Aca::Meetings::EwsDialInText
                 else
                     details.out_of_sync = true
                 end
-            end
+            else
                 details.out_of_sync = true
             end
         else
@@ -347,6 +347,7 @@ class Aca::Meetings::EwsDialInText
         text = text.gsub('${duration}', distance_of_time_in_words(start, ending))
         text = text.gsub('${timezone}', ActiveSupport::TimeZone[timezone].to_s)
         text = text.gsub('${booking}', meeting_id)
+        text = text.gsub('${booking_pretty}', meeting_id.gsub(/(.{3})(?=.)/, '\1 \2'))
         text = text.gsub('${pin}', webex.pin)
 
         text = text.gsub('!starting!!', "!starting!#{start.to_i}!")
