@@ -29,7 +29,7 @@ class Aca::Meetings::WebexApi
         @@password = password
     end
 
-    def create_booking(subject:, description:, pin:, attendee:, start:, duration:, timezone:, **options)
+    def create_booking(subject:, description:, pin:, attendee:, start:, duration:, timezone:, host: nil, **options)
         if start.class == String
             start = Time.parse(start)
         elsif start.class == Integer
@@ -72,6 +72,7 @@ class Aca::Meetings::WebexApi
                                 xml.audioVideo true
                             }
                             xml.schedule {
+                                xml.hostWebExID host if host
                                 xml.startDate start.strftime('%m/%d/%Y %H:%M:%S')
                                 xml.openTime 900
                                 xml.joinTeleconfBeforeHost true
@@ -137,7 +138,7 @@ class Aca::Meetings::WebexApi
         return booking_response
     end
 
-    def update_booking(id:, start: nil, duration: nil)
+    def update_booking(id:, start: nil, duration: nil, host: nil)
         if start.class == String
             start = Time.parse(start)
         elsif start.class == Integer
@@ -156,12 +157,9 @@ class Aca::Meetings::WebexApi
                 xml.body {
                     xml.bodyContent('xsi:type' => 'java:com.webex.service.binding.meeting.SetMeeting') {
                         xml.schedule {
-                            if start
-                                xml.startDate start.strftime('%m/%d/%Y %H:%M:%S')
-                            end
-                            if duration
-                                xml.duration duration
-                            end
+                            xml.hostWebExID host if host
+                            xml.startDate(start.strftime('%m/%d/%Y %H:%M:%S')) if start
+                            xml.duration duration if duration
                         }
                         xml.meetingkey id
                     }
@@ -176,7 +174,7 @@ class Aca::Meetings::WebexApi
         return xml_response.remove_namespaces!.css('result').text
     end
 
-    def delete_booking(id)
+    def delete_booking(id, host = nil)
         builder = Nokogiri::XML::Builder.new do |xml|
                 xml.message('xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance') {
                     xml.header {

@@ -3,6 +3,7 @@ module Aca::Meetings; end
 
 
 load File.expand_path('./ews_appender.rb', File.dirname(__FILE__))
+load File.expand_path('./webex_api.rb',    File.dirname(__FILE__))
 require 'set'
 require 'action_view'
 require 'action_view/helpers'
@@ -42,6 +43,10 @@ class Aca::Meetings::EwsDialInText
         @wait_time = setting(:wait_time) || '30s'
         @template = setting(:template)
 
+        webex_user = setting(:webex_username)
+        webex_pass = setting(:webex_password)
+        @webex = Aca::Meetings::WebexApi.new(webex_user, webex_pass) if webex_user
+
         @appender = Aca::Meetings::EwsAppender.new(*setting(:config)) do |booking_request, appender|
             # This callback occurs on the thread pool
             begin
@@ -80,7 +85,10 @@ class Aca::Meetings::EwsDialInText
             task {
                 @pending.each do |booking|
                     if booking.room_info && booking.room_info.dial_in_text
-                        text = finish_template(booking.info, booking.room_info)
+                        webex = WebExDetails.new
+                        webex.update = false
+
+                        text = finish_template(booking.info, booking.room_info, webex)
                         booking.appender.append_booking(booking.info, text)
                     end
                 end
@@ -132,7 +140,7 @@ class Aca::Meetings::EwsDialInText
 
 
     Booking = Struct.new(:email, :info, :appender, :room_info)
-    RoomInfo = Struct.new(:system, :detection, :dial_in_text, :timezone)
+    RoomInfo = Struct.new(:system, :detection, :dial_in_text, :timezone, :cmr_id)
 
     # NOTE:: this is always running in the thread pool
     # Called by @appender.moderate_bookings
@@ -176,10 +184,36 @@ class Aca::Meetings::EwsDialInText
                         next if resources.empty? || booking.nil?
 
                         detection = resources.select { |email| sys_info[email] }.collect { |email| sys_info[email].detection }.join('|')
-                        if not booking.body =~ /(#{detection})/
+                        webex = check_time_update(booking.body, email_info[:start], email_info[:end])
+                        if booking.body =~ /(#{detection})/
+                            # The calendar hasn't changed, let's check the time
+                            if webex.out_of_sync
+                                if webex.booking_id
+                                    # Update booking here
+                                    logger.debug { "--> Updating Webex meeting #{webex.account}: #{webex.booking_id}" }
+                                    webex.update = true
+                                else
+                                    # Create a booking here
+                                    logger.debug { "--> No Webex meeting found, creating..." }
+                                end
+
+                                text = finish_template(email_info, info, webex)
+                                @appender.update_booking(org_email, booking.id, @indicator, text)
+                            end
+                        else
+                            # Check we have the webex booking ID
+                            if webex.booking_id
+                                logger.debug { "--> cancelling webex meeting #{webex.account}: #{webex.booking_id}" }
+                                result = @webex.delete_booking(webex.booking_id, webex.account)
+                                logger.debug { "    * webex cancel result #{result}" }
+                            else
+                                logger.debug { "--> No webex meeting found to cancel" }
+                            end
+
+                            logger.debug { "--> Creating Webex meeting" }
                             logger.debug { "--> Updating location of appointment: Organiser #{org_email}" }
 
-                            text = finish_template(email_info, info)
+                            text = finish_template(email_info, info, webex)
                             @appender.update_booking(org_email, booking.id, @indicator, text)
                         end
 
@@ -191,6 +225,56 @@ class Aca::Meetings::EwsDialInText
                 logger.print_error e, "might not have permission to impersonate"
             end
         end
+    end
+
+
+    WebExDetails = Struct.new(:start, :ending, :booking_id, :account, :out_of_sync, :update, :pin)
+
+    def check_time_update(body, start, ending)
+        details = WebExDetails.new Time.parse(start).to_i, Time.parse(ending).to_i
+        details.out_of_sync = false
+        details.update = false
+
+        if body =~ /!account!(.*)!/
+            details.account = $1
+
+            if body =~ /!booking!(.*)!/
+                details.booking_id = $1
+
+                if body =~ /!pin!(.*)!/
+                    details.pin = $1
+
+                    if body =~ /!starting!(.*)!/
+                        previous_start = Time.at $1.to_i
+
+                        # Exit early if out of sync
+                        if previous_start != details.start
+                            details.out_of_sync = true
+                            return details
+                        end
+
+                        if body =~ /!ending!(.*)!/
+                            previous_ending = Time.at $1.to_i
+                            details.out_of_sync = true if previous_ending != details.ending
+                        else
+                            # If ending is missing then we want to re-sync
+                            details.out_of_sync = true
+                        end
+                    else
+                        # If starting is missing then we want to re-sync
+                        details.out_of_sync = true
+                    end
+                else
+                    details.out_of_sync = true
+                end
+            end
+                details.out_of_sync = true
+            end
+        else
+            details.out_of_sync = true
+        end
+
+        details
     end
 
     # NOTE:: this is not running in the thread pool (reactor thread)
@@ -205,10 +289,11 @@ class Aca::Meetings::EwsDialInText
 
                 # Dial in text is a key value hash
                 dial_in_text = config.settings[:meetings][:dial_in_text]
+                room_cmr = config.settings[:meetings][:cmr_id]
                 room_timezone = config.settings[:meetings][:timezone]
                 final_text = @template.gsub(/\%\{(.*?)\}/) { dial_in_text[$1.to_sym] }
 
-                sys_info[email] = RoomInfo.new(sys, config.settings[:meetings][:detect_using], final_text, room_timezone)
+                sys_info[email] = RoomInfo.new(sys, config.settings[:meetings][:detect_using], final_text, room_timezone, room_cmr)
             else
                 logger.warn "System #{sys.id} (#{email}) was not available to approve email"
                 nil
@@ -219,7 +304,7 @@ class Aca::Meetings::EwsDialInText
         end
     end
 
-    def finish_template(info, room_info)
+    def finish_template(info, room_info, webex)
         text = room_info.dial_in_text
         timezone = room_info.timezone
         start  = Time.parse(info[:start])
@@ -230,11 +315,50 @@ class Aca::Meetings::EwsDialInText
         end
         duration = ending - start
 
+        meeting_id = webex.booking_id
+        if webex.update
+            result = @webex.update_booking({
+                id: webex.booking_id,
+                start: webex.start,
+                duration: (duration / 60).to_i,
+                host: webex.account
+            })
+            logger.debug { "    * webex update result #{result}" }
+        elsif room_info.cmr_id
+            webex.pin = generate_pin
+            meeting_id = @webex.create_booking({
+                subject: info[:subject],
+                description: info[:subject],
+                start: start,
+                duration: (duration / 60).to_i,
+                pin: webex.pin,
+                attendee: {
+                    name: info[:organizer],
+                    email: info[:organizer]
+                },
+                timezone: timezone,
+                host: room_info.cmr_id
+            })[:id]
+        end
+
         text = text.gsub(/\$\{start_time\:(.*?)\}/) { start.strftime($1) }
         text = text.gsub(/\$\{end_time\:(.*?)\}/) { ending.strftime($1) }
         text = text.gsub('${subject}', info[:subject])
         text = text.gsub('${duration}', distance_of_time_in_words(start, ending))
         text = text.gsub('${timezone}', ActiveSupport::TimeZone[timezone].to_s)
+        text = text.gsub('${booking}', meeting_id)
+        text = text.gsub('${pin}', webex.pin)
+
+        text = text.gsub('!starting!!', "!starting!#{start.to_i}!")
+        text = text.gsub('!ending!!', "!ending!#{ending.to_i}!")
+        text = text.gsub('!account!!', "!account!#{room_info.cmr_id}!")
+        text = text.gsub('!booking!!', "!booking!#{meeting_id}!")
+        text = text.gsub('!pin!!', "!pin!#{webex.pin}!")
+
         text
+    end
+
+    def generate_pin
+        rand(1001...9998)
     end
 end
