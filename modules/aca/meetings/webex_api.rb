@@ -4,9 +4,8 @@ module Aca::Meetings; end
 
 require "uri"
 require "net/http"
-require "rest_client"
+require "rest-client"
 require "nokogiri"
-require "pp"
 
 
 
