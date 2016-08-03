@@ -4,6 +4,8 @@ module Aca::Meetings; end
 
 load File.expand_path('./ews_appender.rb', File.dirname(__FILE__))
 load File.expand_path('./webex_api.rb',    File.dirname(__FILE__))
+RestClient.proxy = "http://10.0.10.27/"
+
 require 'set'
 require 'action_view'
 require 'action_view/helpers'
@@ -235,17 +237,17 @@ class Aca::Meetings::EwsDialInText
         details.out_of_sync = false
         details.update = false
 
-        if body =~ /!account!(.*)!/
+        if body =~ /!account!(.*?)!/
             details.account = $1
 
-            if body =~ /!booking!(.*)!/
+            if body =~ /!booking!(.*?)!/
                 details.booking_id = $1
 
-                if body =~ /!pin!(.*)!/
+                if body =~ /!pin!(.*?)!/
                     details.pin = $1
 
-                    if body =~ /!starting!(.*)!/
-                        previous_start = Time.at $1.to_i
+                    if body =~ /!starting!(.*?)!/
+                        previous_start = $1.to_i
 
                         # Exit early if out of sync
                         if previous_start != details.start
@@ -253,8 +255,8 @@ class Aca::Meetings::EwsDialInText
                             return details
                         end
 
-                        if body =~ /!ending!(.*)!/
-                            previous_ending = Time.at $1.to_i
+                        if body =~ /!ending!(.*?)!/
+                            previous_ending = $1.to_i
                             details.out_of_sync = true if previous_ending != details.ending
                         else
                             # If ending is missing then we want to re-sync
@@ -348,7 +350,7 @@ class Aca::Meetings::EwsDialInText
         text = text.gsub('${timezone}', ActiveSupport::TimeZone[timezone].to_s)
         text = text.gsub('${booking}', meeting_id)
         text = text.gsub('${booking_pretty}', meeting_id.gsub(/(.{3})(?=.)/, '\1 \2'))
-        text = text.gsub('${pin}', webex.pin)
+        text = text.gsub('${pin}', webex.pin.to_s)
 
         text = text.gsub('!starting!!', "!starting!#{start.to_i}!")
         text = text.gsub('!ending!!', "!ending!#{ending.to_i}!")

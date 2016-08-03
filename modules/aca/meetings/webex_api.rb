@@ -31,7 +31,7 @@ class Aca::Meetings::WebexApi
     def create_booking(subject:, description:, pin:, attendee:, start:, duration:, timezone:, host: nil, **options)
         if start.class == String
             start = Time.parse(start)
-        elsif start.class == Integer
+        elsif start.class == Integer || start.class == Fixnum
             start = Time.at(start)
         end                
 
@@ -140,7 +140,7 @@ class Aca::Meetings::WebexApi
     def update_booking(id:, start: nil, duration: nil, host: nil)
         if start.class == String
             start = Time.parse(start)
-        elsif start.class == Integer
+        elsif start.class == Integer || start.class == Fixnum
             start = Time.at(start)
         end
 
