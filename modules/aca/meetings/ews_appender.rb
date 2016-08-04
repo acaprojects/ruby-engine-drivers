@@ -162,7 +162,7 @@ class Aca::Meetings::EwsAppender
         inbox.todays_items.each do |item|
 
             # Ensure that these are meeting requests
-            if item.attachments[0].get_all_properties![:meeting_request]
+            if item.attachments && item.attachments[0] && item.attachments[0].get_all_properties![:meeting_request]
 
                 # Get all the emails of the attendees
                 attendee_list = get_elem(item.attachments[0].get_all_properties![:meeting_request][:elems], :required_attendees)[:elems]
