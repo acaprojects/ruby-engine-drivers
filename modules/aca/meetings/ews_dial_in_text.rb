@@ -322,9 +322,10 @@ class Aca::Meetings::EwsDialInText
         if webex.update
             result = @webex.update_booking({
                 id: webex.booking_id,
-                start: webex.start,
-                duration: (duration / 60).to_i,
-                host: webex.account
+                start: start,
+                duration: (duration / 60).ceil + 5,
+                host: webex.account,
+                timezone: timezone
             })
             logger.debug { "    * webex update result #{result}" }
         elsif room_info.cmr_id
@@ -333,7 +334,7 @@ class Aca::Meetings::EwsDialInText
                 subject: info[:subject],
                 description: info[:subject],
                 start: start,
-                duration: (duration / 60).to_i,
+                duration: (duration / 60).ceil + 5,
                 pin: webex.pin,
                 attendee: {
                     name: info[:organizer],

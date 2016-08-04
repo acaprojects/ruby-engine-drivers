@@ -33,7 +33,8 @@ class Aca::Meetings::WebexApi
             start = Time.parse(start)
         elsif start.class == Integer || start.class == Fixnum
             start = Time.at(start)
-        end                
+            start.in_time_zone(timezone)
+        end
 
         builder = Nokogiri::XML::Builder.new do |xml|
                 xml.message('xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance') {
@@ -137,11 +138,12 @@ class Aca::Meetings::WebexApi
         return booking_response
     end
 
-    def update_booking(id:, start: nil, duration: nil, host: nil)
+    def update_booking(id:, start: nil, timezone: nil, duration: nil, host: nil)
         if start.class == String
             start = Time.parse(start)
         elsif start.class == Integer || start.class == Fixnum
             start = Time.at(start)
+            start.in_time_zone(timezone) if timezone
         end
 
         builder = Nokogiri::XML::Builder.new do |xml|
