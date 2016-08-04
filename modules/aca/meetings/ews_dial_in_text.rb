@@ -194,13 +194,14 @@ class Aca::Meetings::EwsDialInText
                                     # Update booking here
                                     logger.debug { "--> Updating Webex meeting #{webex.account}: #{webex.booking_id}" }
                                     webex.update = true
+                                    text = finish_template(email_info, info, webex)
+                                    @appender.update_booking(org_email, booking.id, @indicator, text, 'SendToNone')
                                 else
                                     # Create a booking here
                                     logger.debug { "--> No Webex meeting found, creating..." }
+                                    text = finish_template(email_info, info, webex)
+                                    @appender.update_booking(org_email, booking.id, @indicator, text)
                                 end
-
-                                text = finish_template(email_info, info, webex)
-                                @appender.update_booking(org_email, booking.id, @indicator, text)
                             end
                         else
                             # Check we have the webex booking ID

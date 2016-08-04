@@ -68,7 +68,7 @@ class Aca::Meetings::EwsAppender
         end
     end
 
-    def update_booking(organizer, booking_id, indicator, dial_in_text)
+    def update_booking(organizer, booking_id, indicator, dial_in_text, send_update = 'SendToAllAndSaveCopy')
         # Impersonate the organizer so that we can retrieve the right calendar items
         @cli.set_impersonation(Viewpoint::EWS::ConnectingSID[:SMTP], organizer)
         booking = @cli.get_item(booking_id, { :item_shape => { :base_shape => 'AllProperties' } })
@@ -94,7 +94,7 @@ class Aca::Meetings::EwsAppender
         end
 
         # Add our input and update the item
-        booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => 'SendToAllAndSaveCopy'})
+        booking.update_item!({:body => html_doc.to_html}, {:send_meeting_invitations_or_cancellations => send_update})
     end
 
     # Just a little helper method to retreive fields from EWS reponses
