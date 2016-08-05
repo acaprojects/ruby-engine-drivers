@@ -77,7 +77,7 @@ class Aca::Meetings::WebexApi
                                 xml.openTime 900
                                 xml.joinTeleconfBeforeHost true
                                 xml.duration duration
-                                xml.timeZoneID TimezoneMap[timezone.to_sym]
+                                xml.timeZoneID TimezoneMap[timezone.to_s]
                             }
                             xml.telephony {
                                 xml.telephonySupport 'CALLIN'
