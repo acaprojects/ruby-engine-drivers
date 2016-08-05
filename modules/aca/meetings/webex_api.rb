@@ -28,7 +28,7 @@ class Aca::Meetings::WebexApi
         @password = password
     end
 
-    def create_booking(subject:, description:, pin:, attendee:, start:, duration:, timezone:, host: nil, **options)
+    def create_booking(subject:, description:, pin:, attendee:, start:, duration:, timezone:, host: nil, host_pin: nil, **options)
         if start.class == String
             start = Time.parse(start)
         elsif start.class == Integer || start.class == Fixnum
@@ -73,6 +73,7 @@ class Aca::Meetings::WebexApi
                             }
                             xml.schedule {
                                 xml.hostWebExID host if host
+                                xml.hostKey host_pin if host_pin
                                 xml.startDate start.strftime('%m/%d/%Y %H:%M:%S')
                                 xml.openTime 900
                                 xml.joinTeleconfBeforeHost true

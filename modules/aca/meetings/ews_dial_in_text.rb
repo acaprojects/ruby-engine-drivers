@@ -231,7 +231,7 @@ class Aca::Meetings::EwsDialInText
     end
 
 
-    WebExDetails = Struct.new(:start, :ending, :booking_id, :account, :out_of_sync, :update, :pin)
+    WebExDetails = Struct.new(:start, :ending, :booking_id, :account, :out_of_sync, :update, :pin, :host_pin)
 
     def check_time_update(body, start, ending)
         details = WebExDetails.new Time.parse(start).to_i, Time.parse(ending).to_i
@@ -246,6 +246,13 @@ class Aca::Meetings::EwsDialInText
 
                 if body =~ /!pin!(.*?)!/
                     details.pin = $1
+
+                    # This is not out of sync temporarily
+                    if body =~ /!host_pin!(.*?)!/
+                        details.host_pin = $1
+                    else
+                        details.host_pin = details.pin
+                    end
 
                     if body =~ /!starting!(.*?)!/
                         previous_start = $1.to_i
@@ -330,12 +337,14 @@ class Aca::Meetings::EwsDialInText
             logger.debug { "    * webex update result #{result}" }
         elsif room_info.cmr_id
             webex.pin = generate_pin
+            webex.host_pin = generate_host_pin
             meeting_id = @webex.create_booking({
                 subject: info[:subject],
                 description: info[:subject],
                 start: start,
                 duration: (duration / 60).ceil + 5,
                 pin: webex.pin,
+                host_pin: webex.host_pin,
                 attendee: {
                     name: info[:organizer],
                     email: info[:organizer]
@@ -353,17 +362,23 @@ class Aca::Meetings::EwsDialInText
         text = text.gsub('${booking}', meeting_id)
         text = text.gsub('${booking_pretty}', meeting_id.gsub(/(.{3})(?=.)/, '\1 \2'))
         text = text.gsub('${pin}', webex.pin.to_s)
+        text = text.gsub('${host_pin}', webex.host_pin.to_s)
 
         text = text.gsub('!starting!!', "!starting!#{start.to_i}!")
         text = text.gsub('!ending!!', "!ending!#{ending.to_i}!")
         text = text.gsub('!account!!', "!account!#{room_info.cmr_id}!")
         text = text.gsub('!booking!!', "!booking!#{meeting_id}!")
         text = text.gsub('!pin!!', "!pin!#{webex.pin}!")
+        text = text.gsub('!host_pin!!', "!host_pin!#{webex.host_pin}!")
 
         text
     end
 
     def generate_pin
         rand(1001...9998)
+    end
+
+    def generate_host_pin
+        rand(100001...999998)
     end
 end
