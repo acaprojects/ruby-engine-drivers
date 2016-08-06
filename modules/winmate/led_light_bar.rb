@@ -49,8 +49,8 @@ class Winmate::LedLightBar
     Colours.merge!(Colours.invert)
 
     Commands ||= {
-        set: 0x10,
-        get: 0x11
+        set: 0x61,
+        get: 0x10
     }
 
 
@@ -154,9 +154,9 @@ class Winmate::LedLightBar
         # Calculate checksum
         req << build_checksum(req)
 
-        logger.debug { "requesting #{byte_to_hex(command)}" }
+        logger.debug { "requesting #{byte_to_hex(req)}" }
 
         options[:name] = "#{command}_#{colour}"
-        send(command, options)
+        send(req, options)
     end
 end
