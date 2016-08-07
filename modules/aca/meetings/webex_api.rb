@@ -95,8 +95,13 @@ class Aca::Meetings::WebexApi
         xml_response = Nokogiri::XML(response.body)
         xml_response.to_xml
 
+        check_result = xml_response.remove_namespaces!.css('result').text
+        if check_result == 'FAILURE'
+            raise "failed to create booking #{xml_response.css('reason').text}"
+        end
+
         booking_response = {
-            id: xml_response.remove_namespaces!.css('meetingkey').text
+            id: xml_response.css('meetingkey').text
         }
 
         return booking_response
