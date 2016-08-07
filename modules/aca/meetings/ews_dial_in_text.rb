@@ -337,14 +337,13 @@ class Aca::Meetings::EwsDialInText
             logger.debug { "    * webex update result #{result}" }
         elsif room_info.cmr_id
             webex.pin = generate_pin
-            webex.host_pin = generate_host_pin
+
             meeting_id = @webex.create_booking({
                 subject: info[:subject],
                 description: info[:subject],
                 start: start,
                 duration: (duration / 60).ceil + 5,
                 pin: webex.pin,
-                host_pin: webex.host_pin,
                 attendee: {
                     name: info[:organizer],
                     email: info[:organizer]
@@ -352,6 +351,8 @@ class Aca::Meetings::EwsDialInText
                 timezone: timezone,
                 host: room_info.cmr_id
             })[:id]
+
+            webex.host_pin = @webex.get_booking(meeting_id)[:host_key]
         end
 
         text = text.gsub(/\$\{start_time\:(.*?)\}/) { start.strftime($1) }
@@ -376,9 +377,5 @@ class Aca::Meetings::EwsDialInText
 
     def generate_pin
         rand(1001...9998)
-    end
-
-    def generate_host_pin
-        rand(100001...999998)
     end
 end

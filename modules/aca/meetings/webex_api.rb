@@ -28,7 +28,7 @@ class Aca::Meetings::WebexApi
         @password = password
     end
 
-    def create_booking(subject:, description:, pin:, attendee:, start:, duration:, timezone:, host: nil, host_pin: nil, **options)
+    def create_booking(subject:, description:, pin:, attendee:, start:, duration:, timezone:, host: nil, **options)
         if start.class == String
             start = Time.parse(start)
         elsif start.class == Integer || start.class == Fixnum
@@ -73,7 +73,6 @@ class Aca::Meetings::WebexApi
                             }
                             xml.schedule {
                                 xml.hostWebExID host if host
-                                xml.hostKey host_pin if host_pin
                                 xml.startDate start.strftime('%m/%d/%Y %H:%M:%S')
                                 xml.openTime 900
                                 xml.joinTeleconfBeforeHost true
@@ -128,17 +127,18 @@ class Aca::Meetings::WebexApi
         xml_string = builder.to_xml
         url = "https://jlta.webex.com/WBXService/XMLService"
         response = RestClient.post url, xml_string, :content_type => "text/xml"
-        xml_response = Nokogiri::XML(response.body)
+        xml_response = Nokogiri::XML(response.body).remove_namespaces!
 
         booking_response = {
             id: id,
-            subject: xml_response.remove_namespaces!.css('confName').text,
-            description: xml_response.remove_namespaces!.css('agenda').text,
-            start: xml_response.remove_namespaces!.css('startDate').text,
-            timezone:  xml_response.remove_namespaces!.css('timeZone').text,
-            duration:  xml_response.remove_namespaces!.css('duration').text,
-            host_id:  xml_response.remove_namespaces!.css('hostWebExID').text,
-            password: xml_response.remove_namespaces!.css('meetingPassword').text
+            subject: xml_response.css('confName').text,
+            description: xml_response.css('agenda').text,
+            start: xml_response.css('startDate').text,
+            timezone:  xml_response.css('timeZone').text,
+            duration:  xml_response.css('duration').text,
+            host_id:  xml_response.css('hostWebExID').text,
+            password: xml_response.css('meetingPassword').text,
+            host_key: xml_response.css('hostKey').text
         }
 
         return booking_response
