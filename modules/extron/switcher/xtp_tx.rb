@@ -74,8 +74,8 @@ class Extron::Switcher::XtpTx < Extron::Base
         else
             # ACK looks like 'Etie1*1*3' 'Etiesub_input_vidio*sub_input_audio*3' (but there is no seperation so  video will always ewual audio)
             if data[0-3] == "Etie"    
-                input = data[4]   
-                sub_input = data[6]
+                input = data[5]   
+                sub_input = data[7]
                 self["input"] = input
                 self["output"] = sub_input
             else
