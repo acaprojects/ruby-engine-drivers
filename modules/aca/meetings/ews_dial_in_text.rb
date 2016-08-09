@@ -175,7 +175,7 @@ class Aca::Meetings::EwsDialInText
         entries.each do |booking|
             booking.get_all_properties!
 
-            if !booking.recurring? || (booking.start >= Time.now.midnight && booking.end <= (Time.now + 24.hours))
+            if !booking.recurring? || booking.start <= (Time.now + 2.hours)
                 org_email = booking.ews_item[:organizer][:elems][0][:mailbox][:elems][1][:email_address][:text]
                 organizers[org_email] ||= []
                 organizers[org_email] << booking
