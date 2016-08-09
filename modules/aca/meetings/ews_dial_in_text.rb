@@ -173,6 +173,8 @@ class Aca::Meetings::EwsDialInText
 
         organizers = {}
         entries.each do |booking|
+            next if booking.cancelled?
+            
             booking.get_all_properties!
 
             if !booking.recurring? || (booking.start <= (Time.now + 2.hours) && booking.start > Time.now)
