@@ -90,6 +90,12 @@ class Aca::Meetings::EwsDialInText
                         webex = WebExDetails.new
                         webex.update = false
 
+                        # TODO:: Check each rooms booking to make sure the booking doesn't overlap
+                        # with any existing bookings on the calendar.
+                        # If it does clash:
+                        # * delete moderation request
+                        # * send email to creator with a list of clashing rooms
+
                         text = finish_template(booking.info, booking.room_info, webex)
                         booking.appender.append_booking(booking.info, text)
                     end
@@ -158,15 +164,22 @@ class Aca::Meetings::EwsDialInText
     def check_room_bookings(sys_info, email, info)
         ews = @appender.cli
         ews.set_impersonation(Viewpoint::EWS::ConnectingSID[:SMTP], email)
-        calendar = ews.get_folder(:calendar)
-        entries = calendar.items_between(Time.now.midnight.iso8601, 1.weeks.from_now.iso8601)
+        
+        # This does not pick up recurring meetings
+        #calendar = ews.get_folder(:calendar)
+        #entries = calendar.items_between(Time.now.midnight.iso8601, 3.days.from_now.iso8601)
+        
+        entries = ews.find_items({:folder_id => :calendar, :calendar_view => {:start_date => Time.now.midnight.iso8601, :end_date => 3.days.from_now.iso8601}})
 
         organizers = {}
         entries.each do |booking|
             booking.get_all_properties!
-            org_email = booking.ews_item[:organizer][:elems][0][:mailbox][:elems][1][:email_address][:text]
-            organizers[org_email] ||= []
-            organizers[org_email] << booking
+
+            if !booking.ews_item.recurring? || (booking.ews_item.start >= Time.now.midnight && booking.ews_item.end <= (Time.now + 24.hours))
+                org_email = booking.ews_item[:organizer][:elems][0][:mailbox][:elems][1][:email_address][:text]
+                organizers[org_email] ||= []
+                organizers[org_email] << booking
+            end
         end
 
         # Note:: the impersonation is changed here
