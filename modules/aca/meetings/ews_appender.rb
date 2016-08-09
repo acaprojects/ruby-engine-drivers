@@ -121,22 +121,11 @@ class Aca::Meetings::EwsAppender
         @cli.set_impersonation(Viewpoint::EWS::ConnectingSID[:SMTP], attachment[:organizer])
         calendar_id = @cli.get_folder(:calendar).id
 
-        calendar_items = @cli.find_items folder_id: calendar_id, shape: :id_only do |query|
-            query.restriction = {
-                is_equal_to: [
-                {
-                    "field_uRI" => "calendar:Start",
-                    "field_uRI_or_constant" => {
-                        constant: { value:  attachment[:start] }
-                    }
-                }]
-            }
-        end
-
+        calendar_items = @cli.find_items(folder_id: calendar_id, calendar_view: {start_date: DateTime.parse(attachment[:start]), end_date: DateTime.parse(attachment[:end])}, shape: :id_only)
         calendar_items.each do |booking|
             if booking.get_all_properties![:u_i_d][:text] == attachment[:uid]
-                resource_booking = @cli.get_item(booking.id, { :item_shape => { :additional_properties => { :field_uRI => 'calendar:Resources'}, :base_shape => 'AllProperties'}})
-                # elems = resource_booking.attachments[0].get_all_properties![:meeting_request][:elems]
+                resource_booking = @cli.get_item(booking.id, { item_shape: { additional_properties: { field_uRI: 'calendar:Resources' }, base_shape: 'AllProperties'}})
+
                 elems = resource_booking.ews_item[:resources]
                 resources = if elems 
                     elems[:elems].map{ |e| e[:attendee][:elems][0][:mailbox][:elems][1][:email_address][:text] }

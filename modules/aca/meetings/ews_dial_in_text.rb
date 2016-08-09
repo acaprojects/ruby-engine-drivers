@@ -194,9 +194,12 @@ class Aca::Meetings::EwsDialInText
                             end: booking.ews_item[:end][:text],
                             subject: booking.ews_item[:subject][:text]
                         }
-                        resources, booking = @appender.get_resources(email_info)
 
-                        next if resources.empty? || booking.nil?
+                        resources, booking = @appender.get_resources(email_info)
+                        if resources.empty? || booking.nil?
+                            logger.debug { "Empty booking by #{org_email} subject #{email_info[:subject]}" }
+                            next
+                        end
 
                         detection = resources.select { |email| sys_info[email] }.collect { |email| sys_info[email].detection }.join('|')
                         webex = check_time_update(booking.body, email_info[:start], email_info[:end])
@@ -208,7 +211,13 @@ class Aca::Meetings::EwsDialInText
                                     logger.debug { "--> Updating Webex meeting #{webex.account}: #{webex.booking_id}" }
                                     webex.update = true
                                     text = finish_template(email_info, info, webex)
-                                    @appender.update_booking(org_email, booking.id, @indicator, text, 'SendToNone')
+
+                                    if webex.update
+                                        @appender.update_booking(org_email, booking.id, @indicator, text, 'SendToNone')
+                                    else
+                                        # We were unable to update the booking for some reason so a new one was created
+                                        @appender.update_booking(org_email, booking.id, @indicator, text)
+                                    end
                                 else
                                     # Create a booking here
                                     logger.debug { "--> No Webex meeting found, creating..." }
@@ -218,16 +227,21 @@ class Aca::Meetings::EwsDialInText
                             end
                         else
                             # Check we have the webex booking ID
-                            if webex.booking_id
+                            if webex.booking_id && booking.ews_item[:calendar_item_type][:text] != 'Exception'
                                 logger.debug { "--> cancelling webex meeting #{webex.account}: #{webex.booking_id}" }
                                 result = @webex.delete_booking(webex.booking_id, webex.account)
                                 logger.debug { "    * webex cancel result #{result}" }
                             else
-                                logger.debug { "--> No webex meeting found to cancel" }
+                                logger.debug {
+                                    if booking.ews_item[:calendar_item_type][:text] == 'Exception'
+                                        "--> Not cancelling recurring meeting"
+                                    else
+                                        "--> No webex meeting found to cancel"
+                                    end
+                                }
                             end
 
-                            logger.debug { "--> Creating Webex meeting" }
-                            logger.debug { "--> Updating location of appointment: Organiser #{org_email}" }
+                            logger.debug { "--> Creating Webex meeting\n--> Updating location of appointment: Organiser #{org_email}" }
 
                             text = finish_template(email_info, info, webex)
                             @appender.update_booking(org_email, booking.id, @indicator, text)
@@ -348,7 +362,10 @@ class Aca::Meetings::EwsDialInText
                 timezone: timezone
             })
             logger.debug { "    * webex update result #{result}" }
-        elsif room_info.cmr_id
+            webex.update = false if result == 'FAILURE'
+        end
+
+        if !webex.update && room_info.cmr_id
             webex.pin = generate_pin
 
             meeting_id = @webex.create_booking({
