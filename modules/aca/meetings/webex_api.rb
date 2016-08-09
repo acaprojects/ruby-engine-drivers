@@ -129,6 +129,10 @@ class Aca::Meetings::WebexApi
         response = RestClient.post url, xml_string, :content_type => "text/xml"
         xml_response = Nokogiri::XML(response.body).remove_namespaces!
 
+        if xml_response.css('result').text == 'FAILURE'
+            raise "unable to find booking #{xml_response.css('reason').text}"
+        end
+
         booking_response = {
             id: id,
             subject: xml_response.css('confName').text,
