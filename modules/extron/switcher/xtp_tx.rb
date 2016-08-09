@@ -72,9 +72,11 @@ class Extron::Switcher::XtpTx < Extron::Base
             data = data.split(' ')
             return :ignore unless data.length > 1
         else
-            # ACK looks like '1*1' 'sub_input_vidio*sub_input_audio' (but there ius no seperation so  video will always ewual audio)
-            if data[1] == '*'    
-                sub_input = data[0]
+            # ACK looks like 'Etie1*1*3' 'Etiesub_input_vidio*sub_input_audio*3' (but there is no seperation so  video will always ewual audio)
+            if data[0-3] == "Etie"    
+                input = data[4]   
+                sub_input = data[6]
+                self["input"] = input
                 self["output"] = sub_input
             else
                 if data == 'E22'    # Busy! We should retry this one
