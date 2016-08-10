@@ -208,9 +208,9 @@ class Toshiba::Display::ESeries
             when :vol_query
                 self[:volume] = data[2].ord
             when :audio_query
-                self[:audio_mute] = data == "\x1D\0\0"
+                self[:audio_mute] = data == "\x1D\0\1"
             when :screen_query
-                self[:display_mute] = data == "\x1D\0\0"
+                self[:display_mute] = data == "\x1D\0\1"
             when :input_query
                 self[:input] = case data[2].ord
                 when 2
