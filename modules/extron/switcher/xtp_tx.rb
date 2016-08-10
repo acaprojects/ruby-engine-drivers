@@ -32,8 +32,8 @@ module Extron::Switcher; end
 
 # For control of XTP Transmitters (with input switching), that go back to an input of an XTP Matrix
 # Control is via the XTP Matrix
-# input  = input of the XTP Matrix that this Tx is connected to
-# output = sub-input of the XTP Tx to switch to
+# input  = sub-input of the XTP Matrix that this Tx is connected to
+# output = input of the XTP Tx to switch to
 # See xtp_tx.png in this folder
 
 class Extron::Switcher::XtpTx < Extron::Base
@@ -51,7 +51,7 @@ class Extron::Switcher::XtpTx < Extron::Base
             outputs = [outputs] unless outputs.is_a?(Array)
             command = ''
             outputs.each do |output|
-                command += "#{input}*#{output}*3ETIE"
+                command += "#{output}*#{input}*3ETIE"
             end
             send("" << 0x1B << command)
             logger.debug { "requesting cmd: #{command}" }
