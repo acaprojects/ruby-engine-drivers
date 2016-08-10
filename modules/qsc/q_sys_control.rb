@@ -114,7 +114,7 @@ class Qsc::QSysControl
     # ---------------------
     # Compatibility Methods
     # ---------------------
-    def fader(fader_id, level)
+    def fader(fader_id, level, mixer_index = nil)
         level = level.to_f / 10
 
         faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
@@ -124,8 +124,8 @@ class Qsc::QSysControl
     end
 
     # Named params version
-    def faders(ids:, level:)
-        fader(ids, level)
+    def faders(ids:, level:, mixer_index:)
+        fader(ids, level, mixer_index)
     end
 
     def mute(mute_id, value = true, index = nil)
