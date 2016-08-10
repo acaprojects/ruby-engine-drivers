@@ -253,9 +253,9 @@ class Aca::FindmeBooking
         logger.debug { "looking up todays emails for #{@ews_room}" }
         task {
             todays_bookings
-        }.then do |bookings|
+        }.then(proc { |bookings|
             self[:today] = bookings
-        end
+        }, proc { |e| logger.print_error(e, 'error fetching bookings') })
     end
 
 
@@ -459,7 +459,7 @@ class Aca::FindmeBooking
             ending = now.tomorrow.midnight
         end
 
-        items = ews.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
+        items = cli.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
         items.each do |meeting|
             meeting_time = Time.parse(meeting.ews_item[:start][:text])
 
@@ -487,7 +487,7 @@ class Aca::FindmeBooking
             ending = now.tomorrow.midnight
         end
 
-        items = ews.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
+        items = cli.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
         items.select! { |booking| !booking.cancelled? }
         items.collect do |meeting|
             item = meeting.ews_item
