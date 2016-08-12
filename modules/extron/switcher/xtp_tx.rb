@@ -49,12 +49,12 @@ class Extron::Switcher::XtpTx < Extron::Base
             input = input.to_i if input.is_a?(String)
 
             outputs = [outputs] unless outputs.is_a?(Array)
-            command = ''
+
             outputs.each do |output|
-                command += "#{output}*#{input}*3ETIE"
+                command = "\e#{output}*#{input}*3ETIE\r"
+                send(command)
+                logger.debug { "requesting cmd: #{command}" }
             end
-            send("" << 0x1B << command)
-            logger.debug { "requesting cmd: #{command}" }
         end
     end
 
