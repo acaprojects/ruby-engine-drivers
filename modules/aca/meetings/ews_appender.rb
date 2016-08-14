@@ -90,6 +90,17 @@ class Aca::Meetings::EwsAppender
         if el
             el.replace("#{dial_in_text}")
         else
+            if booking.body =~ /#{indicator}/
+                new_body = booking.body[0...booking.body.index(/#{indicator}/)]
+
+                # TODO:: this isn't very generic
+                previous_line = new_body.rindex "CONFERENCE Details"
+                if previous_line
+                    new_body = new_body[0...previous_line]
+                end
+
+                html_doc = Nokogiri::HTML(new_body)
+            end
             html_doc.at('body').children.last.after("<br /><br />#{dial_in_text}")
         end
 
