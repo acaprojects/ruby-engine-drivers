@@ -4,7 +4,7 @@ module Aca; end
 # Abstracts screen or projector lift up and down control
 # Where the DigitalIO does not have a pulse command and timers are required
 
-class Aca::LifterLogicManual
+class Aca::ScreenLogicManual
     include ::Orchestrator::Constants
 
     def on_load
