@@ -145,6 +145,7 @@ class Aca::MeetingRoom < Aca::Joiner
     # The current tab being viewed
     def tab(tabid)
         self[:tab] = tabid.to_sym
+        self[:selected_tab] = tabid.to_s
     end
 
     def preview(source)
@@ -203,7 +204,7 @@ class Aca::MeetingRoom < Aca::Joiner
 
         display = (display || :all_displays).to_sym
         source = source.to_sym
-        
+
         if display == :all_displays
             self[:outputs].each_key do |key|
                 show(source, key)
@@ -234,9 +235,9 @@ class Aca::MeetingRoom < Aca::Joiner
     def video_mute(display)
         display = display.to_sym
         disp_mod = system.get_implicit(display)
-        
+
         disp_info = self[:outputs][display]
-        unless disp_info[:output].nil? 
+        unless disp_info[:output].nil?
             system[:Switcher].switch({0 => disp_info[:output]})
         end
 
@@ -405,7 +406,7 @@ class Aca::MeetingRoom < Aca::Joiner
 
         mixer = system[:Mixer]
 
-        # Unroutes 
+        # Unroutes
         # Turns off audio if off (audio driver)
         # Triggers PDU
         # Turns off lights after a period of time
@@ -898,4 +899,3 @@ class Aca::MeetingRoom < Aca::Joiner
         arity >= 2 || arity < 0
     end
 end
-
