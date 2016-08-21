@@ -107,6 +107,7 @@ class Qsc::QSysControl
 
     # Used to trigger dialing etc
     def trigger(action)
+        logger.debug { "Sending trigger to Qsys: ct #{action}" }
         send "ct #{action}\n", wait: false
     end
 
