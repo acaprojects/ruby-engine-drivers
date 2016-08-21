@@ -505,6 +505,7 @@ class Aca::MeetingRoom < Aca::Joiner
         end
 
         self[:state] = :shutdown
+        self[:selected_tab] = ''
     end
 
 
