@@ -83,7 +83,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
 
         command(:call, cmd, params({
             :CallId => call_id
-        }), name: name, delay: 500).then do
+        }.merge(options)), name: name, delay: 500).then do
             call_status
         end
     end
