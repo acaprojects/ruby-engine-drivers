@@ -22,6 +22,7 @@ class Aca::OrderBoard
     end
 
     def on_update
+        self[:name] = setting(:name) || system.name
         self[:rooms] = setting(:rooms)
 
         # Load any existing orders from the database
