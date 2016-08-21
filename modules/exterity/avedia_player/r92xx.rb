@@ -137,7 +137,7 @@ class Exterity::AvediaPlayer::R92xx
             @buffer.extract(data).each do |resp|
                 process_resp(resp, resolve, command)
             end
-        elsif data =~ /Exterity Control Interface/i
+        elsif data =~ /Exterity Control Interface| Exit/i
             @ready = true
             version
         end
