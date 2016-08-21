@@ -77,9 +77,9 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         end
     end
 
-    CallCommands ||= Set.new([:accept, :reject, :disconnect, :hold, :join, :resume, :ignore])
+    CallCommands ||= Set.new([:accept, :reject, :disconnect, :hold, :join, :resume, :ignore, :dtmfsend])
     def call(cmd, call_id = @last_call_id, **options)
-        name = cmd.downcase.to_sym
+        name = cmd.to_s.downcase.to_sym
 
         command(:call, cmd, params({
             :CallId => call_id
@@ -116,6 +116,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
 
 
     def send_DTMF(string, call_id = @last_call_id)
+        call(:DTMFSend, call_id, :DTMFString => string)
         command(:DTMFSend, params({
             :CallId => call_id,
             :DTMFString => string
