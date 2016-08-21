@@ -21,6 +21,30 @@ class Knx::BaosLighting
 
     def on_load
         @os = KNX::ObjectServer.new
+
+        on_update
+    end
+
+=begin
+Settings:
+
+    "triggers": {
+        "area_1": [
+            [161, true, "0: all on"], [161, false, "1: all off"]
+        ]
+    }
+=end
+    def on_update
+        @triggers    = setting(:triggers) || []
+        @area_lookup = {}
+
+        @triggers.each_with_index do |area, key|
+            number = key.to_s.split('_')[1].to_i
+
+            area.each do |trigger|
+                @area_lookup[trigger[0]] = number
+            end
+        end
     end
 
     def connected
@@ -41,37 +65,76 @@ class Knx::BaosLighting
         @polling_timer.cancel unless @polling_timer.nil?
         @polling_timer = nil
     end
-    
-    
-    #
-    # Arguments: preset_number, area_number, fade_time in millisecond
-    #    Trigger for CBUS module compatibility
-    #
+
+
+    # ==================================
+    # Module Compatibility methods
+    # ==================================
     def trigger(area, number, fade = 1000)
-        req = @os.action(area, number).to_binary_s
+        index, value = @triggers[:"area_#{area}"][number]
+        send_request index, value
+    end
+    # ==================================
+
+
+
+    def send_request(index, value)
+        logger.debug { "Requesting #{index} = #{value}" }
+        req = @os.action(index, value).to_binary_s
         send req
     end
 
-
-    def lighting(group, state, application)
-        val = is_affirmative? state
-        req = @os.action(area, val).to_binary_s
-        send req
+    def send_query(num)
+        logger.debug { "Requesting value of #{index}" }
+        req = @os.status(num).to_binary_s
+        send req, wait: true
     end
-
-
-    def light_level(area, level)
-        # Not available
-    end
-
-
 
     def received(data, resolve, command)
-        result = @os.read(data)
+        result = @os.read("\x06#{data}")
+
         if result.error == :no_error
-            logger.debug { "Index: #{result.header.start_item}, Item Count: #{result.header.item_count}, Data: #{result.data}" }
+            logger.debug { "Index: #{result.header.start_item}, Item Count: #{result.header.item_count}, Start value: #{result.data[0].value.bytes}" }
+
+            # Check if this item is in a lighting area
+            result.data.each do |item|
+                value_id = item.id
+                area = @area_lookup[value_id]
+
+                # If this is in a lighting area then we need to find which index
+                # There might be multiple index's using the same trigger ID with
+                # a different value
+                if area
+                    updated = false
+
+                    @triggers[:"area_#{area}"].each_with_index do |trigger, index|
+                        if value_id == trigger[0]
+                            # We need to coerce the value
+                            if [true, false].include?(trigger[1])
+                                if trigger[1] == (item.value.bytes[0] == 1)
+                                    updated = true
+                                    self["trigger_group_#{area}"] = index
+                                    break
+                                end
+                            else
+                                if trigger[1] == item.value.bytes[0]
+                                    updated = true
+                                    self["trigger_group_#{area}"] = index
+                                    break
+                                end
+                            end
+                        end
+                    end
+
+                    if not updated
+                        logger.warn "Unknown value #{item.value.bytes} for known index #{value_id} in area #{area}"
+                    end
+                else
+                    self["index_#{value_id}"] = item.value.bytes[0]
+                end
+            end
         else
-            logger.warn { "Error response: #{result.error} (#{result.error_code})" }
+            logger.warn "Error response: #{result.error} (#{result.error_code})"
         end
     end
 
@@ -80,8 +143,13 @@ class Knx::BaosLighting
 
 
     def check_length(byte_str)
-        if byte_str.length > 6
-            header = KNX::Header.new(byte_str)
+        if byte_str.length > 5
+            header = KNX::Header.new
+
+            # indicator is removed by the tokenizer
+            byte_str = "\x06#{byte_str}"
+            header.read(byte_str)
+
             if byte_str.length >= header.request_length
                 return header.request_length
             end
