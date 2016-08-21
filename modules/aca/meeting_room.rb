@@ -305,7 +305,7 @@ class Aca::MeetingRoom < Aca::Joiner
         end
 
 
-        self[:tab] = self[:inputs][0]
+        self[:tab] = self[:inputs][0] if self[:inputs]
         self[:state] = :online
         wake_pcs
 
