@@ -35,10 +35,10 @@ Settings:
     }
 =end
     def on_update
-        @triggers    = setting(:triggers) || []
+        @triggers    = setting(:triggers) || {}
         @area_lookup = {}
 
-        @triggers.each_with_index do |area, key|
+        @triggers.each do |key, area|
             number = key.to_s.split('_')[1].to_i
 
             area.each do |trigger|
@@ -94,7 +94,13 @@ Settings:
         result = @os.read("\x06#{data}")
 
         if result.error == :no_error
-            logger.debug { "Index: #{result.header.start_item}, Item Count: #{result.header.item_count}, Start value: #{result.data[0].value.bytes}" }
+            logger.debug {
+                if result.data && result.data.length > 0
+                    "Index: #{result.header.start_item}, Item Count: #{result.header.item_count}, Start value: #{result.data[0].value.bytes}"
+                else
+                    "Received #{result}"
+                end
+            }
 
             # Check if this item is in a lighting area
             result.data.each do |item|
