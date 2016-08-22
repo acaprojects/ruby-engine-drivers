@@ -125,7 +125,7 @@ class Qsc::QSysControl
     end
 
     # Named params version
-    def faders(ids:, level:, mixer_index:)
+    def faders(ids:, level:, mixer_index: nil)
         fader(ids, level, mixer_index)
     end
 
