@@ -50,7 +50,7 @@ class Winmate::LedLightBar
 
     Commands ||= {
         set: 0x61,
-        get: 0x10
+        get: 0x60
     }
 
 
