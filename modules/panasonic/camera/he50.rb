@@ -148,6 +148,9 @@ class Panasonic::Camera::He50
     end
 
     def joystick(pan_speed, tilt_speed)
+        pan_speed ||= self[:joy_center]
+        tilt_speed ||= self[:joy_center]
+
         left_max = self[:joy_left]
         right_max = self[:joy_right]
         pan_speed = in_range(pan_speed.to_i, right_max, left_max).to_s(16).upcase.rjust(2, '0')
