@@ -378,6 +378,8 @@ class Aca::MeetingRoom < Aca::Joiner
                 end
             end
         end
+        # Turn on VC cameras
+        start_cameras
 
         preview(self[self[:tab]][0])
     end
