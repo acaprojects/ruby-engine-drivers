@@ -320,12 +320,17 @@ class Aca::MeetingRoom < Aca::Joiner
 
         # defaults = {
             # routes: {input: [outputs]}
-            # levels: {fader_id: [level, muted]}
+            # levels: {fader_id: [level, index]}
         #}
         sys = system
         sys[:Switcher].switch(@defaults[:routes]) if @defaults[:routes]
 
         mixer = sys[:Mixer]
+        if @defaults[:levels]
+            @defaults[:levels].each do |key, args|
+                mixer.fader(key, *args)
+            end
+        end
 
         if @defaults[:on_preset]
             mixer.preset(@defaults[:on_preset])
