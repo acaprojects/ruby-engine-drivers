@@ -159,7 +159,8 @@ class Cisco::TelePresence::SxCamera < Cisco::TelePresence::SxTelnet
 
         if is_centered
             options[:retries] = 5
-            options[:priority] = 99  # Make sure it is executed asap
+            options[:priority] = 99      # Make sure it is executed asap
+            options[:clear_queue] = true # Stop executing other commands
 
             # Request the current position once the stop command
             # has run, we are clearing the queue so we use promises to

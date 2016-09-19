@@ -162,7 +162,13 @@ class Panasonic::Camera::He50
         end
 
         options = {}
-        options[:retries] = is_centered ? 1 : 0
+        if is_centered
+            options[:retries] = 3
+            options[:priority] = 99
+            options[:clear_queue] = true
+        else
+            options[:retries] = 0
+        end
 
         logger.debug("Sending camera: #{pan_speed}#{tilt_speed}");
 
