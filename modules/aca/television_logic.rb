@@ -47,7 +47,7 @@ class Aca::TelevisionLogic
         @channels = setting(:channels) || {}
         self[:channelNames] = @channels.keys
 
-        self[:name] = setting(:name)
+        self[:name] = setting(:name) || system.name
         self[:input_list] = setting(:input_list)
     end
 
