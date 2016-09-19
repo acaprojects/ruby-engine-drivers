@@ -18,6 +18,10 @@ class HuddleCam::Visca
     delay between_sends: 150
 
 
+    ZOOM_MAX = 16384
+    ZOOM_MIN = 0
+
+
     def on_load
         # Constants that are made available to interfaces
         self[:pan_speed_max] = 0x18
@@ -36,9 +40,6 @@ class HuddleCam::Visca
         self[:tilt_min] = 0        # Down
         self[:tilt_center] = (0x01C8 / 2).to_i
 
-        self[:zoom_max] = 16384
-        self[:zoom_min] = 0
-
         on_update
     end
     
@@ -49,6 +50,9 @@ class HuddleCam::Visca
         @presets = setting(:presets) || {}
         self[:presets] = @presets.keys
         self[:invert] = setting(:invert)
+
+        self[:zoom_max] = setting(:zoom_max) || ZOOM_MAX
+        self[:zoom_min] = setting(:zoom_min) || ZOOM_MIN
     end
     
     def connected
