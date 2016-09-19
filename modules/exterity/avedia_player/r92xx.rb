@@ -51,7 +51,7 @@ class Exterity::AvediaPlayer::R92xx
         do_send '6', wait: false, delay: 200, priority: 96
 
         # Launch command processor
-        do_send './usr/bin/serialCommandInterface', wait: false, delay: 200, priority: 95
+        do_send '/usr/bin/serialCommandInterface', wait: false, delay: 200, priority: 95
 
         # We need to disconnect if we don't see the serialCommandInterface after a certain amount of time
         schedule.in('5s') do
