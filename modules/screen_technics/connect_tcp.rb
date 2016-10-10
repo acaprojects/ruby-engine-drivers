@@ -14,7 +14,7 @@ class ScreenTechnics::ConnectTcp
     generic_name :Screen
 
     # Communication settings
-    delay between_sends: 120, delay_on_receive: 120
+    delay between_sends: 120, on_receive: 120
     tcp_port 3001
     tokenize delimiter: "\r\n"
     clear_queue_on_disconnect!
