@@ -14,8 +14,8 @@ class ScreenTechnics::ConnectTcp
     generic_name :Screen
 
     # Communication settings
-    delay between_sends: 120
-    port 3001
+    delay between_sends: 120, delay_on_receive: 120
+    tcp_port 3001
     tokenize delimiter: "\r\n"
     clear_queue_on_disconnect!
 
@@ -131,7 +131,7 @@ class ScreenTechnics::ConnectTcp
         cmd = Commands[parts[0] - 100]
 
         if cmd
-            index = parts[2] - 10
+            index = parts[2] - 16
 
             case cmd
             when :up
