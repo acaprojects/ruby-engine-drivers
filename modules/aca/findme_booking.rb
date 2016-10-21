@@ -87,6 +87,7 @@ class Aca::FindmeBooking
     def on_update
         self[:swiped] ||= 0
         @last_swipe_at = 0
+        @use_act_as = setting(:use_act_as)
 
         self[:building] = setting(:building)
         self[:level] = setting(:level)
@@ -436,8 +437,15 @@ class Aca::FindmeBooking
         end
 
         cli = Viewpoint::EWSClient.new(*@ews_creds)
-        cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
-        folder = cli.get_folder(:calendar)
+        opts = {}
+
+        if @use_act_as
+            opts[:act_as] = @ews_room if @ews_room
+        else
+            cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
+        end
+
+        folder = cli.get_folder(:calendar, opts)
         appointment = folder.create_item(booking)
 
         # Return the booking IDs
@@ -445,11 +453,6 @@ class Aca::FindmeBooking
     end
 
     def delete_ews_booking(delete_at)
-        count = 0
-
-        cli = Viewpoint::EWSClient.new(*@ews_creds)
-        cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
-
         now = Time.now
         if @timezone
             start  = now.in_time_zone(@timezone).midnight
@@ -459,7 +462,24 @@ class Aca::FindmeBooking
             ending = now.tomorrow.midnight
         end
 
-        items = cli.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
+        count = 0
+
+        cli = Viewpoint::EWSClient.new(*@ews_creds)
+
+        if @use_act_as
+            # TODO:: think this line can be removed??
+            delete_at = Time.parse(delete_at.to_s).to_i
+
+            opts = {}
+            opts[:act_as] = @ews_room if @ews_room
+
+            folder = cli.get_folder(:calendar, opts)
+            items = folder.items_between(start.iso8601, ending.iso8601)
+        else
+            cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
+            items = cli.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
+        end
+
         items.each do |meeting|
             meeting_time = Time.parse(meeting.ews_item[:start][:text])
 
@@ -475,9 +495,6 @@ class Aca::FindmeBooking
     end
 
     def todays_bookings
-        cli = Viewpoint::EWSClient.new(*@ews_creds)
-        cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
-
         now = Time.now
         if @timezone
             start  = now.in_time_zone(@timezone).midnight
@@ -487,7 +504,19 @@ class Aca::FindmeBooking
             ending = now.tomorrow.midnight
         end
 
-        items = cli.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
+        cli = Viewpoint::EWSClient.new(*@ews_creds)
+
+        if @use_act_as
+            opts = {}
+            opts[:act_as] = @ews_room if @ews_room
+
+            folder = cli.get_folder(:calendar, opts)
+            items = folder.items_between(start.iso8601, ending.iso8601)
+        else
+            cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
+            items = cli.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
+        end
+
         items.select! { |booking| !booking.cancelled? }
         items.collect do |meeting|
             item = meeting.ews_item
