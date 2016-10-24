@@ -48,7 +48,7 @@ class Extron::Switcher::XtpTx < Extron::Base
             input = input.to_s if input.is_a?(Symbol)
             input = input.to_i if input.is_a?(String)
 
-            outputs = [outputs] unless outputs.is_a?(Array)
+            outputs = Array(outputs)
 
             outputs.each do |output|
                 command = "\e#{output}*#{input}*3ETIE\r"

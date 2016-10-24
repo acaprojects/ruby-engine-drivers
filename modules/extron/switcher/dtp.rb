@@ -43,7 +43,7 @@ class Extron::Switcher::Dtp < Extron::Base
             input = input.to_s if input.is_a?(Symbol)
             input = input.to_i if input.is_a?(String)
 
-            outputs = [outputs] unless outputs.is_a?(Array)
+            outputs = Array(outputs)
             command = ''
             outputs.each do |output|
                 command += "#{input}*#{output}!"
@@ -58,7 +58,7 @@ class Extron::Switcher::Dtp < Extron::Base
             input = input.to_i if input.is_a?(String)
             
             
-            outputs = [outputs] unless outputs.is_a?(Array)
+            outputs = Array(outputs)
             command = ''
             outputs.each do |output|
                 command += "#{input}*#{output}%"
@@ -72,7 +72,7 @@ class Extron::Switcher::Dtp < Extron::Base
             input = input.to_s if input.is_a?(Symbol)
             input = input.to_i if input.is_a?(String)
             
-            outputs = [outputs] unless outputs.is_a?(Array)
+            outputs = Array(outputs)
             command = ''
             outputs.each do |output|
                 command += "#{input}*#{output}$"
@@ -82,7 +82,7 @@ class Extron::Switcher::Dtp < Extron::Base
     end
 
     def mute_video(outputs)
-        outputs = [outputs] unless outputs.is_a?(Array)
+        outputs = Array(outputs)
         command = ''
         outputs.each do |output|
             command += "#{output}*1B"
@@ -91,7 +91,7 @@ class Extron::Switcher::Dtp < Extron::Base
     end
 
     def unmute_video(outputs)
-        outputs = [outputs] unless outputs.is_a?(Array)
+        outputs = Array(outputs)
         command = ''
         outputs.each do |output|
             command += "#{output}*0B"
@@ -100,7 +100,7 @@ class Extron::Switcher::Dtp < Extron::Base
     end
 
     def mute_audio(outputs)
-        outputs = [outputs] unless outputs.is_a?(Array)
+        outputs = Array(outputs)
         command = ''
         outputs.each do |output|
             command += "#{output}*1Z"
@@ -109,7 +109,7 @@ class Extron::Switcher::Dtp < Extron::Base
     end
 
     def unmute_audio(outputs)
-        outputs = [outputs] unless outputs.is_a?(Array)
+        outputs = Array(outputs)
         command = ''
         outputs.each do |output|
             command += "#{output}*0Z"

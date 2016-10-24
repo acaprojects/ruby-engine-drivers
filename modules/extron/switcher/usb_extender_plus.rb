@@ -61,7 +61,7 @@ class Extron::Switcher::UsbExtenderPlus < Extron::Base
         unpair_all
 
         map.each do |_, outputs|
-            outputs = [outputs] unless outputs.is_a?(Array)
+            outputs = Array(outputs)
 
             outputs.each do |input|
                 receiver = input.is_a?(Integer) ? @lookup[input] : self[:receivers][input.to_sym]

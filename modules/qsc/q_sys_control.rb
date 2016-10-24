@@ -118,7 +118,7 @@ class Qsc::QSysControl
     def fader(fader_id, level, mixer_index = nil)
         level = level.to_f / 10
 
-        faders = fader_id.is_a?(Array) ? fader_id : [fader_id]
+        faders = Array(fader_id)
         faders.each do |fad|
             set_value(fad, level, fader_type: :fader)
         end
@@ -132,7 +132,7 @@ class Qsc::QSysControl
     def mute(mute_id, value = true, index = nil)
         level = is_affirmative?(value) ? 1 : 0
 
-        mutes = mute_id.is_a?(Array) ? mute_id : [mute_id]
+        mutes = Array(mute_id)
         mutes.each do |mute|
             set_value(mute, level, fader_type: :mute)
         end
@@ -159,12 +159,12 @@ class Qsc::QSysControl
 
     # For inter-module compatibility
     def query_fader(fader_id)
-        fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+        fad = Array(fader_id)[0]
         get_status(fad, fader_type: :fader)
     end
     # Named params version
     def query_faders(ids:, **_)
-        faders = ids.is_a?(Array) ? ids : [ids]
+        faders = Array(ids)
         faders.each do |fad|
             get_status(fad, fader_type: :fader)
         end
@@ -172,12 +172,12 @@ class Qsc::QSysControl
 
 
     def query_mute(fader_id)
-        fad = fader_id.is_a?(Array) ? fader_id[0] : fader_id
+        fad = Array(fader_id)[0]
         get_status(fad, fader_type: :mute)
     end
     # Named params version
     def query_mutes(ids:, **_)
-        faders = ids.is_a?(Array) ? ids : [ids]
+        faders = Array(ids)
         faders.each do |fad|
             get_status(fad, fader_type: :mute)
         end
@@ -206,7 +206,7 @@ class Qsc::QSysControl
     end
 
     def phone_watch(control_ids)
-        ids = control_ids.class == Array ? control_ids : [control_ids]
+        ids = Array(control_ids)
 
         # Check change group exists
         group = @change_groups[:phone]

@@ -127,7 +127,7 @@ class Extron::Switcher::In < Extron::Base
         group = index if index
         val = is_affirmative?(value) ? 1 : 0
 
-        faders = group.is_a?(Array) ? group : [group]
+        faders = Array(group)
         faders.each do |fad|
             do_send("\eD#{fad}*#{val}GRPM", :group_type => :mute)
         end
@@ -141,7 +141,7 @@ class Extron::Switcher::In < Extron::Base
     end
 
     def fader(group, value, index = nil)    # \e == 0x1B == ESC key
-        faders = group.is_a?(Array) ? group : [group]
+        faders = Array(group)
         faders.each do |fad|
             do_send("\eD#{fad}*#{value}GRPM", :group_type => :volume)
         end

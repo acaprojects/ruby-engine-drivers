@@ -71,7 +71,7 @@ class Lightware::Switcher::LightwareProtocol
             input = input.to_s if input.is_a?(Symbol)
             input = input.to_i if input.is_a?(String)
 
-            outputs = [outputs] unless outputs.is_a?(Array)
+            outputs = Array(outputs)
             outputs.each do |output|
                 command << "{#{input}@#{output}}"
             end
@@ -103,7 +103,7 @@ class Lightware::Switcher::LightwareProtocol
 
 
     def mute_video(outputs)
-        outputs = [outputs] unless outputs.is_a?(Array)
+        outputs = Array(outputs)
         command = ''
         outputs.each do |output|
             command << "{##{output}}"
@@ -113,7 +113,7 @@ class Lightware::Switcher::LightwareProtocol
     end
 
     def unmute_video(outputs)
-        outputs = [outputs] unless outputs.is_a?(Array)
+        outputs = Array(outputs)
         command = ''
         outputs.each do |output|
             command << "{+#{output}}"

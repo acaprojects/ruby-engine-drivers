@@ -107,7 +107,7 @@ class Kramer::Switcher::Protocol3000
             input = input.to_s if input.is_a?(Symbol)
             input = input.to_i if input.is_a?(String)
 
-            outputs = [outputs] unless outputs.is_a?(Array)
+            outputs = Array(outputs)
             outputs.each do |output|
                 do_send(CMDS[:route], ROUTE_TYPES[type], output, input)
             end

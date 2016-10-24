@@ -74,7 +74,7 @@ class Kramer::Switcher::VsHdmi
         command = [1, 0x80, 0x80, 0xFF]
         
         map.each do |input, outputs|
-            outputs = [outputs] unless outputs.class == Array
+            outputs = Array(outputs)
             input = input.to_s if input.class == Symbol
             input = input.to_i if input.class == String
             outputs.each do |output|
