@@ -30,7 +30,7 @@ class Extron::Switcher::UsbExtenderPlus < Extron::Base
 
     def on_update
         # The transmitter is the computer / host
-        @mac_address = clean(setting(:mac_address))
+        @mac_address = setting(:mac_address)
         @host_ip = remote_address
         @port = setting(:pair_port) || 6137
 
@@ -47,10 +47,10 @@ class Extron::Switcher::UsbExtenderPlus < Extron::Base
             unpair_all
 
             # pair just this receiver to this transmitter
-            to_host = "2f03f4a2020000000302#{clean(receiver[1])}"
+            to_host = hex_to_byte("2f03f4a2020000000302#{receiver[1]}")
             thread.udp_service.send(@host_ip, @port, to_host)
 
-            to_device = "2f03f4a2020000000302#{@mac_address}"
+            to_device = hex_to_byte("2f03f4a2020000000302#{@mac_address}")
             thread.udp_service.send(receiver[0], receiver[2] || @port, to_device)
         else
             logger.warn("#{input} receiver not found")
@@ -67,10 +67,10 @@ class Extron::Switcher::UsbExtenderPlus < Extron::Base
                 receiver = input.is_a?(Integer) ? @lookup[input] : self[:receivers][input.to_sym]
                 if receiver
                     # pair this receiver to this transmitter
-                    to_host = "2f03f4a2020000000302#{clean(receiver[1])}"
+                    to_host = hex_to_byte("2f03f4a2020000000302#{receiver[1]}")
                     thread.udp_service.send(@host_ip, @port, to_host)
 
-                    to_device = "2f03f4a2020000000302#{@mac_address}"
+                    to_device = hex_to_byte("2f03f4a2020000000302#{@mac_address}")
                     thread.udp_service.send(receiver[0], receiver[2] || @port, to_device)
                 else
                     logger.warn("#{input} receiver not found")
@@ -81,10 +81,10 @@ class Extron::Switcher::UsbExtenderPlus < Extron::Base
 
     def unpair_all
         @lookup.each do |receiver|
-            to_host = "2f03f4a2020000000303#{clean(receiver[1])}"
+            to_host = hex_to_byte("2f03f4a2020000000303#{receiver[1]}")
             thread.udp_service.send(@host_ip, @port, to_host)
 
-            to_device = "2f03f4a2020000000303#{@mac_address}"
+            to_device = hex_to_byte("2f03f4a2020000000303#{@mac_address}")
             thread.udp_service.send(receiver[0], receiver[2] || @port, to_device)
         end
     end
@@ -149,10 +149,6 @@ class Extron::Switcher::UsbExtenderPlus < Extron::Base
 
     protected
 
-
-    def clean(mac)
-        mac.gsub(/(0x|[^0-9A-Fa-f])*/, '')
-    end
 
     def device_ready
         do_send("\e3CV", :wait => true)    # Verbose mode and tagged responses
