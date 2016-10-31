@@ -30,12 +30,15 @@ class Aca::MeetingRoom < Aca::Joiner
             # Grab the input list
             @input_tab_mapping = {}             # Used in POD sharing code
             self[:inputs] = setting(:inputs)
+            my_inputs = []
             self[:inputs].each do |input|
                 self[input] = setting(input)
                 (self[input] || []).each do |source|
+                    my_inputs << source
                     @input_tab_mapping[source.to_sym] = input
                 end
             end
+            self[:local_inputs] = my_inputs
 
             # Grab any video wall details
             # {Display_1: {module: VidWall, input: display_port} }
