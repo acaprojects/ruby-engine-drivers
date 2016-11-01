@@ -20,6 +20,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
     
     def on_update
         @default_source = setting(:presentation) || 3
+        @count = 0
     end
     
     def connected
@@ -32,6 +33,13 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         @polling_timer = schedule.every('5s') do
             logger.debug "-- Polling Cisco SX"
             call_status
+
+            if @count <= 0
+                mute_status
+                @count = 12
+            else
+                @count -= 1
+            end
         end
     end
     
@@ -90,6 +98,24 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
 
     def call_status
         status(:call, name: :call)
+    end
+
+    def mute(mute = true)
+        if mute
+            audio :microphones, :mute, name: :mute
+            self[:mute] = true
+        else
+            unmute
+        end
+    end
+
+    def unmute
+        audio :microphones, :unmute, name: :mute
+        self[:mute] = false
+    end
+
+    def mute_status
+        status(:audio, :microphones, :mute)
     end
 
     SearchDefaults = {
@@ -346,9 +372,13 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
                     self[:presentation] = :none
                 end
             end
-        when :Video
+        when :video
             if result[2] == 'Selfview' && result[3] == 'Mode:'
                 self[:camera_pip] = result[4] == 'On'
+            end
+        when :audio
+            if result[2] == 'Microphones' && result[3] == 'Mute:'
+                self[:mute] = result[4] == 'On'
             end
         end
 
