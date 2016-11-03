@@ -102,7 +102,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
 
     def mute(mute = true)
         if mute
-            audio :microphones, :mute, name: :mute
+            audio :microphones, :mute
             self[:mute] = true
         else
             unmute
@@ -110,7 +110,7 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
     end
 
     def unmute
-        audio :microphones, :unmute, name: :mute
+        audio :microphones, :unmute
         self[:mute] = false
     end
 
