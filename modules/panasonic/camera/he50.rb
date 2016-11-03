@@ -48,7 +48,7 @@ class Panasonic::Camera::He50
         @presets = setting(:presets) || {}
         self[:presets] = @presets.keys
     end
-    
+
     def connected
         schedule.every('60s', method(:do_poll))
         do_poll
@@ -163,11 +163,11 @@ class Panasonic::Camera::He50
 
         options = {}
         if is_centered
-            options[:retries] = 3
+            options[:retries] = 4
             options[:priority] = 99
             options[:clear_queue] = true
         else
-            options[:retries] = 0
+            options[:retries] = 1
         end
 
         logger.debug("Sending camera: #{pan_speed}#{tilt_speed}");
@@ -348,9 +348,8 @@ class Panasonic::Camera::He50
             options[:name] = name
         end
         request_string = "/cgi-bin/aw_ptz?cmd=%23#{cmd}#{data}&res=1"
+        logger.debug { "requesting #{name}: #{request_string}" }
         get(request_string, options, &blk)
-
-        logger.debug "requesting #{name}: #{request_string}"
     end
 
     def extract(name, data, resp)
