@@ -25,10 +25,13 @@ class Toshiba::Display::ESeries
         defaults({
             max_waits: 5
         })
+
+        @force_state = setting(:force_state)
+        self[:power_target] = setting(:power_target) if @force_state
     end
 
     def connected
-        @buffer = ''
+        @buffer = String.new
 
         @polling_timer = schedule.every('30s') do
             logger.debug "-- Polling Display"
@@ -47,13 +50,16 @@ class Toshiba::Display::ESeries
 
 
     def power(state)
-        if is_affirmative?(state)
-            self[:power] = true
+        promise = if is_affirmative?(state)
+            self[:power_target] = self[:power] = true
             do_send([0x19, 0xD3, 0x02, 0x00, 0x00, 0x60, 0x02, 0x00], name: :power)
         else
-            self[:power] = false
+            self[:power_target] = self[:power] = false
             do_send([0x19, 0xD3, 0x02, 0x00, 0x00, 0x60, 0x01, 0x00], name: :power)
         end
+
+        define_setting(:power_target, self[:power_target]) if @force_state
+        promise
     end
 
     def power?(options = {}, &block)
@@ -140,6 +146,10 @@ class Toshiba::Display::ESeries
                 volume?
                 input?
             end
+
+            if @force_state && !self[:power_target].nil? && self[:power] != self[:power_target]
+                power(self[:power_target])
+            end
         end
     end
 
@@ -183,14 +193,14 @@ class Toshiba::Display::ESeries
             
             if @buffer.length >= 3
                 data = @buffer[0..2]
-                @buffer = @buffer[3..-1]
+                @buffer = String.new(@buffer[3..-1])
             else
                 return :ignore
             end
         end
 
         logger.debug {
-            cmd = "Toshiba sent 0x#{byte_to_hex(data)}"
+            cmd = String.new "Toshiba sent 0x#{byte_to_hex(data)}"
             cmd << " for command #{command[:name]}" if command
             cmd
         }
