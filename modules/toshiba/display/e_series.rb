@@ -242,6 +242,7 @@ class Toshiba::Display::ESeries
     PREFIX = [0xBE, 0xEF, 0x03, 0x06, 0x00]
     def do_send(cmd, options = {})
         data = PREFIX + cmd
+        logger.debug { "sending to Toshiba: 0x#{byte_to_hex(data)}" }
         send data, options
     end
 end
