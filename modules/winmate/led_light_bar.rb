@@ -109,7 +109,7 @@ class Winmate::LedLightBar
     end
 
     # Seems the device is a bit off?
-    def check_checksum(data)
+    def confirm_checksum(data)
         sum = 0
         data.each do |byte|
             sum += byte
@@ -120,7 +120,7 @@ class Winmate::LedLightBar
     def check_checksum(length, data)
         check = str_to_array(data[0...length])
         result = check.pop
-        result == check_checksum(check)
+        result == confirm_checksum(check)
     end
 
     def process_response(resp)
