@@ -16,12 +16,43 @@ class Winmate::LedLightBar
 
 
     def on_load
+        on_update
     end
 
     def on_unload
     end
 
+
+    DefaultColourValues ||= {
+        red: {
+            red: 0xc2,
+            green: 0x23,
+            blue: 0x03
+        },
+        green: {
+            red: 0x78,
+            green: 0xb5,
+            blue: 0x77
+        },
+        blue: {
+            red: 0,
+            green: 0,
+            blue: 255
+        },
+        orange: {
+            red: 0xeb,
+            green: 0x8c,
+            blue: 0
+        },
+        off: {
+            red: 0,
+            green: 0,
+            blue: 0
+        }
+    }
+
     def on_update
+        @colours = (setting(:colours) || {}).merge(DefaultColourValues)
     end
 
 
@@ -38,6 +69,14 @@ class Winmate::LedLightBar
     def disconnected
         @polling_timer.cancel unless @polling_timer.nil?
         @polling_timer = nil
+    end
+
+
+    def colour(colour)
+        colours = @colours[colour.to_sym]
+        colours.each do |component, intensity|
+            set component, intensity
+        end
     end
 
 
