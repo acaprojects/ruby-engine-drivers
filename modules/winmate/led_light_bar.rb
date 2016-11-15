@@ -103,10 +103,15 @@ class Winmate::LedLightBar
 
     # Note:: value is between 0 and 255
     def set(led, value, options = {})
+        value = value.to_i & 0xFF
+        led = led.to_sym
+
+        self[led] = value
+
         do_send(options.merge({
             command: :set,
-            colour: led.to_sym,
-            value: (value.to_i & 0xFF)
+            colour: led,
+            value: value
         }))
     end
 
