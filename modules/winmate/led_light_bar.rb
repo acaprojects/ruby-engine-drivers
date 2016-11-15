@@ -120,7 +120,7 @@ class Winmate::LedLightBar
     def check_checksum(length, data)
         check = str_to_array(data[0...length])
         result = check.pop
-        result == confirm_checksum(check)
+        (result == confirm_checksum(check) || result == build_checksum(check))
     end
 
     def process_response(resp)
@@ -132,8 +132,7 @@ class Winmate::LedLightBar
         when :red, :green, :blue
             self[colour] = data[1]
         else
-            char = (String.new << indicator)
-            if char == 'C'
+            if indicator == 0x0C
                 :success
             else
                 :abort
