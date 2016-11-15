@@ -74,6 +74,7 @@ class Winmate::LedLightBar
 
     def colour(colour)
         colours = @colours[colour.to_sym]
+        self[:colour_name] = colour if colours
         colours.each do |component, intensity|
             set component, intensity
         end
