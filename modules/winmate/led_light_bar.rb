@@ -26,7 +26,7 @@ class Winmate::LedLightBar
 
 
     def connected
-        @buffer = ''
+        @buffer = String.new
 
         do_poll
         @polling_timer = schedule.every('50s') do
@@ -90,7 +90,7 @@ class Winmate::LedLightBar
             :ignore
         else
             logger.warn "Error processing response. Possibly incorrect baud rate configured"
-            @buffer = ''
+            @buffer = String.new
             :abort
         end
     end
@@ -99,12 +99,13 @@ class Winmate::LedLightBar
     private
 
 
+    # 2’s complement
     def build_checksum(data)
         sum = 0
         data.each do |byte|
             sum += byte
         end
-        ((~(sum & 0xFF)) + 1) & 0xFF
+        (~(sum & 0xFF)) & 0xFF
     end
 
     def check_checksum(length, data)
@@ -122,7 +123,7 @@ class Winmate::LedLightBar
         when :red, :green, :blue
             self[colour] = data[1]
         else
-            char = ('' << indicator)
+            char = (String.new << indicator)
             if char == 'C'
                 :success
             else
