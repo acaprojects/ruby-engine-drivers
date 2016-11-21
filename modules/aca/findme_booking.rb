@@ -474,7 +474,7 @@ class Aca::FindmeBooking
             opts[:act_as] = @ews_room if @ews_room
 
             folder = cli.get_folder(:calendar, opts)
-            items = folder.items_between(start.iso8601, ending.iso8601)
+            items = folder.items({:calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
         else
             cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
             items = cli.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
@@ -511,7 +511,7 @@ class Aca::FindmeBooking
             opts[:act_as] = @ews_room if @ews_room
 
             folder = cli.get_folder(:calendar, opts)
-            items = folder.items_between(start.iso8601, ending.iso8601)
+            items = folder.items({:calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
         else
             cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
             items = cli.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
