@@ -25,7 +25,8 @@ class Aca::Recorder
 
     def start(name = nil, group_id = @default_group, mode = :pip, primary = :presentation, location = :bottom_right, secondary = :camera)
         params = {}
-        params[:name] = name || "#{system.name.gsub(/\*|\-|\:|\/|\\|\,|\.|\"|\'/, '_')}_#{Time.now.strftime('%a_%-d_%b_%Y_at_%I_%M%P')}"
+        name = name || setting(:name)
+        params[:name] = "#{name || 'unknown'}_#{Time.now.strftime('%a_%-d_%b_%Y_at_%I_%M%P')}"
         grp = group_id || setting(:cotag_group_id)
         params[:group_id] = grp if grp
         params[:mode] = mode
