@@ -40,14 +40,14 @@ class Amx::Svsi::NSeriesSwitcher
     def connected
         # Get current state of the outputs
         @lookup.each_key do |ip_address|
-            do_send :monitor,       ip_address, priority: 0
-            do_send :monitornotify, ip_address, priority: 0
+            monitor        ip_address, priority: 0
+            monitornotify  ip_address, priority: 0
         end
 
         # Low priority poll to maintain connection
         @polling_timer = schedule.every('50s') do
             logger.debug '-- Maintaining Connection --'
-            do_send :monitornotify, @list.first, priority: 0
+            monitornotify @list.first, priority: 0
         end
     end
 
@@ -62,6 +62,7 @@ class Amx::Svsi::NSeriesSwitcher
     #    http://blog.jayfields.com/2008/02/ruby-dynamically-define-method.html
     #
     CommonCommands = [
+        :monitor, :monitornotify,
         :live, :local, :serial, :readresponse, :sendir, :sendirraw, :audioon, :audiooff,
         :enablehdmiaudio, :disablehdmiaudio, :autohdmiaudio,
         # recorder commands
@@ -120,12 +121,12 @@ class Amx::Svsi::NSeriesSwitcher
     end
 
     def switch(input, output = nil, **options)
-        map = out ? {input => output} : input
+        map = output ? {input => output} : input
         map.each do |input, output|
             # An input might go to multiple outputs
             outputs = Array(output)
 
-            if input
+            if input != 0
                 # 'in_ip' => ['ip1', 'ip2'] etc
                 input_actual = get_input(input)
                 outputs.each do |out|
@@ -153,12 +154,12 @@ class Amx::Svsi::NSeriesSwitcher
     alias_method :switch_video, :switch
 
     def switch_audio(input, output = nil, **options)
-        map = out ? {input => output} : input
+        map = output ? {input => output} : input
         map.each do |input, output|
             # An input might go to multiple outputs
             outputs = Array(output)
 
-            if input
+            if input != 0
                 # 'in_ip' => ['ip1', 'ip2'] etc
                 input_actual = get_input(input)
                 outputs.each do |out|
@@ -240,8 +241,8 @@ class Amx::Svsi::NSeriesSwitcher
         
         return :success
     end
-    
-    
+
+
     protected
 
 
