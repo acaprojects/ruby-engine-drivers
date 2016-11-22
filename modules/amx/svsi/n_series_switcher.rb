@@ -191,7 +191,7 @@ class Amx::Svsi::NSeriesSwitcher
         end
     end
 
-    def mute_audio(out, state = true)
+    def mute_audio(out, state = true, **options)
         outputs = Array(out)
 
         if is_affirmative?(state)
