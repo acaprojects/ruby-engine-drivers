@@ -29,6 +29,8 @@ class Extron::Switcher::UsbExtenderPlus < Extron::Base
     end
 
     def on_update
+        @disable_polling = @__config__.settings.udp
+
         # The transmitter is the computer / host
         @mac_address = setting(:mac_address)
         @host_ip = remote_address
