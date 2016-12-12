@@ -794,8 +794,9 @@ class Aca::MeetingRoom < Aca::Joiner
             end
 
             # Change the display input
-            if disp_source[:source] && disp_mod[:input] != disp_source[:source]
-                disp_mod.switch_to(disp_source[:source])
+            inp_src = disp_source[:source] || disp_info[:default_source]
+            if inp_src && disp_mod[:input] != inp_src
+                disp_mod.switch_to(inp_src)
             end
 
             # Change the display audio input
