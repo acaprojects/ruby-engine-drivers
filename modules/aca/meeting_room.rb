@@ -724,7 +724,7 @@ class Aca::MeetingRoom < Aca::Joiner
         return if disp_source[:ignore]
 
         self[:vol_max] = disp_source[:vol_max] || @original_max
-        self[:vol_min] = disp_source[:vol_min] || @original_max
+        self[:vol_min] = disp_source[:vol_min] || @original_min
 
         # Check if the input source defines the audio
         if disp_source[:mixer_id] || disp_source[:use_display_audio]
