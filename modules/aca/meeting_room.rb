@@ -73,8 +73,16 @@ class Aca::MeetingRoom < Aca::Joiner
             end
 
             # Check for min / max volumes
-            self[:vol_max] = setting(:vol_max)
-            self[:vol_min] = setting(:vol_min)
+            if @original_min != setting(:vol_min)
+                @original_min = setting(:vol_min)
+                self[:vol_min] = @original_min
+            end
+
+            if @original_max != setting(:vol_max)
+                @original_max = setting(:vol_max)
+                self[:vol_max] = @original_max
+            end
+            
 
             # Get the list of apps and channels
             @apps = setting(:apps)
@@ -715,8 +723,11 @@ class Aca::MeetingRoom < Aca::Joiner
         # Especially if the room only as a single display (switch on tab select)
         return if disp_source[:ignore]
 
+        self[:vol_max] = disp_source[:vol_max] || @original_max
+        self[:vol_min] = disp_source[:vol_min] || @original_max
+
         # Check if the input source defines the audio
-        if disp_source[:mixer_id]
+        if disp_source[:mixer_id] || disp_source[:use_display_audio]
             update_audio(disp_source, display)
         end
 
