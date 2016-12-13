@@ -682,7 +682,7 @@ class Aca::MeetingRoom < Aca::Joiner
         mixer.mutes(args)
     end
 
-    def update_audio(source, disp_id)
+    def update_audio(source, disp_id, no_audio)
         current = self[disp_id]
         mixer = system[:Mixer]
 
@@ -705,7 +705,7 @@ class Aca::MeetingRoom < Aca::Joiner
         # Grab the audio info
         orig = @original_outputs[disp_id]
         output = source.merge(orig)
-        output.delete(:hide_audio)
+        output.delete(:hide_audio) unless no_audio
 
         # Update the front end
         outputs = self[:outputs].dup
@@ -728,7 +728,7 @@ class Aca::MeetingRoom < Aca::Joiner
 
         # Check if the input source defines the audio
         if disp_source[:mixer_id] || disp_source[:use_display_audio]
-            update_audio(disp_source, display)
+            update_audio(disp_source, display, disp_source[:no_audio])
         end
 
         disp_info = self[:outputs][display]
