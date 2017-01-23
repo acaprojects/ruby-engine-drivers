@@ -74,6 +74,10 @@ Settings:
         index, value = @triggers[:"area_#{area}"][number]
         send_request index, value
     end
+
+    def light_level(index, level)
+        send_request index, level.to_i
+    end
     # ==================================
 
 
