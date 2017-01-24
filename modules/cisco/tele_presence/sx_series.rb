@@ -149,6 +149,13 @@ class Cisco::TelePresence::SxSeries < Cisco::TelePresence::SxTelnet
         }))
     end
 
+    def speaker_track(enabled)
+        value = enabled ? 'Auto' : 'Off'
+        configuration('Cameras SpeakerTrack', params({
+            :Mode => value
+        }), name: :speaker_track)
+    end
+
 
     # Valid values: none, local, remote
     PresModes = {
