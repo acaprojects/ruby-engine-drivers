@@ -80,9 +80,9 @@ class HuddleCam::Visca
 
         # Execute command
         if target == On && self[:power] == Off
-            send_cmd "\x04\x00\x02", name: :power, delay: 15000
+            send_cmd "\x04\x00\x02", name: :power, delay: 30000
         elsif target == Off && self[:power] == On
-            send_cmd "\x04\x00\x03", name: :power, delay: 15000
+            send_cmd "\x04\x00\x03", name: :power, delay: 30000
         end
 
         # ensure the comman ran successfully
