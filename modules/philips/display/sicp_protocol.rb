@@ -198,23 +198,23 @@ class Philips::Display::SicpProtocol
 
     def process(message, command)
         case QueryCodeLookup[message[3]]
-        case :power
+        when :power
             self[:power] = message[4] == 0x02
-        case :input
+        when :input
             self[:input] = Inputs[message[4]]
-        case :volume
+        when :volume
             if @audio_out_only
                 self[:volume] = message[5]
             else
                 self[:volume] = message[4]
                 self[:audio_out] = message[5]
             end
-        case :bad_request
+        when :bad_request
             logger.warn {
                 err = String.new "bad request warning"
                 err << " for cmd 0x#{command[:data].bytes[3].to_s(16)}" if command
             }
-        case :error
+        when :error
             logger.error {
                 err = String.new "error response received"
                 err << " for cmd 0x#{command[:data].bytes[3].to_s(16)}" if command
