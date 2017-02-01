@@ -79,7 +79,7 @@ class Philips::Display::SicpProtocol
 
     # Generate the query functions
     QueryCodes.each do |cmd, code|
-        define_method :"#{cmd}?" do |value, **options|
+        define_method :"#{cmd}?" do | **options|
             options[:priority] ||= 0
             if block_given?
                 options[:emit] = proc {
@@ -99,7 +99,7 @@ class Philips::Display::SicpProtocol
             self[:power] = false
             0x01
         end
-        send Command[:power], value, name: :power
+        do_send Command[:power], value, name: :power
     end
 
 
@@ -111,7 +111,7 @@ class Philips::Display::SicpProtocol
     RecoveryMode.merge!(RecoveryMode.invert)
 
     def set_power_recovery(mode)
-        send Command[:power_recovery], RecoveryMode[mode.to_sym], name: :power_mode
+        do_send Command[:power_recovery], RecoveryMode[mode.to_sym], name: :power_mode
     end
 
 
@@ -134,8 +134,8 @@ class Philips::Display::SicpProtocol
     Inputs.merge!(Inputs.invert)
 
     def switch_to(input)
-        inp = self[:input] = Inputs[input.to_sym]
-        send Command[:input], inp, 0, 1, 0, name: :input
+        inp = self[:input] = input.to_sym
+        do_send Command[:input], Inputs[inp], 0, 1, 0, name: :input
     end
 
     # Audio mute
@@ -179,7 +179,7 @@ class Philips::Display::SicpProtocol
             self[:volume] = value
         end
 
-        send Command[:volume], value, audio_out, name: :volume
+        do_send Command[:volume], value, audio_out, name: :volume
     end
 
 
@@ -197,6 +197,7 @@ class Philips::Display::SicpProtocol
 
 
     def process(message, command)
+        logger.debug { "processing #{QueryCodeLookup[message[3]]} cmd"  }
         case QueryCodeLookup[message[3]]
         when :power
             self[:power] = message[4] == 0x02
@@ -225,7 +226,7 @@ class Philips::Display::SicpProtocol
     end
 
     def received(data, resolve, command)
-        logger.debug { "received: 0x#{byte_to_hex(message)}" }
+        logger.debug { "received: 0x#{byte_to_hex(data)}" }
 
         # Buffer data
         @buffer.concat str_to_array(data)
@@ -233,7 +234,7 @@ class Philips::Display::SicpProtocol
         # Extract any messages
         tokens = []
         while @buffer[0] && @buffer.length >= @buffer[0]
-            tokens << buff.slice!(0, @buffer[0])
+            tokens << @buffer.slice!(0, @buffer[0])
         end
 
         # Process responses
@@ -253,7 +254,7 @@ class Philips::Display::SicpProtocol
         data[1..-1].each do |byte|
             sum = sum ^ byte
         end
-        sum && 0xFF
+        sum & 0xFF
     end
 
     def do_send(*cmd, **options)
