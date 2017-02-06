@@ -88,6 +88,7 @@ class Aca::MeetingRoom < Aca::Joiner
             @apps = setting(:apps)
             @channels = setting(:channels)
             @cameras = setting(:cameras)
+            @no_cam_on_boot = setting(:no_cam_on_boot)
             self[:has_preview] = setting(:has_preview)
             self[:pc_control] = system.exists?(:Computer)
             self[:apps] = @apps.keys if @apps
@@ -395,7 +396,7 @@ class Aca::MeetingRoom < Aca::Joiner
             end
         end
         # Turn on VC cameras
-        start_cameras
+        start_cameras unless @no_cam_on_boot
 
         preview(self[self[:tab]][0])
     end
