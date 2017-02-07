@@ -53,6 +53,8 @@ DESC
     #
     # network events
     def connected
+        do_device_config
+            
         do_poll
 
         @polling_timer = schedule.every('30s') do
@@ -87,7 +89,8 @@ DESC
         :safety => 0x5D,
         :wall_on => 0x84,       # Video wall enabled
         :wall_user => 0x89,     # Video wall user control
-        :speaker => 0x68
+        :speaker => 0x68,
+        :net_standby => 0xB5    # Keep NIC active in standby
     }
     COMMAND.merge!(COMMAND.invert)
 
@@ -203,6 +206,16 @@ DESC
         end
     end
 
+
+    #
+    # Push any configured device settings
+    def do_device_config
+        # keep NIC active on standby
+        net_standby = setting(:net_standby)
+        if net_standby
+            do_send(:net_standby, net_standy)
+        end
+    end
 
     protected
 
