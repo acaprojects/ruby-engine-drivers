@@ -213,7 +213,8 @@ DESC
         # keep NIC active on standby
         net_standby = setting(:net_standby)
         if net_standby
-            do_send(:net_standby, net_standy)
+            state = is_affirmative?(net_standby) ? 1 : 0
+            do_send(:net_standby, state)
         end
     end
 
