@@ -209,17 +209,29 @@ DESC
 
 
     #
-    # Push any configured device settings
-    def do_device_config
-        # keep NIC active on standby
-        net_standby = setting(:net_standby)
-        if net_standby
-            state = is_affirmative?(net_standby) ? 1 : 0
-            do_send(:net_standby, state)
-        end
+    # Enable power on (without WOL)
+    def network_standby(enable, options = {})
+        state = is_affirmative?(enable) ? 1 : 0
+        do_send(:net_standby, state, options)
     end
 
+
     protected
+
+
+    Device_settings = {
+        :net_standby => lambda { |x| network_standby(x) }
+    }
+    #
+    # Push any configured device settings
+    def do_device_config
+        Device_settings.each do |name, applicator|
+            value = setting(name)
+            if value
+                applicator(value)
+            end
+        end
+    end
 
 
     def wake(broadcast = nil)
