@@ -91,7 +91,8 @@ DESC
         :wall_on => 0x84,       # Video wall enabled
         :wall_user => 0x89,     # Video wall user control
         :speaker => 0x68,
-        :net_standby => 0xB5    # Keep NIC active in standby
+        :net_standby => 0xB5,   # Keep NIC active in standby
+        :eco_solution => 0xE6   # Eco options (auto power off)
     }
     COMMAND.merge!(COMMAND.invert)
 
@@ -216,11 +217,20 @@ DESC
     end
 
 
+    #
+    # Eco auto power off timer
+    def auto_off_timer(enable, options = {})
+        state = is_affirmative? ? 1: 0
+        do_send(:eco_solution, [0x81, state], options)
+    end
+
+
     protected
 
 
     Device_settings = {
-        :net_standby => lambda { |x| network_standby(x) }
+        :net_standby => lambda { |x| network_standby(x) },
+        :auto_off_timer => lambda { |x| auto_off_timer(x) }
     }
     #
     # Push any configured device settings
