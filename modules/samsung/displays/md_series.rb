@@ -237,7 +237,7 @@ DESC
     def do_device_config
         Device_settings.each do |name, applicator|
             value = setting(name)
-            if value
+            if !value.nil?
                 applicator(value)
             end
         end
