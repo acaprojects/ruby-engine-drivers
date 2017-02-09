@@ -221,7 +221,7 @@ DESC
     #
     # Eco auto power off timer
     def auto_off_timer(enable, options = {})
-        state = is_affirmative? ? 1: 0
+        state = is_affirmative?(enable) ? 1: 0
         do_send(:eco_solution, [0x81, state], options)
     end
 
