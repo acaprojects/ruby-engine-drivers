@@ -221,14 +221,14 @@ DESC
     #
     # Eco auto power off timer
     def auto_off_timer(enable, options = {})
-        state = is_affirmative?(enable) ? 1: 0
+        state = is_affirmative?(enable) ? 1 : 0
         do_send(:eco_solution, [0x81, state], options)
     end
 
 
     #
     # Device auto power control (presumably signal based?)
-    def auto_power(enable, option = {})
+    def auto_power(enable, options = {})
         state = is_affirmative?(enable) ? 1 : 0
         do_send(:auto_power, state, options)
     end
