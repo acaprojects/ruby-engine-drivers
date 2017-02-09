@@ -47,7 +47,7 @@ DESC
 
     def on_update
         @id = setting(:display_id) || 0xFF
-        do_device_config
+        do_device_config if self[:connected]
     end
 
 
@@ -233,6 +233,7 @@ DESC
         do_send(:auto_power, state, options)
     end
 
+
     protected
 
 
@@ -244,6 +245,7 @@ DESC
     #
     # Push any configured device settings
     def do_device_config
+        logger.debug { "Syncronising device config with settings" }
         Device_settings.each do |name, applicator|
             value = setting(name)
             if !value.nil?
