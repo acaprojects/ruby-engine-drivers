@@ -237,20 +237,18 @@ DESC
     protected
 
 
-    Device_settings = {
-        :net_standby => lambda { |x| network_standby(x) },
-        :auto_off_timer => lambda { |x| auto_off_timer(x) },
-        :auto_power => lambda { |x| auto_power(x) }
-    }
+    Device_settings = [
+        :network_standby,
+        :auto_off_timer,
+        :auto_power
+    ]
     #
     # Push any configured device settings
     def do_device_config
-        logger.debug { "Syncronising device config with settings" }
-        Device_settings.each do |name, applicator|
+        logger.debug { "Syncronising device state with settings" }
+        Device_settings.each do |name|
             value = setting(name)
-            if !value.nil?
-                applicator.call(value)
-            end
+            send(name, value) if !value.nil?
         end
     end
 
