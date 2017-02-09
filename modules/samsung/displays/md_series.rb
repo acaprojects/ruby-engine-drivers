@@ -247,7 +247,7 @@ DESC
         Device_settings.each do |name, applicator|
             value = setting(name)
             if !value.nil?
-                applicator(value)
+                applicator.call(value)
             end
         end
     end
