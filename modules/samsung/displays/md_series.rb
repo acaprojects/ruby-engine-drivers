@@ -47,6 +47,7 @@ DESC
 
     def on_update
         @id = setting(:display_id) || 0xFF
+        do_device_config
     end
 
 
@@ -54,7 +55,7 @@ DESC
     # network events
     def connected
         do_device_config
-            
+
         do_poll
 
         @polling_timer = schedule.every('30s') do
