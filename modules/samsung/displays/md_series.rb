@@ -248,7 +248,7 @@ DESC
         logger.debug { "Syncronising device state with settings" }
         Device_settings.each do |name|
             value = setting(name)
-            send(name, value) if !value.nil?
+            send(name, value) unless value.nil?
         end
     end
 
