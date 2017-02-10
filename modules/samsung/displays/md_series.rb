@@ -79,7 +79,7 @@ DESC
     # Command types
     COMMAND = {
         :hard_off => 0x11,      # Completely powers off
-        :power => 0xF9,         # Technically the panel command
+        :panel_mute => 0xF9,    # Screen blanking / visual mute
         :volume => 0x12,
         :input => 0x14,
         :mode => 0x18,
@@ -109,12 +109,12 @@ DESC
             #        switch_to blank
             #    end
             #end
-            do_send(:power, 1)
+            do_send(:panel_mute, 1)
         elsif !self[:connected]
             wake(broadcast)
         else
             do_send(:hard_off, 1)
-            do_send(:power, 0)
+            do_send(:panel_mute, 0)
         end
     end
 
@@ -129,7 +129,7 @@ DESC
 
     def power?(options = {}, &block)
         options[:emit] = block unless block.nil?
-        do_send(:power, [], options)
+        do_send(:panel_mute, [], options)
     end
 
 
@@ -279,7 +279,7 @@ DESC
 
             if status == 0x41 # 'A'
                 case COMMAND[command]
-                when :power
+                when :panel_mute
                     self[:power] = value == 0
                 when :volume
                     self[:volume] = value
