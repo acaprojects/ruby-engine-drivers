@@ -41,6 +41,11 @@ class Aca::OsdLogic
         self.message = ''
     end
 
+    # Trigger a client refresh
+    def reload
+        self[:reload] = true
+    end
+
     protected
 
     def content=(address)
