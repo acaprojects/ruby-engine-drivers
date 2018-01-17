@@ -15,15 +15,19 @@ class Aca::OsdLogic
 
     def on_update
         clear_message
-        stream setting(:stream_url)
+        self.content = setting(:content)
     end
 
     def hdmi
-        self.stream = 'tv:brightsign.biz/hdmi'
+        stream 'tv:brightsign.biz/hdmi'
     end
 
-    def stream(url)
-        self.stream = url
+    def stream(uri)
+        self.content = "stream #{uri}"
+    end
+
+    def web(url)
+        self.content = "web #{url}"
     end
 
     def show_message(message, timeout = '10s')
@@ -40,9 +44,9 @@ class Aca::OsdLogic
 
     protected
 
-    def stream=(address)
-        self[:stream_url] = address
-        define_setting(:stream_url, address)
+    def content=(address)
+        self[:content] = address
+        define_setting(:content, address)
     end
 
     def message=(msg)
