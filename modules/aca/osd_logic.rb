@@ -30,9 +30,9 @@ class Aca::OsdLogic
         self.content = "web #{url}"
     end
 
-    def show_message(message, timeout = '10s')
+    def show_message(text, timeout = '10s')
         schedule.clear
-        self.message = message
+        self.message = text
         schedule.in timeout { clear_message } unless is_negatory? timeout
         nil
     end
@@ -59,12 +59,12 @@ class Aca::OsdLogic
 
     protected
 
-    def content=(address)
-        self[:content] = address
-        define_setting(:content, address)
+    def content=(source)
+        self[:content] = source
+        define_setting :content, source
     end
 
-    def message=(msg)
-        self[:message] = msg
+    def message=(text)
+        self[:message] = text
     end
 end
