@@ -52,7 +52,7 @@ class Aca::OsdLogic
     end
 
     # Callback for client init
-    def register
+    def register(device_info)
         logger.debug 'Client online'
         cancel_reload
     end
