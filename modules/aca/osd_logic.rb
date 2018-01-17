@@ -43,6 +43,7 @@ class Aca::OsdLogic
 
     # Trigger a client refresh
     def reload
+        logger.debug 'Requesting client reconnect'
         self[:reload] = true
     end
 
@@ -52,6 +53,7 @@ class Aca::OsdLogic
 
     # Callback for client init
     def register
+        logger.debug 'Client online'
         cancel_reload
     end
 
