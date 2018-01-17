@@ -15,7 +15,7 @@ class Aca::OsdLogic
 
     def on_update
         clear_message
-        self.content = setting(:content)
+        self[:content] = setting(:content) || hdmi
     end
 
     def hdmi
@@ -62,6 +62,7 @@ class Aca::OsdLogic
     def content=(source)
         self[:content] = source
         define_setting :content, source
+        source
     end
 
     def message=(text)
