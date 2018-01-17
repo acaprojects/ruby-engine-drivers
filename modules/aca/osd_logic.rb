@@ -46,6 +46,15 @@ class Aca::OsdLogic
         self[:reload] = true
     end
 
+    def cancel_reload
+        self[:reload] = false
+    end
+
+    # Callback for client init
+    def register
+        cancel_reload
+    end
+
     protected
 
     def content=(address)
