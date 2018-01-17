@@ -33,7 +33,7 @@ class Aca::OsdLogic
     def show_message(text, timeout = '10s')
         schedule.clear
         self.message = text
-        schedule.in timeout { clear_message } unless is_negatory? timeout
+        schedule.in(timeout) { clear_message } unless is_negatory? timeout
         nil
     end
 
