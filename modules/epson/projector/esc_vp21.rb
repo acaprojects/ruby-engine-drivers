@@ -38,7 +38,7 @@ class Epson::Projector::EscVp21
         # Have to init comms
         send("ESC/VP.net\x10\x03\x00\x00\x00\x00")
         do_poll
-        schedule.every('52s', method(:do_poll))
+        schedule.every('52s') { do_poll }
     end
 
     def disconnected

@@ -7,6 +7,7 @@ class ActiveSupport::TimeWithZone
     end
 end
 
+require 'microsoft/exchange'
 
 module Aca; end
 
@@ -95,6 +96,9 @@ class Aca::ExchangeBooking
         self[:hide_all] = setting(:hide_all) || false
         self[:touch_enabled] = setting(:touch_enabled) || false
         self[:name] = self[:room_name] = setting(:room_name) || system.name
+        self[:description] = setting(:description) || nil
+        self[:title] = setting(:title) || nil
+        self[:timeout] = setting(:timeout) || false
 
         self[:control_url] = setting(:booking_control_url) || system.config.support_url
         self[:booking_controls] = setting(:booking_controls)
@@ -104,12 +108,22 @@ class Aca::ExchangeBooking
         self[:booking_hide_user] = setting(:booking_hide_user)
         self[:booking_hide_description] = setting(:booking_hide_description)
         self[:booking_hide_timeline] = setting(:booking_hide_timeline)
+        self[:last_meeting_started] = setting(:last_meeting_started)
+        self[:cancel_meeting_after] = setting(:cancel_meeting_after)
+        self[:booking_min_duration] = setting(:booking_min_duration)
+        self[:booking_disable_future] = setting(:booking_disable_future)
+        self[:booking_max_duration] = setting(:booking_max_duration)
+        self[:timeout] = setting(:timeout)
+
+        @check_meeting_ending = setting(:check_meeting_ending) # seconds before meeting ending
+        @extend_meeting_by = setting(:extend_meeting_by) || 15.minutes.to_i
 
         # Skype join button available 2min before the start of a meeting
         @skype_start_offset = setting(:skype_start_offset) || 120
 
         # Skype join button not available in the last 8min of a meeting
         @skype_end_offset = setting(:skype_end_offset) || 480
+        @force_skype_extract = setting(:force_skype_extract)
 
         # Because restarting the modules results in a 'swipe' of the last read card
         ignore_first_swipe = true
@@ -186,9 +200,9 @@ class Aca::ExchangeBooking
             end
         end
 
-        fetch_bookings
         schedule.clear
-        schedule.every(setting(:update_every) || '5m', method(:fetch_bookings))
+        schedule.in(rand(10000)) { fetch_bookings }
+        schedule.every((setting(:update_every) || 120000).to_i + rand(10000)) { fetch_bookings }
     end
 
 
@@ -208,6 +222,53 @@ class Aca::ExchangeBooking
         end
     end
 
+    def directory_search(q, limit: 30)
+        # Ensure only a single search is occuring at a time
+        if @dir_search
+            @dir_search = q
+            return
+        end
+
+        ews = ::Microsoft::Exchange.new({
+            ews_url: ENV['EWS_URL'] || 'https://outlook.office365.com/ews/Exchange.asmx',
+            service_account_email: ENV['OFFICE_ACCOUNT_EMAIL'],
+            service_account_password: ENV['OFFICE_ACCOUNT_PASSWORD'],
+            internet_proxy: ENV['INTERNET_PROXY']
+        })
+
+        @dir_search = q
+        self[:searching] = true
+        begin
+            # sip_spd:Auto sip_num:email@address.com
+            entries = []
+            task { ews.get_users(q: q, limit: limit) }.value.each do |entry|
+                phone = entry['phone']
+
+                entries << entry
+                entries << ({
+                    name: entry['name'],
+                    phone: phone.gsub(/\D+/, '')
+                }) if phone
+            end
+
+            # Ensure the results are unique and pushed to the client
+            entries[0][:id] = rand(10000) if entries.length > 0
+            self[:directory] = entries
+        rescue => e
+            logger.print_error e, 'searching directory'
+            self[:directory] = []
+        end
+
+        # Update the search if a change was requested while a search was occuring
+        if @dir_search != q
+            q = @dir_search
+            thread.next_tick { directory_search(q, limit) }
+        else
+            self[:searching] = false
+        end
+
+        @dir_search = nil
+    end
 
     # ======================================
     # Waiter call information
@@ -291,6 +352,9 @@ class Aca::ExchangeBooking
             todays_bookings
         }.then(proc { |bookings|
             self[:today] = bookings
+            if @check_meeting_ending
+                should_notify?
+            end
         }, proc { |e| logger.print_error(e, 'error fetching bookings') })
     end
 
@@ -309,7 +373,13 @@ class Aca::ExchangeBooking
 
     def cancel_meeting(start_time)
         task {
-            delete_ews_booking (start_time / 1000).to_i
+            if start_time.class == Integer
+                delete_ews_booking (start_time / 1000).to_i
+            else
+                # Converts to time object regardless of start_time being string or time object
+                start_time = Time.parse(start_time.to_s)
+                delete_ews_booking start_time.to_i
+            end
         }.then(proc { |count|
             logger.debug { "successfully removed #{count} bookings" }
 
@@ -350,8 +420,8 @@ class Aca::ExchangeBooking
 
     def create_meeting(options)
         # Check that the required params exist
-        required_fields = ["start", "end"]
-        check = required_fields - options.keys
+        required_fields = [:start, :end]
+        check = required_fields - options.keys.collect(&:to_sym)
         if check != []
             # There are missing required fields
             logger.info "Required fields missing: #{check}"
@@ -387,6 +457,53 @@ class Aca::ExchangeBooking
             logger.print_error error, 'creating ad hoc booking'
             thread.reject error # propogate the error
         })
+    end
+
+    def should_notify?
+        bookings = self[:today]
+        return unless bookings.present?
+        now = Time.now.to_i
+
+        current = nil
+        pending = nil
+        found = false
+
+        bookings.sort! { |a, b| a[:end_epoch] <=> b[:end_epoch] }
+        bookings.each do |booking|
+            starting = booking[:start_epoch]
+            ending = booking[:end_epoch]
+
+            if starting < now && ending > now
+                found = true
+                current = ending
+                @current_meeting_title = booking[:Subject]
+            elsif found
+                pending = starting
+                break
+            end
+        end
+
+        if !current
+            self[:meeting_canbe_extended] = false
+            return
+        end
+
+        check_start = current - @check_meeting_ending
+        check_extend = current + @extend_meeting_by
+
+        if now >= check_start && (pending.nil? || pending >= check_extend)
+            self[:meeting_canbe_extended] = current
+        else
+            self[:meeting_canbe_extended] = false
+        end
+    end
+
+    def extend_meeting
+        starting = self[:meeting_canbe_extended]
+        return false unless starting
+
+        ending = starting + @extend_meeting_by
+        create_meeting start: starting * 1000, end: ending * 1000, title: @current_meeting_title
     end
 
 
@@ -523,7 +640,7 @@ class Aca::ExchangeBooking
 
         if @use_act_as
             # TODO:: think this line can be removed??
-            delete_at = Time.parse(delete_at.to_s).to_i
+            # delete_at = Time.parse(delete_at.to_s).to_i
 
             opts = {}
             opts[:act_as] = @ews_room if @ews_room
@@ -560,6 +677,7 @@ class Aca::ExchangeBooking
         end
 
         cli = Viewpoint::EWSClient.new(*@ews_creds)
+        
 
         if @use_act_as
             opts = {}
@@ -573,6 +691,7 @@ class Aca::ExchangeBooking
         end
 
         skype_exists = set_skype_url = system.exists?(:Skype)
+        set_skype_url = true if @force_skype_extract
         now_int = now.to_i
 
         items.select! { |booking| !booking.cancelled? }
@@ -581,11 +700,12 @@ class Aca::ExchangeBooking
             start = item[:start][:text]
             ending = item[:end][:text]
 
+            real_start = Time.parse(start)
+            real_end = Time.parse(ending)
+
             # Extract the skype meeting URL
             if set_skype_url
-                real_start = Time.parse(start)
                 start_integer = real_start.to_i - @skype_start_offset
-                real_end = Time.parse(ending)
                 end_integer = real_end.to_i - @skype_end_offset
 
                 if now_int > start_integer && now_int < end_integer
@@ -598,8 +718,9 @@ class Aca::ExchangeBooking
                         if body_parts.length > 1
                             links = body_parts[-1].split('"').select { |link| link.start_with?('https://') }
                             if links[0].present?
+                                self[:can_join_skype_meeting] = true
                                 set_skype_url = false
-                                system[:Skype].set_uri(links[0])
+                                system[:Skype].set_uri(links[0]) if skype_exists
                             end
                         end
                     end
@@ -614,17 +735,29 @@ class Aca::ExchangeBooking
                 ending = Time.parse(ending).in_time_zone(@timezone).iso8601[0..18]
             end
 
+            logger.debug { item.inspect }
+
+            # Prevent connections handing with TIME_WAIT
+            # cli.ews.connection.httpcli.reset_all
+
+            subject = item[:subject]
+
             {
                 :Start => start,
                 :End => ending,
-                :Subject => item[:subject][:text],
+                :Subject => subject ? subject[:text] : "Private",
                 :owner => item[:organizer][:elems][0][:mailbox][:elems][0][:name][:text],
                 :setup => 0,
-                :breakdown => 0
+                :breakdown => 0,
+                :start_epoch => real_start.to_i,
+                :end_epoch => real_end.to_i
             }
         end
 
-        system[:Skype].set_uri(nil) if skype_exists && set_skype_url
+        if set_skype_url
+            self[:can_join_skype_meeting] = false
+            system[:Skype].set_uri(nil) if skype_exists
+        end
 
         results
     end

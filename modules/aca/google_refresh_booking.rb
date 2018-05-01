@@ -209,7 +209,7 @@ class Aca::GoogleRefreshBooking
 
         fetch_bookings
         schedule.clear
-        schedule.every(setting(:update_every) || '5m', method(:fetch_bookings))
+        schedule.every(setting(:update_every) || '5m') { fetch_bookings }
     end
 
 

@@ -53,7 +53,7 @@ class Panasonic::Camera::He50
     end
 
     def connected
-        schedule.every('60s', method(:do_poll))
+        schedule.every('60s') { do_poll }
         do_poll
     end
 
@@ -147,6 +147,19 @@ class Panasonic::Camera::He50
             true
         else
             false
+        end
+    end
+
+    def save_preset(name)
+        pantilt
+        zoom.then do
+            @presets[name] = {
+                zoom: self[:zoom],
+                pan: self[:pan],
+                tilt: self[:tilt]
+            }
+            define_setting(:presets, @presets)
+            self[:presets] = @presets.keys
         end
     end
 

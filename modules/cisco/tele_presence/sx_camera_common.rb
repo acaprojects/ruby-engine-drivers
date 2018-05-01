@@ -13,14 +13,14 @@ module Cisco::TelePresence::SxCameraCommon
         self[:joy_right] = 3
         self[:joy_center] = 0
 
-        self[:pan_max] = 65535    # Right
-        self[:pan_min] = -65535   # Left
+        self[:pan_max] = 10000    # Right
+        self[:pan_min] = -10000   # Left
         self[:pan_center] = 0
-        self[:tilt_max] = 65535   # UP
-        self[:tilt_min] = -65535  # Down
+        self[:tilt_max] = 2500   # UP
+        self[:tilt_min] = -2500  # Down
         self[:tilt_center] = 0
 
-        self[:zoom_max] = 17284 # 65535
+        self[:zoom_max] = 8500 # 65535
         self[:zoom_min] = 0
 
         super
@@ -68,12 +68,7 @@ module Cisco::TelePresence::SxCameraCommon
 
 
     def home
-        # command("Camera PositionReset CameraId:#{@index}", name: :preset).then do
-        # Preset1 is a better home as it will usually pointed to a default position wheras PositionReset may not be a userfull view
-        recall_position(1).then do
-            autofocus
-            do_poll
-        end
+        command("Camera Preset ActivateDefaultPosition", name: :preset)
     end
 
     def autofocus
@@ -246,8 +241,7 @@ module Cisco::TelePresence::SxCameraCommon
     def recall_position(number)
         number = in_range(number, 15, 1)
 
-        command('Camera PositionActivateFromPreset', params({
-            :CameraId => @index,
+        command('Camera Preset Activate Preset', params({
             :PresetId => number
         }), name: :preset).then do
             autofocus

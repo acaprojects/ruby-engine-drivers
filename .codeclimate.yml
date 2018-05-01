@@ -1,3 +1,4 @@
+version: "2"
 engines:
   duplication:
     enabled: false
@@ -8,8 +9,44 @@ engines:
     enabled: true
   rubocop:
     enabled: true
+    checks:
+      Rubocop/Naming/ConstantName:
+        enabled: false
+      Rubocop/Style/MutableConstant:
+        enabled: false
+      FeatureEnvy:
+        enabled: false
+      InstanceVariableAssumption:
+        enabled: false
+      Rubocop/Performance/UnfreezeString:
+        enabled: false
+      Rubocop/Layout/CaseIndentation:
+        enabled: false
+      Rubocop/Metrics/LineLength:
+        enabled: false
+      UncommunicativeModuleName:
+        enabled: false
   reek:
     enabled: true
+checks:
+  argument-count:
+    config:
+      threshold: 12
+  complex-logic:
+    config:
+      threshold: 10
+  file-lines:
+    config:
+      threshold: 500
+  method-complexity:
+    config:
+      threshold: 25
+  method-count:
+    config:
+      threshold: 40
+  method-lines:
+    config:
+      threshold: 100
 ratings:
   paths:
   - "**.rb"

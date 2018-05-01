@@ -1,0 +1,20 @@
+Pearl 2 Protocol
+================
+
+Authentication: Basic
+
+GET status: /admin/ajax/recorder_status.cgi?channel=1&_=1519860899126
+Idle Response:
+{"state": "","time": "0","total": "0","active": "0"}
+
+Recording Response:
+{"state": "up","time": "2","total": "1","active": "1"}
+{"state": "up","time": "15","total": "1","active": "1"}
+
+
+GET Start Recording: /admin/ajax/start_recorder.cgi?channel=1&_=1519860899226
+200 OK == Recording Started
+
+
+GET Stop Recoring: /admin/ajax/stop_recorder.cgi?channel=1&_=1519860899247
+200 OK == Recording Stopped

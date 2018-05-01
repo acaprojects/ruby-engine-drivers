@@ -8,7 +8,6 @@ class Aca::MeetingRoom < Aca::Joiner
     default_settings joiner_driver: :System
     implements :logic
 
-
     def on_load
         @waiting_for = {}
 
@@ -21,6 +20,10 @@ class Aca::MeetingRoom < Aca::Joiner
             self[:name] = system.name
             self[:help_msg] = setting(:help_msg)
             self[:analytics] = setting(:analytics)
+            self[:Camera] = setting(:Camera)
+            self[:hide_vc_sources] = setting(:hide_vc_sources)
+            self[:mics_mutes] = setting(:mics_mutes)
+            @confidence_monitor = setting(:confidence_monitor)
 
             # Get any default settings
             @defaults = setting(:defaults) || {}
@@ -104,7 +107,7 @@ class Aca::MeetingRoom < Aca::Joiner
                 self[:mics] = setting(:mics)
             end
 
-            @sharing_output = self[:outputs].keys.first
+            @sharing_output = self[:outputs].keys.first if self[:outputs]
 
             # Grab lighting presets
             self[:lights_events] = setting(:lights_events)
@@ -225,6 +228,13 @@ class Aca::MeetingRoom < Aca::Joiner
             logger.print_error(e, 'bad cron schedule configuration')
         end
 
+        if system.exists?(:VidConf) && !@vc_update
+            @vc_update = system.subscribe(:VidConf, 1, :call_status) do |notice|
+                val = notice.value
+                vc_status_changed(notice.value) if val
+            end
+        end
+
         # Call the Joiner on_update function
         super
     end
@@ -241,7 +251,7 @@ class Aca::MeetingRoom < Aca::Joiner
     end
 
     def preview(source)
-        if self[:has_preview]
+        if self[:has_preview] && self[:has_preview].is_a?(Integer)
             disp_source = self[:sources][source.to_sym]
             preview_input = disp_source[:preview] || disp_source[:input]
 
@@ -277,12 +287,17 @@ class Aca::MeetingRoom < Aca::Joiner
                 check = ids.collect(&:to_s)
                 rms = Set.new(check)
                 rms << system.id.to_s
+
+                found = false
                 @join_modes.each_value do |jm|
                     if jm[:rooms] == rms
                         perform_action(mod: :System, func: :switch_mode, args: [jm[:mode], true])
+                        found = true
                         break
                     end
                 end
+
+                unjoin if !found
             end
         end
 
@@ -301,8 +316,11 @@ class Aca::MeetingRoom < Aca::Joiner
         present_actual(source, display)
 
         # Switch Joined rooms to the sharing input (use skipme param)
-        perform_action(mod: :System, func: :do_share, args: [true, source.to_sym], skipMe: true).then do
-            system[:Switcher].switch(@defaults[:sharing_routes]) if @defaults[:sharing_routes]
+        promise = perform_action(mod: :System, func: :present_actual, args: [source, display], skipMe: true)
+        if @defaults[:sharing_routes]
+            promise.then do
+                system[:Switcher].switch(@defaults[:sharing_routes])
+            end
         end
     end
 
@@ -446,6 +464,7 @@ class Aca::MeetingRoom < Aca::Joiner
         logger.debug { "switch mode called for #{mode_name} -- #{!!@modes}" }
 
         return unless @modes
+        sys = system
 
         # ======================================================
         # Check if we want undo anything the previous mode setup
@@ -461,7 +480,7 @@ class Aca::MeetingRoom < Aca::Joiner
                         mixer = sys[:Mixer]
                         Array(bd[:audio_preset]).each { |preset| mixer.trigger(preset) }
                     end
-                    sys[:Switcher].switch(bd[:routes]) if bd[:routes]
+                    system[:Switcher].switch(bd[:routes]) if bd[:routes]
                     if bd[:execute]
                         bd[:execute].each do |cmd|
                             begin
@@ -487,8 +506,11 @@ class Aca::MeetingRoom < Aca::Joiner
             mode_outs = mode[:outputs] || {}
             difference = mode_outs.keys - default_outs.keys
 
-            self[:outputs] = ActiveSupport::HashWithIndifferentAccess.new.deep_merge(mode_outs.merge(default_outs))
-            @original_outputs = self[:outputs].deep_dup
+            if mode[:outputs_clobber] 
+              self[:outputs] = ActiveSupport::HashWithIndifferentAccess.new.deep_merge(mode_outs)
+            else
+               self[:outputs] = ActiveSupport::HashWithIndifferentAccess.new.deep_merge(mode_outs.merge(default_outs))
+            end
 
             if respond_to? :switch_mode_custom
                 begin
@@ -500,11 +522,12 @@ class Aca::MeetingRoom < Aca::Joiner
 
             # Update the inputs
             inps = (setting(:inputs) + (mode[:inputs] || [])) - (mode[:remove_inputs] || [])
+            inps.uniq!
             inps.each do |input|
                 inp = setting(input) || mode[input]
 
                 if inp
-                    self[input] = Set.new(inp + (mode[input] || [])).to_a
+                    self[input] = Set.new((mode[input] || []) + inp).to_a
                     self[input].each do |source|
                         @input_tab_mapping[source.to_sym] = input
                     end
@@ -533,7 +556,6 @@ class Aca::MeetingRoom < Aca::Joiner
             begin
                 powerup unless setting(:ignore_modes) || booting
             ensure
-                sys = system
                 if mode[:audio_preset]
                     mixer = sys[:Mixer]
                     Array(mode[:audio_preset]).each { |preset| mixer.trigger(preset) }
@@ -543,9 +565,10 @@ class Aca::MeetingRoom < Aca::Joiner
                 sys[:Switcher].switch(mode[:routes]) if mode[:routes]
                 sys[:Lighting].trigger(@light_group, mode[:light_preset]) if mode[:light_preset]
                 sys[:VideoWall].preset(mode[:videowall_preset]) if mode[:videowall_preset]
-                # Route currently selected source to any added preview screens
-                preview(self[self[:tab]][0]) if self[:has_preview] && self[:tab]
 
+                # Route currently selected source to any added preview screens
+                self[:tab] = self[:inputs][0] if self[:tab] && !self[self[:tab]]
+                preview(self[self[:tab]][0]) if self[:has_preview] && self[:tab] && self[self[:tab]]
 
                 if mode[:execute]
                     mode[:execute].each do |cmd|
@@ -570,7 +593,7 @@ class Aca::MeetingRoom < Aca::Joiner
     #
 
     def powerup
-        switch_mode(@defaults[:default_mode], booting: true) if @defaults && @defaults[:default_mode]
+        switch_mode(@defaults[:default_mode], booting: true) if @defaults && @defaults[:default_mode] && self[:state] != :online && !self[:is_joined]
 
         # Keep track of displays from neighboring rooms
         @setCamDefaults = true
@@ -584,6 +607,48 @@ class Aca::MeetingRoom < Aca::Joiner
         if @light_default
             lights_to_actual(@light_default)
             @lights_set = false
+        end
+
+        mixer = system[:Mixer]
+        begin
+            if !mixer.nil?
+                if self[:mics]
+                    # Mic mutes
+                    self[:mics].each do |mic|
+                        args = {}
+                        args[:ids] = mic[:mute_id] || mic[:id]
+                        args[:index] = mic[:index] if mic[:index]
+                        args[:type] = mic[:type] if mic[:type]
+                        mixer.query_mutes(args)
+                    end
+
+                    self[:mics].each do |mic|
+                        args = {}
+                        args[:ids] = mic[:id]
+                        args[:index] = mic[:index] if mic[:index]
+                        args[:type] = mic[:type] if mic[:type]
+                        mixer.query_faders(args)
+                    end
+                end
+
+                self[:outputs].each do |key, value|
+                    if value[:no_audio].nil? && value[:mixer_id]
+                        args = {}
+                        args[:ids] = value[:mixer_id]
+                        args[:index] = value[:index] if value[:index]
+                        mixer.query_faders(args)
+
+                        if value[:no_mute].nil?
+                            args = {}
+                            args[:ids] = value[:mute_id] || value[:mixer_id]
+                            args[:index] = value[:index] if value[:index]
+                            mixer.query_mutes(args)
+                        end
+                    end
+                end
+            end
+        rescue => e
+            logger.print_error(e, 'querying fader levels')
         end
 
 
@@ -663,6 +728,7 @@ class Aca::MeetingRoom < Aca::Joiner
         end
 
         switch_mode(@defaults[:shutdown_mode]) if @defaults[:shutdown_mode]
+        self[:vc_content_source] = nil
 
         mixer = system[:Mixer]
 
@@ -681,6 +747,7 @@ class Aca::MeetingRoom < Aca::Joiner
             begin
                 # Next if joining room
                 next if value[:remote] && (self[key].nil? || self[key][:source] == :none)
+                next if value[:ignore_state_on_shutdown]
 
                 # Blank the source
                 self[key] = {
@@ -724,13 +791,24 @@ class Aca::MeetingRoom < Aca::Joiner
                 end
 
                 # Mute the output if mixer involved
-                if @defaults[:off_preset].nil? && value[:no_audio].nil? && value[:mixer_id]
-                    args = {}
-                    args[:ids] = value[:mute_id] || value[:mixer_id]
-                    args[:muted] = true
-                    args[:index] = value[:mixer_mute_index] || value[:mixer_index] if value[:mixer_mute_index] || value[:mixer_index]
-                    args[:type] = value[:mixer_type] if value[:mixer_type]
-                    mixer.mutes(args)
+                if value[:no_audio].nil?
+                    if value[:mixer_id]
+                        if @defaults[:off_preset].nil?
+                            args = {}
+                            args[:ids] = value[:mute_id] || value[:mixer_id]
+                            args[:muted] = true
+                            args[:index] = value[:mixer_mute_index] || value[:mixer_index] if value[:mixer_mute_index] || value[:mixer_index]
+                            args[:type] = value[:mixer_type] if value[:mixer_type]
+                            mixer.mutes(args)
+                        end
+
+                        if @defaults[:output_level]
+                            mixer.fader(value[:mixer_id], @defaults[:output_level])
+                        end
+                    elsif @defaults[:output_level]
+                        dev = system[key]
+                        dev.volume(@defaults[:output_level]) if !dev.nil?
+                    end
                 end
 
             rescue => e # Don't want to stop powering off devices on an error
@@ -778,6 +856,35 @@ class Aca::MeetingRoom < Aca::Joiner
     #
     # MISC FUNCTIONS
     #
+    def init_vc
+        start_cameras
+        system[:VidConf].wake
+    end
+
+    def vc_status_changed(state)
+        if (state[:answerstate] == 'Unanswered' && state[:direction] == 'Incoming') || state[:answerstate] == 'ringing' || state[:answerstate] == 'allocated'
+            vc_source = self[:VC].first
+            init_vc
+            present(vc_source, self[:outputs].keys.first)
+            tab(:VC)
+            self[:show_vc_popup] = true
+        else
+            self[:show_vc_popup] = false
+        end
+    end
+
+    def vc_mute(mute)
+        perform_action(mod: :System, func: :vc_mute_actual, args: [mute])
+
+        vidconf = system[:VidConf]
+        vidconf.mute(mute) unless vidconf.nil?
+    end
+
+    def vc_mute_actual(mute)
+        system[:Mixer].mute(self[:mics_mutes], mute) if self[:mics_mutes]
+        system.all(:CeilingMic).led_colour_unmuted(mute ? :red : :green)
+    end
+
     def start_cameras
         cams = system.all(:Camera)
         cams.power(On)
@@ -797,19 +904,31 @@ class Aca::MeetingRoom < Aca::Joiner
         end
     end
 
-    def select_camera(input, output = nil)
+    def select_camera(source, input, output = nil)
+        self[:selected_camera] = source
         if output
             system[:Switcher].switch({input => output})
         else
             system[:VidConf].select_camera(input)
+
+            # Check if we need to do any video switching
+            src = self[:sources][source]
+            inp = src[:input]
+            out = src[:output]
+            system[:Switcher].switch({inp => out}) if inp && out
         end
     end
 
     def vc_content(outp, inp)
         vc = self[:sources][outp.to_sym]
         return unless vc && vc[:content]
-        source = self[:sources][inp.to_sym]
-        return unless source
+
+        if inp == ''
+            source = { input: 0 }
+        else
+            source = self[:sources][inp.to_sym]
+            return unless source
+        end
 
         # Perform any subsource selection
         if source[:usb_output]
@@ -836,6 +955,10 @@ class Aca::MeetingRoom < Aca::Joiner
 
         # So we can keep the UI in sync
         self[:vc_content_source] = inp
+
+        if @confidence_monitor
+            present_actual(inp, @confidence_monitor)
+        end
     end
 
     def wake_pcs

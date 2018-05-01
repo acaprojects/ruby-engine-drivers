@@ -1,6 +1,10 @@
 module Aca; end
+module Aca::Tracking; end
 
-class Aca::LocateUserArp
+::Orchestrator::DependencyManager.load('Aca::Tracking::UserDevices', :model, :force)
+::Aca::Tracking::UserDevices.ensure_design_document!
+
+class Aca::Tracking::LocateUserArp
     include ::Orchestrator::Constants
 
 
@@ -24,33 +28,12 @@ class Aca::LocateUserArp
         logger.debug { "Looking up #{ip} for #{login}" }
         mac = perform_arp_request(ip).value
         if mac
-            # store the mac address in the database
-            bucket = ::User.bucket
-            expire = 1.year.from_now
-            mac_key = "macuser-#{mac}"
+            logger.debug { "MAC #{mac} found for #{ip} == #{login}" }
 
-            # Associate user with the MAC address
-            old_login = ::User.bucket.get(mac_key, quiet: true)
-            bucket.set(mac_key, login, expire_at: expire)
+            user = ::Aca::Tracking::UserDevices.for_user(login, domain)
+            user.add(mac)
 
-            # Remove the MAC address from any previous user
-            if old_user
-                user_key = "usermacs-#{old_login}"
-                user_macs = bucket.get(user_key, quiet: true)
-                if user_macs
-                    user_macs[:macs].delete(mac)
-                    bucket.set(user_key, user_macs, expire_at: expire)
-                end
-            end
-
-            # Update the users list of MAC addresses
-            user_key = "usermacs-#{login}"
-            user_macs = bucket.get(user_key, quiet: true) || {macs: []}
-            if not user_macs[:macs].include?(mac)
-                user_macs[:macs].unshift(mac)
-                bucket.set(user_key, user_macs, expire_at: expire)
-            end
-
+            self[mac] = login
             self[ip] = login
         else
             logger.debug { "unable to locate MAC for #{ip}" }

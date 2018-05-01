@@ -140,6 +140,7 @@ class Qsc::QSysControl
         logger.debug { "Sending trigger to Qsys: ct #{action}" }
         send "ct #{action}\n", wait: false
     end
+    alias preset trigger
 
 
     # ---------------------
@@ -177,11 +178,11 @@ class Qsc::QSysControl
     end
 
 
-    def preset(name, index, ramp_time = 1.5)
+    def snapshot(name, index, ramp_time = 1.5)
         send "ssl #{name} #{index} #{ramp_time}\n", wait: false
     end
 
-    def save_preset(name, index)
+    def save_snapshot(name, index)
         send "sss #{name} #{index}\n", wait: false
     end
 

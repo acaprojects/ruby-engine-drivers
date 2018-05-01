@@ -1,0 +1,1104 @@
+
+Encoder Inputs Response:
+========================
+
+{
+    "config": [
+        {
+            "audio": {
+                "active": false,
+                "bitdepth": 0,
+                "channelcount": 0,
+                "codingtype": "Unknown",
+                "samplingfrequency": "unknown"
+            },
+            "cabledetect": false,
+            "edid": "Default",
+            "hdcp": {
+                "encrypted": false,
+                "support_version": "1.4"
+            },
+            "name": "hdmi_input1",
+            "video": {
+                "active": false,
+                "colordepth": 0,
+                "colorspace": "YUV",
+                "framerate": 0,
+                "interlaced": false,
+                "resolution": {
+                    "height": 0,
+                    "width": 0
+                },
+                "subsampling": "444"
+            }
+        },
+        {
+            "audio": {
+                "active": false,
+                "bitdepth": 0,
+                "channelcount": 0,
+                "codingtype": "Unknown",
+                "samplingfrequency": "unknown"
+            },
+            "cabledetect": false,
+            "edid": "Default",
+            "hdcp": {
+                "encrypted": false,
+                "support_version": "1.4"
+            },
+            "name": "hdmi_input2",
+            "video": {
+                "active": false,
+                "colordepth": 0,
+                "colorspace": "YUV",
+                "framerate": 0,
+                "interlaced": false,
+                "resolution": {
+                    "height": 0,
+                    "width": 0
+                },
+                "subsampling": "444"
+            }
+        }
+    ],
+    "error": false,
+    "id": "hdmi_input"
+}
+
+
+
+
+Encoder Sessions Response:
+==========================
+
+{
+    "config": [
+        {
+            "audio": {
+                "encoder": "hdmi_input1",
+                "stream": {
+                    "destination_address": "239.32.0.2",
+                    "destination_port": 1100,
+                    "dscp": 0,
+                    "enabled": true,
+                    "fec": {
+                        "columns": 4,
+                        "enabled": false,
+                        "rows": 4
+                    },
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            },
+            "aux": {
+                "bidirectional": {
+                    "enabled": false,
+                    "listen_port": 1204
+                },
+                "encoder": "",
+                "stream": {
+                    "destination_address": "",
+                    "destination_port": 1200,
+                    "dscp": 0,
+                    "enabled": false,
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            },
+            "encodergroup": {
+                "enabled": false,
+                "is_active": false,
+                "members": [
+                ],
+                "name": "session1",
+                "trigger": "manual"
+            },
+            "interface": "eth1",
+            "name": "session1",
+            "sap": {
+                "description": "",
+                "enabled": false,
+                "frequency": 10,
+                "name": "session1",
+                "originator": "-"
+            },
+            "scrambling": {
+                "enabled": false,
+                "key": ""
+            },
+            "video": {
+                "encoder": "vc2_encoder1",
+                "stream": {
+                    "destination_address": "239.32.0.1",
+                    "destination_port": 1000,
+                    "dscp": 0,
+                    "enabled": true,
+                    "fec": {
+                        "columns": 15,
+                        "enabled": false,
+                        "rows": 15
+                    },
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            }
+        },
+        {
+            "audio": {
+                "encoder": "hdmi_input2",
+                "stream": {
+                    "destination_address": "",
+                    "destination_port": 1100,
+                    "dscp": 0,
+                    "enabled": true,
+                    "fec": {
+                        "columns": 4,
+                        "enabled": false,
+                        "rows": 4
+                    },
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            },
+            "aux": {
+                "bidirectional": {
+                    "enabled": false,
+                    "listen_port": 1204
+                },
+                "encoder": "",
+                "stream": {
+                    "destination_address": "",
+                    "destination_port": 1200,
+                    "dscp": 0,
+                    "enabled": false,
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            },
+            "encodergroup": {
+                "enabled": false,
+                "is_active": false,
+                "members": [
+                ],
+                "name": "session2",
+                "trigger": "manual"
+            },
+            "interface": "eth2",
+            "name": "session2",
+            "sap": {
+                "description": "",
+                "enabled": false,
+                "frequency": 10,
+                "name": "session2",
+                "originator": "-"
+            },
+            "scrambling": {
+                "enabled": false,
+                "key": ""
+            },
+            "video": {
+                "encoder": "vc2_encoder2",
+                "stream": {
+                    "destination_address": "239.255.0.102",
+                    "destination_port": 1000,
+                    "dscp": 0,
+                    "enabled": true,
+                    "fec": {
+                        "columns": 15,
+                        "enabled": false,
+                        "rows": 15
+                    },
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            }
+        },
+        {
+            "audio": {
+                "encoder": "",
+                "stream": {
+                    "destination_address": "",
+                    "destination_port": 1120,
+                    "dscp": 0,
+                    "enabled": false,
+                    "fec": {
+                        "columns": 4,
+                        "enabled": false,
+                        "rows": 4
+                    },
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            },
+            "aux": {
+                "bidirectional": {
+                    "enabled": false,
+                    "listen_port": 1204
+                },
+                "encoder": "",
+                "stream": {
+                    "destination_address": "",
+                    "destination_port": 1220,
+                    "dscp": 0,
+                    "enabled": false,
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            },
+            "encodergroup": {
+                "enabled": false,
+                "is_active": false,
+                "members": [
+                ],
+                "name": "session3",
+                "trigger": "manual"
+            },
+            "interface": "",
+            "name": "session3",
+            "sap": {
+                "description": "",
+                "enabled": false,
+                "frequency": 10,
+                "name": "session3",
+                "originator": "-"
+            },
+            "scrambling": {
+                "enabled": false,
+                "key": ""
+            },
+            "video": {
+                "encoder": "",
+                "stream": {
+                    "destination_address": "",
+                    "destination_port": 1020,
+                    "dscp": 0,
+                    "enabled": false,
+                    "fec": {
+                        "columns": 15,
+                        "enabled": false,
+                        "rows": 15
+                    },
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            }
+        },
+        {
+            "audio": {
+                "encoder": "",
+                "stream": {
+                    "destination_address": "",
+                    "destination_port": 1120,
+                    "dscp": 0,
+                    "enabled": false,
+                    "fec": {
+                        "columns": 4,
+                        "enabled": false,
+                        "rows": 4
+                    },
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            },
+            "aux": {
+                "bidirectional": {
+                    "enabled": false,
+                    "listen_port": 1204
+                },
+                "encoder": "",
+                "stream": {
+                    "destination_address": "",
+                    "destination_port": 1220,
+                    "dscp": 0,
+                    "enabled": false,
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            },
+            "encodergroup": {
+                "enabled": false,
+                "is_active": false,
+                "members": [
+                ],
+                "name": "session4",
+                "trigger": "manual"
+            },
+            "interface": "",
+            "name": "session4",
+            "sap": {
+                "description": "",
+                "enabled": false,
+                "frequency": 10,
+                "name": "session4",
+                "originator": "-"
+            },
+            "scrambling": {
+                "enabled": false,
+                "key": ""
+            },
+            "video": {
+                "encoder": "",
+                "stream": {
+                    "destination_address": "",
+                    "destination_port": 1020,
+                    "dscp": 0,
+                    "enabled": false,
+                    "fec": {
+                        "columns": 15,
+                        "enabled": false,
+                        "rows": 15
+                    },
+                    "rtcp": {
+                        "enabled": false
+                    },
+                    "ttl": 255
+                }
+            }
+        }
+    ],
+    "error": false,
+    "id": "sessions"
+}
+
+
+
+Decoder ip_input response:
+==========================
+
+{
+    "config": [
+        {
+            "enabled": true,
+            "interface": "eth1",
+            "multicast": {
+                "address": "239.32.0.1",
+                "filter": {
+                    "addresses": [
+                    ],
+                    "mode": "exclude"
+                }
+            },
+            "name": "ip_input1",
+            "port": 1000,
+            "status": {
+                "packets": 652216070
+            }
+        },
+        {
+            "enabled": true,
+            "interface": "eth1",
+            "multicast": {
+                "address": "239.32.0.2",
+                "filter": {
+                    "addresses": [
+                    ],
+                    "mode": "exclude"
+                }
+            },
+            "name": "ip_input2",
+            "port": 1100,
+            "status": {
+                "packets": 0
+            }
+        },
+        {
+            "enabled": true,
+            "interface": "eth1",
+            "multicast": {
+                "address": "226.0.10.11",
+                "filter": {
+                    "addresses": [
+                    ],
+                    "mode": "exclude"
+                }
+            },
+            "name": "ip_input3",
+            "port": 1100,
+            "status": {
+                "packets": 0
+            }
+        },
+        {
+            "enabled": false,
+            "interface": "eth1",
+            "multicast": {
+                "address": "226.0.10.2",
+                "filter": {
+                    "addresses": [
+                    ],
+                    "mode": "exclude"
+                }
+            },
+            "name": "ip_input4",
+            "port": 1100,
+            "status": {
+                "packets": 0
+            }
+        },
+        {
+            "enabled": false,
+            "interface": "eth1",
+            "multicast": {
+                "address": "",
+                "filter": {
+                    "addresses": [
+                    ],
+                    "mode": "exclude"
+                }
+            },
+            "name": "ip_input5",
+            "port": 1200,
+            "status": {
+                "packets": 0
+            }
+        }
+    ],
+    "error": false,
+    "id": "ip_input"
+}
+
+
+
+Decoder hdmi_output response:
+=============================
+
+{
+    "config": [
+        {
+            "audio": {
+                "analog": {
+                    "input": {
+                        "enable": false,
+                        "status": false
+                    },
+                    "output": {
+                        "enable": false,
+                        "status": false
+                    }
+                },
+                "backup": {
+                    "active_input": "ip_input2",
+                    "change_grace_period": 0,
+                    "input": "",
+                    "mode": "Off"
+                },
+                "input": "ip_input2",
+                "mute": false,
+                "status": {
+                    "active": false,
+                    "bitdepth": 0,
+                    "channelcount": 0,
+                    "codingtype": "LPCM",
+                    "samplingfrequency": "44.1kHz"
+                },
+                "volume": 15
+            },
+            "aux": {
+                "input": ""
+            },
+            "name": "hdmi_output1",
+            "output": {
+                "cabledetect": true,
+                "edid": {
+                    "manufactured": "Year 2017, Week 21",
+                    "modes": [
+                        "720x400 @ 70Hz",
+                        "640x480 @ 60Hz",
+                        "800x600 @ 60Hz",
+                        "1024x768 @ 60Hz",
+                        "1280x1024 @ 75Hz",
+                        "1280x720 @ 60Hz",
+                        "1280x800 @ 60Hz",
+                        "1280x960 @ 60Hz",
+                        "1280x1024 @ 60Hz",
+                        "1400x1050 @ 60Hz",
+                        "1440x900 @ 60Hz",
+                        "1600x1200 @ 60Hz",
+                        "1680x1050 @ 60Hz",
+                        "1920x1080 @ 60Hz"
+                    ],
+                    "preferred_mode": "1920x1080 @ 60Hz",
+                    "product": "V423",
+                    "raw": "00ffffffffffff0038a3ac6801010101151b0103805d3478eaef4ba5554d9c270e474aa1090081c081008140818090409500a940b300023a801871382d40582c4500a20b3200001e000000fd0030551c5c11000a202020202020000000fc00563432330a2020202020202020000000ff0037353035303931364e420a20200165020320f14d900504130312141f2021220716230907078301000065030c0010000e1f008051001e3040803700a20b3200001c662150b051001b3040703600a20b3200001e662156aa51001e30468f3300a20b3200001e011d8018711c1620582c2500a20b3200009e011d80d0721c1620102c2580a20b3200009e000000000049",
+                    "serial": "75050916NB",
+                    "vendor": "NEC"
+                },
+                "hdcp": {
+                    "encrypted": false,
+                    "support_version": "1.4"
+                }
+            },
+            "scrambling": {
+                "enabled": true,
+                "key": "scrambling"
+            },
+            "standby": {
+                "auto_on": true,
+                "projector_cooldown": 0,
+                "timeout": 0,
+                "type": "DispSW AVon"
+            },
+            "video": {
+                "backup": {
+                    "active_input": "ip_input1",
+                    "change_grace_period": 0,
+                    "input": "",
+                    "mode": "Off"
+                },
+                "generator": {
+                    "format": {
+                        "active": true,
+                        "colordepth": 12,
+                        "colorspace": "RGB",
+                        "framerate": 60,
+                        "interlaced": false,
+                        "resolution": {
+                            "height": 1200,
+                            "width": 1920
+                        },
+                        "subsampling": "444"
+                    },
+                    "slate": {
+                        "logo": "",
+                        "mode": "off"
+                    }
+                },
+                "input": "ip_input1",
+                "output": {
+                    "aspect_ratio": "keep aspect ratio",
+                    "frame_rate_conversion": {
+                        "mode": "sub frame latency"
+                    },
+                    "resolution": "auto",
+                    "wall": {
+                        "edge_compensation": {
+                            "bottom": 0,
+                            "left": 0,
+                            "mode": "none",
+                            "right": 0,
+                            "top": 0
+                        },
+                        "enabled": false,
+                        "input_selection": {
+                            "height": 1080,
+                            "width": 1920,
+                            "x": 0,
+                            "y": 0
+                        },
+                        "physical_size": {
+                            "height": 0,
+                            "width": 0
+                        },
+                        "rotation": 0,
+                        "unit": "pixels"
+                    }
+                },
+                "status": {
+                    "active": false,
+                    "colordepth": 8,
+                    "colorspace": "RGB",
+                    "framerate": 0,
+                    "interlaced": false,
+                    "resolution": {
+                        "height": 0,
+                        "width": 0
+                    },
+                    "subsampling": "444"
+                }
+            }
+        }
+    ],
+    "error": false,
+    "id": "hdmi_output"
+}
+
+
+Alarm Warning:
+==============
+
+{
+    "config": [
+        {
+            "active": false,
+            "description": "Selected output video mode is not supported",
+            "id": 10,
+            "name": "Unable to scale video on hdmi_output1",
+            "timestamp": "2017-10-25T08:29:59.000UTC"
+        },
+        {
+            "active": false,
+            "description": "Selected output video mode is not supported",
+            "id": 10,
+            "name": "Unable to scale video on hdmi_output1",
+            "timestamp": "2017-10-25T08:28:49.000UTC"
+        }
+    ],
+    "error": false
+}
+
+
+
+Network Query:
+==============
+
+{
+    "config": [
+        {
+            "carrier": true,
+            "dhcpmode": "dhcp",
+            "enabled": true,
+            "gateway": "10.155.209.1",
+            "ipaddress": "10.155.209.241",
+            "linkspeed": 1000,
+            "macaddress": "B8:98:B0:01:A1:DF",
+            "name": "eth1",
+            "nvt": {
+                "authentication": true,
+                "port": 2323
+            },
+            "subnetmask": "255.255.255.0",
+            "telnet": {
+                "authentication": true,
+                "port": 23
+            }
+        }
+    ],
+    "error": false,
+    "id": "net"
+}
+
+
+
+Decoder Configure Input Request:
+================================
+
+Configure Input 1
+
+{
+    "id": "ip_input",
+    "username": "admin",
+    "password": "Atlona",
+    "config_set": {
+        "name": "ip_input",
+        "config": [
+            {
+                "enabled": true,
+                "interface": "eth1",
+                "multicast": {
+                    "address": "239.32.0.1",
+                    "filter": {
+                        "addresses": [],
+                        "mode": "exclude"
+                    },
+                    "tempAddress": ""
+                },
+                "name": "ip_input1",
+                "port": 1000,
+                "status": {
+                    "packets": 652216070
+                },
+                "number": 1,
+                "$$hashKey": "object:14"
+            }
+        ]
+    }
+}
+
+Configure Input 2
+
+{
+    "id": "ip_input",
+    "username": "admin",
+    "password": "Atlona",
+    "config_set": {
+        "name": "ip_input",
+        "config": [
+            {
+                "enabled": true,
+                "interface": "eth1",
+                "multicast": {
+                    "address": "239.32.0.2",
+                    "filter": {
+                        "addresses": [],
+                        "mode": "exclude"
+                    },
+                    "tempAddress": ""
+                },
+                "name": "ip_input2",
+                "port": 1100,
+                "status": {
+                    "packets": 0
+                },
+                "number": 2,
+                "$$hashKey": "object:15",
+                "error": null
+            }
+        ]
+    }
+}
+
+
+
+Decoder Configure Output Response:
+==================================
+
+Output1 to IP Input 2
+
+{
+  "id": "hdmi_output",
+  "username": "admin",
+  "password": "Atlona",
+  "config_set": {
+    "name": "hdmi_output",
+    "config": [
+      {
+        "audio": {
+          "analog": {
+            "input": {
+              "enable": false,
+              "status": false
+            },
+            "output": {
+              "enable": false,
+              "status": false
+            }
+          },
+          "backup": {
+            "active_input": "ip_input2",
+            "change_grace_period": 0,
+            "input": "",
+            "mode": "Off"
+          },
+          "input": "ip_input2",
+          "mute": false,
+          "status": {
+            "active": false,
+            "bitdepth": 0,
+            "channelcount": 0,
+            "codingtype": "LPCM",
+            "samplingfrequency": "44.1kHz"
+          },
+          "volume": 15
+        },
+        "aux": {
+          "input": ""
+        },
+        "name": "hdmi_output1",
+        "output": {
+          "cabledetect": true,
+          "edid": {
+            "manufactured": "Year 2017, Week 21",
+            "modes": [
+              "720x400 @ 70Hz",
+              "640x480 @ 60Hz",
+              "800x600 @ 60Hz",
+              "1024x768 @ 60Hz",
+              "1280x1024 @ 75Hz",
+              "1280x720 @ 60Hz",
+              "1280x800 @ 60Hz",
+              "1280x960 @ 60Hz",
+              "1280x1024 @ 60Hz",
+              "1400x1050 @ 60Hz",
+              "1440x900 @ 60Hz",
+              "1600x1200 @ 60Hz",
+              "1680x1050 @ 60Hz",
+              "1920x1080 @ 60Hz"
+            ],
+            "preferred_mode": "1920x1080 @ 60Hz",
+            "product": "V423",
+            "raw": "00ffffffffffff0038a3ac6801010101151b0103805d3478eaef4ba5554d9c270e474aa1090081c081008140818090409500a940b300023a801871382d40582c4500a20b3200001e000000fd0030551c5c11000a202020202020000000fc00563432330a2020202020202020000000ff0037353035303931364e420a20200165020320f14d900504130312141f2021220716230907078301000065030c0010000e1f008051001e3040803700a20b3200001c662150b051001b3040703600a20b3200001e662156aa51001e30468f3300a20b3200001e011d8018711c1620582c2500a20b3200009e011d80d0721c1620102c2580a20b3200009e000000000049",
+            "serial": "75050916NB",
+            "vendor": "NEC"
+          },
+          "hdcp": {
+            "encrypted": false,
+            "support_version": "1.4"
+          }
+        },
+        "scrambling": {
+          "enabled": true,
+          "key": "scrambling"
+        },
+        "standby": {
+          "auto_on": true,
+          "projector_cooldown": 0,
+          "timeout": 0,
+          "type": "DispSW AVon"
+        },
+        "video": {
+          "backup": {
+            "active_input": "ip_input1",
+            "change_grace_period": 0,
+            "input": "",
+            "mode": "Off"
+          },
+          "generator": {
+            "format": {
+              "active": true,
+              "colordepth": 12,
+              "colorspace": "RGB",
+              "framerate": 60,
+              "interlaced": false,
+              "resolution": {
+                "height": 1200,
+                "width": 1920
+              },
+              "subsampling": "444"
+            },
+            "slate": {
+              "logo": "",
+              "mode": "off"
+            }
+          },
+          "input": "ip_input2",
+          "output": {
+            "aspect_ratio": "keep aspect ratio",
+            "frame_rate_conversion": {
+              "mode": "sub frame latency"
+            },
+            "resolution": "auto",
+            "wall": {
+              "edge_compensation": {
+                "bottom": 0,
+                "left": 0,
+                "mode": "none",
+                "right": 0,
+                "top": 0
+              },
+              "enabled": false,
+              "input_selection": {
+                "height": 1080,
+                "width": 1920,
+                "x": 0,
+                "y": 0
+              },
+              "physical_size": {
+                "height": 0,
+                "width": 0
+              },
+              "rotation": 0,
+              "unit": "pixels"
+            }
+          },
+          "status": {
+            "active": false,
+            "colordepth": 8,
+            "colorspace": "RGB",
+            "framerate": 0,
+            "interlaced": false,
+            "resolution": {
+              "height": 0,
+              "width": 0
+            },
+            "subsampling": "444"
+          }
+        },
+        "number": 1,
+        "videoStatus": "No active video",
+        "audioStatus": "No active audio",
+        "hdcp": {
+          "encrypted": false,
+          "support_version": "1.4"
+        },
+        "hdcpSupportVersion": true,
+        "$$hashKey": "object:399"
+      }
+    ]
+  }
+}
+
+
+Output1 to IP Input 1
+
+{
+  "id": "hdmi_output",
+  "username": "admin",
+  "password": "Atlona",
+  "config_set": {
+    "name": "hdmi_output",
+    "config": [
+      {
+        "audio": {
+          "analog": {
+            "input": {
+              "enable": false,
+              "status": false
+            },
+            "output": {
+              "enable": false,
+              "status": false
+            }
+          },
+          "backup": {
+            "active_input": "ip_input2",
+            "change_grace_period": 0,
+            "input": "",
+            "mode": "Off"
+          },
+          "input": "ip_input2",
+          "mute": false,
+          "status": {
+            "active": false,
+            "bitdepth": 0,
+            "channelcount": 0,
+            "codingtype": "LPCM",
+            "samplingfrequency": "44.1kHz"
+          },
+          "volume": 15
+        },
+        "aux": {
+          "input": ""
+        },
+        "name": "hdmi_output1",
+        "output": {
+          "cabledetect": true,
+          "edid": {
+            "manufactured": "Year 2017, Week 21",
+            "modes": [
+              "720x400 @ 70Hz",
+              "640x480 @ 60Hz",
+              "800x600 @ 60Hz",
+              "1024x768 @ 60Hz",
+              "1280x1024 @ 75Hz",
+              "1280x720 @ 60Hz",
+              "1280x800 @ 60Hz",
+              "1280x960 @ 60Hz",
+              "1280x1024 @ 60Hz",
+              "1400x1050 @ 60Hz",
+              "1440x900 @ 60Hz",
+              "1600x1200 @ 60Hz",
+              "1680x1050 @ 60Hz",
+              "1920x1080 @ 60Hz"
+            ],
+            "preferred_mode": "1920x1080 @ 60Hz",
+            "product": "V423",
+            "raw": "00ffffffffffff0038a3ac6801010101151b0103805d3478eaef4ba5554d9c270e474aa1090081c081008140818090409500a940b300023a801871382d40582c4500a20b3200001e000000fd0030551c5c11000a202020202020000000fc00563432330a2020202020202020000000ff0037353035303931364e420a20200165020320f14d900504130312141f2021220716230907078301000065030c0010000e1f008051001e3040803700a20b3200001c662150b051001b3040703600a20b3200001e662156aa51001e30468f3300a20b3200001e011d8018711c1620582c2500a20b3200009e011d80d0721c1620102c2580a20b3200009e000000000049",
+            "serial": "75050916NB",
+            "vendor": "NEC"
+          },
+          "hdcp": {
+            "encrypted": false,
+            "support_version": "1.4"
+          }
+        },
+        "scrambling": {
+          "enabled": true,
+          "key": "scrambling"
+        },
+        "standby": {
+          "auto_on": true,
+          "projector_cooldown": 0,
+          "timeout": 0,
+          "type": "DispSW AVon"
+        },
+        "video": {
+          "backup": {
+            "active_input": "ip_input2",
+            "change_grace_period": 0,
+            "input": "",
+            "mode": "Off"
+          },
+          "generator": {
+            "format": {
+              "active": true,
+              "colordepth": 12,
+              "colorspace": "RGB",
+              "framerate": 60,
+              "interlaced": false,
+              "resolution": {
+                "height": 1200,
+                "width": 1920
+              },
+              "subsampling": "444"
+            },
+            "slate": {
+              "logo": "",
+              "mode": "off"
+            }
+          },
+          "input": "ip_input1",
+          "output": {
+            "aspect_ratio": "keep aspect ratio",
+            "frame_rate_conversion": {
+              "mode": "sub frame latency"
+            },
+            "resolution": "auto",
+            "wall": {
+              "edge_compensation": {
+                "bottom": 0,
+                "left": 0,
+                "mode": "none",
+                "right": 0,
+                "top": 0
+              },
+              "enabled": false,
+              "input_selection": {
+                "height": 1080,
+                "width": 1920,
+                "x": 0,
+                "y": 0
+              },
+              "physical_size": {
+                "height": 0,
+                "width": 0
+              },
+              "rotation": 0,
+              "unit": "pixels"
+            }
+          },
+          "status": {
+            "active": false,
+            "colordepth": 8,
+            "colorspace": "RGB",
+            "framerate": 0,
+            "interlaced": false,
+            "resolution": {
+              "height": 0,
+              "width": 0
+            },
+            "subsampling": "444"
+          }
+        },
+        "number": 1,
+        "videoStatus": "No active video",
+        "audioStatus": "No active audio",
+        "hdcp": {
+          "encrypted": false,
+          "support_version": "1.4"
+        },
+        "hdcpSupportVersion": true,
+        "$$hashKey": "object:399",
+        "error": null
+      }
+    ]
+  }
+}
+
+
+Valid Inputs:
+
+* "" == not used
+* "ip_input1", "ip_input2", "ip_input3" etc
+

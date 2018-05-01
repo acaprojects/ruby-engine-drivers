@@ -1,7 +1,7 @@
 
 # Helvar.net Protocol
 
-Reference: http://www.lightmoves.com.au/downloads/Documentation/Helvar/HLC-IPDRV%20Installation%20and%20User%20Manual%20-%20Issue%203.pdf
+Reference: https://aca.im/driver_docs/Helvar/HelvarNet-Overview.pdf
 
 For use with Helvar to DALI routers
 
@@ -35,6 +35,7 @@ input device for example a control panel (device) would have a number of buttons
 
 So a full address would be written:-
 
+* Cluster (1..253), Router (1..254), Subnet (1..4), Device (1..255), Subdevice (1..16)
 * cluster.router.subnet.address for output devices
 * cluster.router.subnet.address for input devices
 * cluster.router.subnet.address.sub-address for input sub-devices
@@ -45,20 +46,47 @@ So a full address would be written:-
 * Router = the 4th octet of the IP address of that particular router
 * Subnet = the data bus on which devices are connected (Dali 1 = 1, Dali 2 = 2, S-Dim = 3, DMX = 4)
 * Address = the device address, dependant on the data bus (Dali = 1-64, S-Dim = 1-252, DMX = 1-512)
-* Sub-address = the sub-device of the device (button, sensor, input etc.) 
+* Sub-address = the sub-device of the device (button, sensor, input etc.)
 
 
 ## Commands
 
-* Fade time is in 1/100th of a second. So a fade of 900 is 9 seconds.
-* Level is between 1 and 100
-* Address looks like: 1.2.1.1
+* `>V:` is the command prefix (`>V:2` represents the protocol version 2)
+* `C:` is the command type
+  * `11` == select scene
+  * `13` == direct level group address
+  * `14` == direct level short address
+  * `109` == query selected scene
+* `G:` specifies the lighting group
+* `S:` specifices the lighting scene
+* `F:` specifies the fade time (in 1/100ths of a second. So a fade of 900 is 9 seconds)
+* `L:` specifies the level (between 1 and 100)
+* `@` specifies the short address (looks like: 1.2.1.1)
+* all commands end with a `#`
+
+
+### Example Commands
+
 * Direct level, short address: `>V:1,C:14,L:{0},F:{1},@{2}#`
   * {0} == level, {1} == fade_time, {2} == address
 * Direct level, group address: `>V:1,C:13,G:{0},L:{1},F:{2}#`
   * {0} == address, {1} == level, {2} == fade_time
 * Keep socket alive: `>V:1,C:14,L:0,F:9000,@65#`
   * Write to dummy address to keep socket alive
+
+
+### Example Query
+
+* `>V:2,C:109,G:17#` query Group 17 as to which scene it is currently in
+  * responds with: `?V:2,C:109,G:17=14#`
+  * i.e. Group 17 is in scene 14
+
+### Example Error
+
+* `>V:1,C:104,@:2.2.1.1#` query device type
+  * responds with: `!V:1,C:104,@:2.2.1.1=11#`
+  * i.e. error 11, device does not exist
+
 
 References:
 

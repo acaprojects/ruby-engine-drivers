@@ -33,7 +33,7 @@ class Aca::SlackConcierge
     end
 
     def get_threads
-        messages = @client.web_client.channels_history({channel: setting(:channel), oldest: (Time.now - 1.month).to_i, count: 1000})['messages']
+        messages = @client.web_client.channels_history({channel: setting(:channel), oldest: (Time.now - 12.months).to_i, count: 1000})['messages']
         messages.delete_if{ |message|
             !((!message.key?('thread_ts') || message['thread_ts'] == message['ts']) && message['subtype'] == 'bot_message')
         }

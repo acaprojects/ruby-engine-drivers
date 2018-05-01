@@ -38,7 +38,7 @@ class Sony::Display::IdTalk
     
 
     def connected
-        schedule.every('60s', method(:do_poll))
+        schedule.every('60s') { do_poll }
     end
 
     def disconnected
