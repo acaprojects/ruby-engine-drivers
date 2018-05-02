@@ -27,6 +27,10 @@ Metrics/ClassLength:
 Metrics/ModuleLength:
   Max: 300
 
+Metrics/LineLength:
+  Exclude:
+    - "**/**/*_spec.rb"
+
 Metrics/ParameterLists:
   Max: 5
 
@@ -70,3 +74,6 @@ Style/Documentation:
 
 Style/NumericLiterals:
   Enabled: false
+
+Style/RegexpLiteral:
+  AllowInnerSlashes: true
