@@ -29,15 +29,11 @@ class Aca::Slack
     
     # Message coming in from Slack API
     def on_message(data)
-        logger.debug "------------------ Message from Slack API:  ------------------"
-        logger.debug data.inspect
-        logger.debug "--------------------------------------------------------------"
         # This should always be set as all messages from the slack client should be replies
         if data.thread_ts || data.ts 
             user_id = get_user_id(data.thread_ts) || get_user_id(data.ts)
-            logger.debug "---------------Setting last_message_#{user_id}-----------"
-            logger.debug data
-	    logger.debug "---------------------------------------------------------"
+
+        # Assuming the user exists (it should always as they must send the first message)_
 	    if !user_id.nil?
             	self["last_message_#{user_id}"] = data
 	    end
@@ -46,34 +42,38 @@ class Aca::Slack
 
     # Message from the frontend
     def send_message(message_text)
-         logger.debug "------------------ Message from the frontend:  ------------------"
-         logger.debug message_text.inspect
-         logger.debug "-----------------------------------------------------------------"
         user = current_user
         thread_id = get_thread_id(user)
 
+        # A thread exists meaning this is not the user's first message
         if thread_id
             # Post to the slack channel using the thread ID
-            message = @client.web_client.chat_postMessage channel: setting(:channel), text: message_text, username: "#{current_user.name} (#{current_user.email})", thread_ts: thread_id
+            message = @client.web_client.chat_postMessage channel: setting(:channel), text: message_text, username: current_user.email, thread_ts: thread_id
 
+        # This is the user's first message
         else
-            message = @client.web_client.chat_postMessage channel: setting(:channel), text: message_text, username: "#{current_user.name} (#{current_user.email})"            
-	    # logger.debug "Message from frontend:"
-	    # logger.debug message.to_json
+            # Post to the slack channel using the thread ID
+            message = @client.web_client.chat_postMessage channel: setting(:channel), text: message_text, username: current_user.email        
+            
             # Store thread id
             thread_id = message['message']['ts']
             User.bucket.set("slack-thread-#{user.id}-#{setting(:building)}", thread_id)
             User.bucket.set("slack-user-#{thread_id}", user.id)
-	    on_message(message.message)
+	        on_message(message.message)
         end
+        user.last_message_sent = Time.now.to_i * 1000
+        user.save!
     end
 
     def get_historic_messages
+        # Grab the thread ID of the currently logged in user
         user = current_user
         thread_id = get_thread_id(user)
 
+        # If it exists, they've sent messages before
         if thread_id
-            # Get the messages
+
+            # We can't use the client for this for some reason that I can't remember
             slack_api = UV::HttpEndpoint.new("https://slack.com")
             req = {
                 token: @client.token,
@@ -85,11 +85,16 @@ class Aca::Slack
             messages = JSON.parse(response.body)['messages']
             
             {
+                last_sent: user.last_message_sent,
+                last_read: user.last_message_read,
                 thread_id: thread_id,
                 messages: messages
             }
+        # Otherwise just send back nothing
         else
             {
+                last_sent: user.last_message_sent,
+                last_read: user.last_message_read,
                 thread_id: nil,
                 messages: []
             }
@@ -110,36 +115,31 @@ class Aca::Slack
     # Create a realtime WS connection to the Slack servers
     def create_websocket
 
+        # Set our token and other config options
         ::Slack.configure do |config|
-	    logger.debug "Token:"
-	    logger.debug setting(:slack_api_token)
-	    logger.debug setting(:channel)
             config.token = setting(:slack_api_token)
             config.logger = Logger.new(STDOUT)
             config.logger.level = Logger::INFO
             fail 'Missing slack api token setting!' unless config.token
         end
-	::Slack::RealTime.configure do |config|
-	    config.concurrency = Slack::RealTime::Concurrency::Libuv
-	end
 
+        # Use Libuv as our concurrency driver
+	    ::Slack::RealTime.configure do |config|
+	       config.concurrency = Slack::RealTime::Concurrency::Libuv
+	    end
+
+        # Create the client and set the callback function when a message is received
         @client = ::Slack::RealTime::Client.new
-
-        logger.debug "Created client!!"
-
         @client.on :message do |data|
-            logger.debug "Got message!"
 	    begin
             #@client.typing channel: data.channel
             on_message(data)
 	    rescue Exception => e
-	    logger.debug e.message
-	    logger.debug e.backtrace
 	    end
 
         end
-	@client.start!
-
+        # Start the client
+	    @client.start!
     end
 
 end

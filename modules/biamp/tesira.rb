@@ -33,6 +33,7 @@ class Biamp::Tesira
 
     def on_load
         # Implement the Telnet protocol
+        defaults timeout: 15000
         new_telnet_client
         config before_buffering: proc { |data|
             @telnet.buffer data
@@ -77,7 +78,8 @@ class Biamp::Tesira
             do_send build(:DEVICE, :recallPresetByName, number_or_name)
         end
     end
-
+    alias_method :trigger, :preset
+        
     def start_audio
         do_send "DEVICE startAudio"
     end

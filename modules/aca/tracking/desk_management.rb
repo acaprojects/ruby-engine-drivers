@@ -10,6 +10,8 @@ require 'set'
 class Aca::Tracking::DeskManagement
     include ::Orchestrator::Constants
 
+
+
     descriptive_name 'ACA Desk Management'
     generic_name :DeskManagement
     implements :logic
@@ -115,10 +117,17 @@ class Aca::Tracking::DeskManagement
     #
     # @param desk_id [String] the unique id that represents a desk
     def desk_details(*desk_ids)
+        bucket = ::Aca::Tracking::SwitchPort.bucket
         desk_ids.map do |desk_id|
             switch_ip, port = @desk_mappings[desk_id]
             if switch_ip
-                ::Aca::Tracking::SwitchPort.find_by_id("swport-#{switch_ip}-#{port}")&.details
+                details = ::Aca::Tracking::SwitchPort.find_by_id("swport-#{switch_ip}-#{port}")&.details
+
+                # We do this as the mac ownership can change without a disconnect / reconnect event
+                mac = details.mac
+                details.username = bucket.get("macuser-#{mac}", quiet: true) if mac
+
+                details
             else # Check for manual checkin
                 username = @manual_usage[desk_id]
                 if username

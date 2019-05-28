@@ -170,7 +170,8 @@ class Hitachi::Projector::CpTwSeriesBasic
 
     InputCodes = {
         0x03 => :hdmi,
-        0x0d => :hdmi2
+        0x0d => :hdmi2,
+        0x11 => :hdbaset
     }
 
     ErrorCodes = {

@@ -88,6 +88,10 @@ class Lightware::Switcher::LightwareProtocol
         switch map
     end
 
+    def switch_audio(map)
+        switch map
+    end
+    
     def routing_state?(**options)
         send("{VC}\r\n", options)
     end

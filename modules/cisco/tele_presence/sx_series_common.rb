@@ -23,6 +23,7 @@ module Cisco::TelePresence::SxSeriesCommon
         schedule.every('5s') do
             logger.debug "-- Polling Cisco SX"
             call_status
+            video_output_mode?
 
             if @count <= 0
                 mute_status
@@ -108,7 +109,7 @@ module Cisco::TelePresence::SxSeriesCommon
     end
 
     SearchDefaults = {
-        :PhonebookType => :Local, # Should probably make this a setting
+        :PhonebookType => :Local,
         :Limit => 10,
         :ContactType => :Contact,
         :SearchField => :Name
@@ -119,6 +120,11 @@ module Cisco::TelePresence::SxSeriesCommon
         opts[:SearchString] = text
         command(:phonebook, :search, params(opts), name: :phonebook, max_waits: 400)
     end
+    
+    def clear_search_results
+        self[:search_results] = []
+    end
+
 
     # Options include: auto, custom, equal, fullscreen, overlay, presentationlargespeaker, presentationsmallspeaker, prominent, single, speaker_full
     def layout(mode, target = :local)

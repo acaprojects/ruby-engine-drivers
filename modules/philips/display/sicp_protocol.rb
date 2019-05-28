@@ -134,7 +134,7 @@ class Philips::Display::SicpProtocol
     Inputs.merge!(Inputs.invert)
 
     def switch_to(input)
-        inp = self[:input] = input.to_sym
+        inp = self[:input] = input.to_s.downcase.to_sym
         do_send Command[:input], Inputs[inp], 0, 1, 0, name: :input
     end
 

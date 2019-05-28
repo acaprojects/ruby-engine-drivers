@@ -1,6 +1,3 @@
-# encoding: ASCII-8BIT
-# frozen_string_literal: true
-
 Orchestrator::Testing.mock_device 'Wolfvision::Eye14' do
     exec(:power?)
         .should_send("\x00\x30\x00") # power query
@@ -37,10 +34,17 @@ Orchestrator::Testing.mock_device 'Wolfvision::Eye14' do
 
     wait(150)
 
-    exec(:zoom, 3000)
-        .should_send("\x01\x20\x02\x0B\xB8")
+    exec(:zoom, 6)
+        .should_send("\x01\x20\x02\x00\x06")
         .transmit("\x01\x20\x00")
-        .expect(status[:zoom]).to be(3000)
+        .expect(status[:zoom]).to be(6)
+
+    wait(150)
+
+    exec(:zoom?)
+        .should_send("\x00\x20\x00")
+        .responds("\x00\x20\x02\x00\x06")
+        .expect(status[:zoom]).to be(6)
 
     wait(150)
 
@@ -51,10 +55,17 @@ Orchestrator::Testing.mock_device 'Wolfvision::Eye14' do
 
     wait(150)
 
-    exec(:iris, 3500)
-        .should_send("\x01\x22\x02\x0D\xAC")
+    exec(:iris, 8)
+        .should_send("\x01\x22\x02\x00\x08")
         .transmit("\x01\x22\x00")
-        .expect(status[:iris]).to be(3500)
+        .expect(status[:iris]).to be(8)
+
+    wait(150)
+
+    exec(:iris?)
+        .should_send("\x00\x22\x00")
+        .responds("\x00\x22\x02\x00\x08")
+        .expect(status[:iris]).to be(8)
 
     wait(150)
 

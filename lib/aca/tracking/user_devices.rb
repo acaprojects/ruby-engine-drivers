@@ -21,6 +21,11 @@ class Aca::Tracking::UserDevices < CouchbaseOrm::Base
             .reject { |u| u.id == self.id }
             .each { |u| u.remove(mac) }
 
+        if self.class.bucket.get("temporarily_block_mac-#{mac}", quiet: true)
+          remove(mac)
+          return
+        end
+
         self.class.bucket.set("macuser-#{mac}", username)
         return if self.macs.include?(mac)
 

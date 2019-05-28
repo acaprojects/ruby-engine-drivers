@@ -30,7 +30,9 @@ class Aca::GoogleRefreshBooking
         false
     end
     CAN_GOOGLE = begin
-        require 'google_calendar'
+        require 'googleauth'
+        require 'google/apis/admin_directory_v1'
+        require 'google/apis/calendar_v3'
         true
     rescue LoadError
         false
@@ -80,9 +82,11 @@ class Aca::GoogleRefreshBooking
         ews_room: 'room@email.address',
 
         # Optional EWS for creating and removing bookings
-        google_organiser_location: 'attendees'
-        # google_client_id: ENV["GOOGLE_APP_CLIENT_ID"],
-        # google_secret: ENV["GOOGLE_APP_CLIENT_SECRET"],
+        google_organiser_location: 'attendees',
+        google_client_id: '',
+        google_secret: '',
+        google_redirect_uri: '',
+        google_scope: 'https://www.googleapis.com/auth/calendar'
         # google_scope: ENV['GOOGLE_APP_SCOPE'],
         # google_site: ENV["GOOGLE_APP_SITE"],
         # google_token_url: ENV["GOOGLE_APP_TOKEN_URL"],
@@ -157,6 +161,7 @@ class Aca::GoogleRefreshBooking
             @google_secret = setting(:google_client_secret)
             @google_redirect_uri = setting(:google_redirect_uri)
             @google_refresh_token = setting(:google_refresh_token)
+            @google_scope = setting(:google_scope)
             @google_room = (setting(:google_room) || system.email)
             # supports: SMTP, PSMTP, SID, UPN (user principle name)
             # NOTE:: Using UPN we might be able to remove the LDAP requirement
@@ -318,27 +323,22 @@ class Aca::GoogleRefreshBooking
 
         # client = OAuth2::Client.new(@google_client_id, @google_secret, {site: @google_site, token_url: @google_token_url})
 
-        # Create an instance of the calendar.
-        params = {:client_id => @google_client_id,
-                                   :client_secret => @google_secret,
-                                   :calendar      => @google_room,
-                                   :redirect_url  => @google_redirect_uri}.to_json
-        logger.debug params
-        begin
-            cal = Google::Calendar.new(:client_id     => @google_client_id,
-                                       :client_secret => @google_secret,
-                                       :calendar      => @google_room,
-                                       :redirect_url  => @google_redirect_uri # this is what Google uses for 'applications'
-                                       )
-            cal.connection.login_with_refresh_token(@google_refresh_token)
+        options = {
+            client_id: @google_client_id,
+            client_secret: @google_secret,
+            scope: @google_scope,
+            redirect_uri: @google_redirect_uri,
+            refresh_token: @google_refresh_token,
+            grant_type: "refresh_token"
+        }
 
-            events = cal.find_events_in_range(Time.now.midnight, Time.now.tomorrow.midnight, {max_results: 2500})
-        rescue Exception => e
-            logger.debug e.message
-            logger.debug e.backtrace.inspect
-            raise e
-        end
+        authorization = Google::Auth::UserRefreshCredentials.new options
 
+        #Calendar = Google::Apis::CalendarV3
+        calendar = Calendar::CalendarService.new
+        calendar.authorization = authorization
+        events = calendar.list_events(system.email)
+        
         task {
             todays_bookings(events)
         }.then(proc { |bookings|

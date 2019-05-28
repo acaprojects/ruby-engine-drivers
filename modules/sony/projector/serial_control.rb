@@ -62,8 +62,13 @@ class Sony::Projector::SerialControl
     # Input selection
     #
     INPUTS = {
-        hdmi:  [0x00, 0x04],
-        hdmi2: [0x00, 0x05]
+        hdmi: [0x00, 0x03], #aka inputb
+        inputa: [0x00, 0x02],
+        inputb: [0x00, 0x03],
+        inputc: [0x00, 0x04],
+        inputd: [0x00, 0x05],
+        usb:  [0x00, 0x06], # usb type B
+        network: [0x00, 0x07] # network
     }
     INPUTS.merge!(INPUTS.invert)
 
@@ -91,7 +96,7 @@ class Sony::Projector::SerialControl
     def mute(val = true)
         logger.debug 'requested to mute'
 
-        actual = is_affirmative?(val) ? [0x00, 0x01] : [0x00, 0x00]
+        actual = is_affirmative?(val) ? [0x00, 0x00] : [0x00, 0x01]
         do_send(:set, :mute, actual, delay_on_receive: 500)
     end
 

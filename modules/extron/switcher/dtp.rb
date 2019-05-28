@@ -181,7 +181,7 @@ class Extron::Switcher::Dtp < Extron::Base
     end
 
     def unmute(group, index = nil)
-        mute_audio(group, false, index)
+        mute(group, false, index)
         #do_send("\eD#{group}*0GRPM", :group_type => :mute)
         # Response:  GrpmD#{group}*+00000
     end

@@ -1,6 +1,6 @@
 module Tripleplay; end
 
-# Documentation: https://aca.im/driver_docs/TriplePlay/JSON+XMLRPC+Handler+2.2.0.pdf
+# Documentation: https://aca.im/driver_docs/TriplePlay/JSON-XMLRPC-Handler-2.2.0.pdf
 # default URL: http://<serverIP>
 # Settings: none
 
@@ -21,10 +21,10 @@ class Tripleplay::XmlRpc
     def on_load
         on_update
     end
-    
+
     def on_update
     end
-    
+
     def channel(number, box_id)
         logger.debug { "Changing box#{box_id} to channel #{number}" }
         make_req(:SelectChannel, box_id.to_i, number.to_i, name: :channel)

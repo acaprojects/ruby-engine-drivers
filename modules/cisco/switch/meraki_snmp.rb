@@ -95,6 +95,8 @@ class Cisco::Switch::MerakiSNMP
         self[:level] = setting(:level)
 
         @reserve_time = setting(:reserve_time) || 0
+        self[:last_successful_query] ||= 0
+        @temp_last_updated = 0
     end
 
     def on_unload
@@ -273,6 +275,8 @@ class Cisco::Switch::MerakiSNMP
         (@check_interface - checked).each { |iface| remove_lookup(iface) }
         self[:reserved] = @reserved_interface.to_a
 
+        self[:last_successful_query] = @temp_last_updated
+
         nil
     end
 
@@ -358,6 +362,7 @@ class Cisco::Switch::MerakiSNMP
             remove_interfaces.each { |iface| remove_reserved(iface) }
             add_interfaces.each { |iface| remove_lookup(iface) }
             self[:reserved] = @reserved_interface.to_a
+            @temp_last_updated = Time.now.to_i
         }.value
     end
 
@@ -432,7 +437,7 @@ class Cisco::Switch::MerakiSNMP
             # Need to create a database entry for the MAC with a TTL
             mac = model.mac_address
             temporary = if (mac && @temporary.include?(mac[0..5]))
-                logger.debug { "removing temporary MAC for #{model.username} with #{model.mac_address} at #{model.desk_id}" }
+                logger.info { "removing temporary MAC for #{model.username} with #{model.mac_address} at #{model.desk_id}" }
                 @polling_period
             else
                 0

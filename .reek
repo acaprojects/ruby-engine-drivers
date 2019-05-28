@@ -31,6 +31,8 @@ NilCheck:
 # Boolean switches on state based methods (such as power and mute) are useful.
 BooleanParameter:
   enabled: false
+ControlParameter:
+  enabled: false
 
 # Allow for a larger number of constants for protocol definitions.
 TooManyConstants:
@@ -39,10 +41,14 @@ TooManyConstants:
 # Suppress warning about parameter length within reason.
 LongParameterList:
   max_params: 4
-  
+
 # Prevent from flagging multiple calls to utility methods
 # (e.g. is_affirmative?).
 RepeatedConditional:
+  enabled: false
+
+# Allow for device model numbers to be used as module names.
+UncommunicativeModuleName:
   enabled: false
 
 # Support private, pure functions

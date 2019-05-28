@@ -1,0 +1,84 @@
+QSC Remote Examples
+
+
+Fader Query
+component_get "B-BC8-102-CS", "PGM:Level"
+
+Response:
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "Name": "B-BC8-102-CS",
+    "Controls": [
+      {
+        "Name": "PGM:Level",
+        "String": "-10.0dB",
+        "Value": -10.0,
+        "Position": 0.66666668,
+        "Choices": [
+
+        ],
+        "Color": "",
+        "Indeterminate": false,
+        "Invisible": false,
+        "Disabled": false,
+        "Legend": ""
+      }
+    ]
+  },
+  "id": 1
+}
+
+
+Query Mute
+component_get "B-BC8-102-CS", "PGM:Mute"
+
+Response:
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "Name": "B-BC8-102-CS",
+    "Controls": [
+      {
+        "Name": "PGM:Mute",
+        "String": "false",
+        "Value": 0.0,
+        "Position": 0.0,
+        "Choices": [
+
+        ],
+        "Color": "",
+        "Indeterminate": false,
+        "Invisible": false,
+        "Disabled": false,
+        "Legend": ""
+      }
+    ]
+  }
+  "id": 1
+}
+
+
+
+Mute Mic
+  component_set "B-BC8-102-CS", {"Name":"PGM:Mute", "Value": true}
+
+Response:
+{
+  "jsonrpc": "2.0",
+  "result": true,
+  "id": 1
+}
+
+
+Change Volume
+
+  component_set "B-BC8-102-CS", {"Name":"PGM:Level", "Value": -5}
+OR
+  component_set "B-BC8-102-CS", {"Name":"PGM:Level", "Position": 0.6}
+
+
+Select Source
+
+  component_set "B-BC8-102-CS", {"Name":"PGM:Select", "Value": "1"}
+

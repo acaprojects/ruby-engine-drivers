@@ -89,6 +89,8 @@ class Cisco::Switch::SnoopingCatalyst
         self[:building] = setting(:building)
         self[:level] = setting(:level)
 
+        self[:last_successful_query] ||= 0
+
         @reserve_time = setting(:reserve_time) || 0
         @snooping ||= []
     end
@@ -256,6 +258,8 @@ class Cisco::Switch::SnoopingCatalyst
             self[:reserved] = @reserved_interface.to_a
             @snooping.clear
 
+            self[:last_successful_query] = Time.now.to_i
+
             return :success
         end
 
@@ -332,7 +336,7 @@ class Cisco::Switch::SnoopingCatalyst
             # Need to create a database entry for the MAC with a TTL
             mac = model.mac_address
             temporary = if (mac && @temporary.include?(mac[0..5]))
-                logger.debug { "removing temporary MAC for #{model.username} with #{model.mac_address} at #{model.desk_id}" }
+                logger.info { "removing temporary MAC for #{model.username} with #{model.mac_address} at #{model.desk_id}" }
                 @polling_period
             else
                 0
@@ -380,6 +384,6 @@ class Cisco::Switch::SnoopingCatalyst
 
     def normalise(interface)
         # Port-channel == po
-        interface.downcase.gsub('tengigabitethernet', 'te').gsub('gigabitethernet', 'gi').gsub('fastethernet', 'fa')
+        interface.downcase.gsub('tengigabitethernet', 'te').gsub('twogigabitethernet', 'tw').gsub('gigabitethernet', 'gi').gsub('fastethernet', 'fa')
     end
 end

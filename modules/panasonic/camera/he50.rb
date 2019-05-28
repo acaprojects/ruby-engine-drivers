@@ -49,6 +49,8 @@ class Panasonic::Camera::He50
 
         # {near: {zoom: val, pan: val, tilt: val}}
         @presets = setting(:presets) || {}
+        @username = setting(:username)
+        @password = setting(:password)
         self[:presets] = @presets.keys
     end
 
@@ -391,6 +393,10 @@ class Panasonic::Camera::He50
             options[:priority] = 0 # Actual commands have a higher priority
         else
             options[:name] = name
+        end
+        if @password
+            options[:headers] ||= {}
+            options[:headers]['authorization'] = [@username, @password]
         end
         request_string = "/cgi-bin/aw_ptz?cmd=%23#{cmd}#{data}&res=1"
         logger.debug { "requesting #{name}: #{request_string}" }

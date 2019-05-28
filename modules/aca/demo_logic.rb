@@ -9,6 +9,7 @@ class Aca::DemoLogic
 
 
     def on_load
+        self[:name] = system.name
         self[:volume] = 0
         self[:mute] = false
         self[:views] = 0

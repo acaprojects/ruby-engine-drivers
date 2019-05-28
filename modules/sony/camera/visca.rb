@@ -45,16 +45,19 @@ class Sony::Camera::Visca
 
         on_update
     end
-    
+
     def on_unload
     end
-    
+
     def on_update
+        timeout = setting(:timeout) || 5000
+        defaults timeout: timeout
+        
         @presets = setting(:presets) || {}
         self[:presets] = @presets.keys
         self[:invert] = setting(:invert)
     end
-    
+
     def connected
         schedule.every('60s') do
             logger.debug "-- Polling Sony Camera"
@@ -67,7 +70,7 @@ class Sony::Camera::Visca
             end
         end
     end
-    
+
     def disconnected
         # Disconnected will be called before connect if initial connect fails
         schedule.clear
@@ -179,7 +182,7 @@ class Sony::Camera::Visca
             elsif pan_speed < 0
                 dir_hori = :left
             end
-            
+
             dir_vert = nil
             if tilt_speed > 0
                 dir_vert = :up
@@ -201,7 +204,7 @@ class Sony::Camera::Visca
 
     def zoom(position, focus = -1)
         val = in_range(position.to_i, self[:zoom_max], self[:zoom_min])
-        
+
         cmd = "\x04\x47"
 
         # Format the zoom focus values as required
@@ -366,4 +369,3 @@ class Sony::Camera::Visca
         :success
     end
 end
-

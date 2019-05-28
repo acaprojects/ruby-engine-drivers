@@ -2,6 +2,7 @@
 
 require 'faraday'
 require 'uv-rays'
+require 'microsoft/office'
 Faraday.default_adapter = :libuv
 
 # For rounding up to the nearest 15min
@@ -109,20 +110,52 @@ class Aca::OfficeBooking
         self[:touch_enabled] = setting(:touch_enabled) || false
         self[:name] = self[:room_name] = setting(:room_name) || system.name
 
+        self[:name] = self[:room_name] = setting(:room_name) || system.name
+        self[:touch_enabled] = setting(:touch_enabled) || false
+        self[:arrow_direction] = setting(:arrow_direction)
+        self[:hearing_assistance] = setting(:hearing_assistance)
+        self[:timeline_start] = setting(:timeline_start)
+        self[:timeline_end] = setting(:timeline_end)
+        self[:title] = setting(:title)
+        self[:description] = setting(:description)
+        self[:icon] = setting(:icon)
         self[:control_url] = setting(:booking_control_url) || system.config.support_url
+
+        self[:timeout] = setting(:timeout)
+        self[:booking_cancel_timeout] = setting(:booking_cancel_timeout)
+        self[:booking_cancel_email_message] = setting(:booking_cancel_email_message)
         self[:booking_controls] = setting(:booking_controls)
         self[:booking_catering] = setting(:booking_catering)
         self[:booking_hide_details] = setting(:booking_hide_details)
         self[:booking_hide_availability] = setting(:booking_hide_availability)
         self[:booking_hide_user] = setting(:booking_hide_user)
+        self[:booking_hide_modal] = setting(:booking_hide_modal)
+        self[:booking_hide_title] = setting(:booking_hide_title)
         self[:booking_hide_description] = setting(:booking_hide_description)
         self[:booking_hide_timeline] = setting(:booking_hide_timeline)
+        self[:booking_set_host] = setting(:booking_set_host)
+        self[:booking_set_title] = setting(:booking_set_title)
+        self[:booking_set_ext] = setting(:booking_set_ext)
+        self[:booking_search_user] = setting(:booking_search_user)
+        self[:booking_disable_future] = setting(:booking_disable_future)
+        self[:booking_min_duration] = setting(:booking_min_duration)
+        self[:booking_max_duration] = setting(:booking_max_duration)
+        self[:booking_duration_step] = setting(:booking_duration_step)
+        self[:booking_endable] = setting(:booking_endable)
+        self[:booking_ask_cancel] = setting(:booking_ask_cancel)
+        self[:booking_ask_end] = setting(:booking_ask_end)
+        self[:booking_default_title] = setting(:booking_default_title)
+        self[:booking_select_free] = setting(:booking_select_free)
+        self[:booking_hide_all] = setting(:booking_hide_all) || false
+        self[:hide_all] = setting(:booking_hide_all) || false # for backwards compatibility only
 
         # Skype join button available 2min before the start of a meeting
         @skype_start_offset = setting(:skype_start_offset) || 120
+        @skype_check_offset = setting(:skype_check_offset) || 380 # 5min + 20 seconds
 
         # Skype join button not available in the last 8min of a meeting
         @skype_end_offset = setting(:skype_end_offset) || 480
+        @force_skype_extract = setting(:force_skype_extract)
 
         # Because restarting the modules results in a 'swipe' of the last read card
         ignore_first_swipe = true
@@ -156,11 +189,26 @@ class Aca::OfficeBooking
             @office_site = setting(:office_site)
             @office_token_url = setting(:office_token_url)
             @office_options = setting(:office_options)
+            @office_user_email = setting(:office_user_email)
+            @office_user_password = setting(:office_user_password)
+            @office_delegated = setting(:office_delegated)
             @office_room = (setting(:office_room) || system.email)
             # supports: SMTP, PSMTP, SID, UPN (user principle name)
             # NOTE:: Using UPN we might be able to remove the LDAP requirement
             @office_connect_type = (setting(:office_connect_type) || :SMTP).to_sym
             @timezone = setting(:room_timezone)
+
+            @client = ::Microsoft::Office.new({
+                client_id: @office_client_id || ENV['OFFICE_CLIENT_ID'],
+                client_secret: @office_secret || ENV["OFFICE_CLIENT_SECRET"],
+                app_site: @office_site || ENV["OFFICE_SITE"] || "https://login.microsoftonline.com",
+                app_token_url: @office_token_url || ENV["OFFICE_TOKEN_URL"],
+                app_scope: @office_scope || ENV['OFFICE_SCOPE'] || "https://graph.microsoft.com/.default",
+                graph_domain: ENV['GRAPH_DOMAIN'] || "https://graph.microsoft.com",
+                service_account_email: @office_user_password || ENV['OFFICE_ACCOUNT_EMAIL'],
+                service_account_password: @office_user_password || ENV['OFFICE_ACCOUNT_PASSWORD'],
+                internet_proxy: @internet_proxy || ENV['INTERNET_PROXY']
+            })
         else
             logger.warn "oauth2 gem not available" if setting(:office_creds)
         end
@@ -306,54 +354,18 @@ class Aca::OfficeBooking
     # ROOM BOOKINGS:
     # ======================================
     def fetch_bookings(*args)
-
-        # @office_client_id = ENV["OFFICE_APP_CLIENT_ID"]
-        # @office_secret = ENV["OFFICE_APP_CLIENT_SECRET"]
-        # @office_scope = ENV['OFFICE_APP_SCOPE']
-        # @office_options = {
-        #     site: ENV["OFFICE_APP_SITE"],
-        #     token_url: ENV["OFFICE_APP_TOKEN_URL"]
-        # }
-        # @office_room = 'testroom@internationaltowers.com'
-
-        client = OAuth2::Client.new(@office_client_id, @office_secret, {site: @office_site, token_url: @office_token_url})
-
-        begin
-            access_token = client.client_credentials.get_token({
-                :scope => @office_scope
-                # :client_secret => ENV["OFFICE_APP_CLIENT_SECRET"],
-                # :client_id => ENV["OFFICE_APP_CLIENT_ID"]
-            }).token
-        rescue Exception => e
-            logger.debug e.message
-            logger.debug e.backtrace.inspect
-            raise e
-        end
-
-
-        # Set out domain, endpoint and content type
-        domain = 'https://graph.microsoft.com'
-        host = 'graph.microsoft.com'
-        endpoint = "/v1.0/users/#{@office_room}/events"
-        content_type = 'application/json;odata.metadata=minimal;odata.streaming=true'
-
-        # Create the request URI and config
-        office_api = UV::HttpEndpoint.new(domain, tls_options: {host_name: host})
-        headers = {
-            'Authorization' => "Bearer #{access_token}",
-            'Content-Type' => content_type
-        }
-
         # Make the request
-        response = office_api.get(path: "#{domain}#{endpoint}", headers: headers).value
-
-
-
-        task {
-            todays_bookings(response, @office_organiser_location)
-        }.then(proc { |bookings|
-            self[:today] = bookings
-        }, proc { |e| logger.print_error(e, 'error fetching bookings') })
+        response = @client.get_bookings_by_user(user_id: @office_room, start_param: Time.now.midnight, end_param: Time.now.tomorrow.midnight)[:bookings]
+        real_room = Orchestrator::ControlSystem.find(system.id)
+        if real_room.settings.key?('linked_rooms')
+            real_room.settings['linked_rooms'].each do |linked_room_id|
+                linked_room = Orchestrator::ControlSystem.find_by_id(linked_room_id)
+                if linked_room
+                    response += @client.get_bookings_by_user(user_id: linked_room.email, start_param: Time.now.midnight, end_param: Time.now.tomorrow.midnight)[:bookings]
+                end
+            end
+        end
+        self[:today] = todays_bookings(response, @office_organiser_location)
     end
 
 
@@ -369,18 +381,23 @@ class Aca::OfficeBooking
         define_setting(:last_meeting_started, meeting_ref)
     end
 
-    def cancel_meeting(start_time)
+    def cancel_meeting(start_time, reason = "timeout")
         task {
-            delete_ews_booking (start_time / 1000).to_i
+            if start_time.class == Integer
+                delete_ews_booking (start_time / 1000).to_i
+            else
+                # Converts to time object regardless of start_time being string or time object
+                start_time = Time.parse(start_time.to_s)
+                delete_ews_booking start_time.to_i
+            end
         }.then(proc { |count|
-            logger.debug { "successfully removed #{count} bookings" }
-
+            logger.warn { "successfully removed #{count} bookings due to #{reason}" }
             self[:last_meeting_started] = start_time
             self[:meeting_pending] = start_time
             self[:meeting_ending] = false
             self[:meeting_pending_notice] = false
-        }, proc { |error|
-            logger.print_error error, 'removing ews booking'
+            fetch_bookings
+            true
         })
     end
 
@@ -428,10 +445,10 @@ class Aca::OfficeBooking
         req_params[:room_email] = @ews_room
         req_params[:organizer] = options[:user_email]
         req_params[:subject] = options[:title]
-        req_params[:start_time] = Time.at(options[:start].to_i / 1000).utc.iso8601.chop
-        req_params[:end_time] = Time.at(options[:end].to_i / 1000).utc.iso8601.chop
+        req_params[:start_time] = Time.at(options[:start].to_i / 1000).utc.to_i
+        req_params[:end_time] = Time.at(options[:end].to_i / 1000).utc.to_i
 
-       
+
         # TODO:: Catch error for booking failure
         begin
             id = make_office_booking req_params
@@ -441,7 +458,7 @@ class Aca::OfficeBooking
             raise e
         end
 
-        
+
         logger.debug { "successfully created booking: #{id}" }
         "Ok"
     end
@@ -535,93 +552,91 @@ class Aca::OfficeBooking
     # =======================================
     def make_office_booking(user_email: nil, subject: 'On the spot booking', room_email:, start_time:, end_time:, organizer:)
 
+        STDERR.puts organizer
+        logger.info organizer
+
+        STDERR.puts organizer.class
+        logger.info organizer.class
+
+        STDERR.puts organizer.nil?
+        logger.info organizer.nil?
+
+        STDERR.flush
+
         booking_data = {
             subject: subject,
             start: { dateTime: start_time, timeZone: "UTC" },
             end: { dateTime: end_time, timeZone: "UTC" },
             location: { displayName: @office_room, locationEmailAddress: @office_room },
             attendees: [ emailAddress: { address: organizer, name: "User"}]
-        }.to_json
+        }
+
+
+        if organizer.nil?
+            booking_data[:attendees] = []
+        end
+
+        booking_data = booking_data.to_json
 
         logger.debug "Creating booking:"
         logger.debug booking_data
 
-        client = OAuth2::Client.new(@office_client_id, @office_secret, {site: @office_site, token_url: @office_token_url})
+        # client = OAuth2::Client.new(@office_client_id, @office_secret, {site: @office_site, token_url: @office_token_url})
 
-        begin
-            access_token = client.client_credentials.get_token({
-                :scope => @office_scope
-                # :client_secret => ENV["OFFICE_APP_CLIENT_SECRET"],
-                # :client_id => ENV["OFFICE_APP_CLIENT_ID"]
-            }).token
-        rescue Exception => e
-            logger.debug e.message
-            logger.debug e.backtrace.inspect
-            raise e
-        end
+        # begin
+        #     access_token = client.client_credentials.get_token({
+        #         :scope => @office_scope
+        #         # :client_secret => ENV["OFFICE_APP_CLIENT_SECRET"],
+        #         # :client_id => ENV["OFFICE_APP_CLIENT_ID"]
+        #     }).token
+        # rescue Exception => e
+        #     logger.debug e.message
+        #     logger.debug e.backtrace.inspect
+        #     raise e
+        # end
 
 
-        # Set out domain, endpoint and content type
-        domain = 'https://graph.microsoft.com'
-        host = 'graph.microsoft.com'
-        endpoint = "/v1.0/users/#{@office_room}/events"
-        content_type = 'application/json;odata.metadata=minimal;odata.streaming=true'
+        # # Set out domain, endpoint and content type
+        # domain = 'https://graph.microsoft.com'
+        # host = 'graph.microsoft.com'
+        # endpoint = "/v1.0/users/#{@office_room}/events"
+        # content_type = 'application/json;odata.metadata=minimal;odata.streaming=true'
 
-        # Create the request URI and config
-        office_api = UV::HttpEndpoint.new(domain, tls_options: {host_name: host})
-        headers = {
-            'Authorization' => "Bearer #{access_token}",
-            'Content-Type' => content_type
-        }
+        # # Create the request URI and config
+        # office_api = UV::HttpEndpoint.new(domain, tls_options: {host_name: host})
+        # headers = {
+        #     'Authorization' => "Bearer #{access_token}",
+        #     'Content-Type' => content_type
+        # }
 
         # Make the request
-        response = office_api.post(path: "#{domain}#{endpoint}", body: booking_data, headers: headers).value
 
-        logger.debug response.body
-        logger.debug response.to_json
-        logger.debug JSON.parse(response.body)['id']
+        # response = office_api.post(path: "#{domain}#{endpoint}", body: booking_data, headers: headers).value
+        response = @client.create_booking(room_id: system.id, start_param: start_time, end_param: end_time, subject: subject, current_user: {email: organizer, name: organizer})
+        STDERR.puts "BOOKING SIP CREATE RESPONSE:"
+        STDERR.puts response.inspect
+        STDERR.puts response['id']
+        STDERR.flush
 
-        id = JSON.parse(response.body)['id']
+        id = response['id']
 
         # Return the booking IDs
         id
     end
 
     def delete_ews_booking(delete_at)
-        now = Time.now
-        if @timezone
-            start  = now.in_time_zone(@timezone).midnight
-            ending = now.in_time_zone(@timezone).tomorrow.midnight
-        else
-            start  = now.midnight
-            ending = now.tomorrow.midnight
-        end
-
         count = 0
-
-        cli = Viewpoint::EWSClient.new(*@ews_creds)
-
-        if @use_act_as
-            # TODO:: think this line can be removed??
-            delete_at = Time.parse(delete_at.to_s).to_i
-
-            opts = {}
-            opts[:act_as] = @ews_room if @ews_room
-
-            folder = cli.get_folder(:calendar, opts)
-            items = folder.items({:calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
-        else
-            cli.set_impersonation(Viewpoint::EWS::ConnectingSID[@ews_connect_type], @ews_room) if @ews_room
-            items = cli.find_items({:folder_id => :calendar, :calendar_view => {:start_date => start.utc.iso8601, :end_date => ending.utc.iso8601}})
-        end
-
-        items.each do |meeting|
-            meeting_time = Time.parse(meeting.ews_item[:start][:text])
-
-            # Remove any meetings that match the start time provided
-            if meeting_time.to_i == delete_at
-                meeting.delete!(:recycle, send_meeting_cancellations: 'SendOnlyToAll')
-                count += 1
+        delete_at_object = Time.at(delete_at)
+        if self[:today]
+            self[:today].each_with_index do |booking, i|
+                booking_start_object = Time.parse(booking[:Start])
+                if delete_at_object.to_i == booking_start_object.to_i
+                    response = @client.decline_meeting(booking_id: booking[:id], mailbox: system.email, comment: self[:booking_cancel_email_message])
+                    if response == 200
+                        count += 1
+                        self[:today].delete(i)
+                    end
+                end
             end
         end
 
@@ -630,40 +645,91 @@ class Aca::OfficeBooking
     end
 
     def todays_bookings(response, office_organiser_location)
-
-        meeting_response = JSON.parse(response.body)['value']
-
         results = []
 
-        meeting_response.each{|booking| 
+        set_skype_url = true if @force_skype_extract
+        now_int = Time.now.to_i
 
-            # start_time = Time.parse(booking['start']['dateTime']).utc.iso8601[0..18] + 'Z'
-            # end_time = Time.parse(booking['end']['dateTime']).utc.iso8601[0..18] + 'Z'
-            start_time = ActiveSupport::TimeZone.new('UTC').parse(booking['start']['dateTime']).iso8601
-            end_time = ActiveSupport::TimeZone.new('UTC').parse(booking['end']['dateTime']).iso8601
+        response.each{ |booking|
+            if booking['start'].key?("timeZone")
+                real_start = ActiveSupport::TimeZone.new(booking['start']['timeZone']).parse(booking['start']['dateTime']).utc
+                real_end = ActiveSupport::TimeZone.new(booking['start']['timeZone']).parse(booking['end']['dateTime']).utc
+                start_time = real_start.iso8601
+                end_time = real_end.iso8601
+            else
+                # TODO:: this needs review. Does MS ever respond without a timeZone?
+                real_start = Time.parse(booking['start']['dateTime']).utc
+                real_end = Time.parse(booking['end']['dateTime']).utc
+                start_time = real_start.iso8601[0..18] + 'Z'
+                end_time = real_end.iso8601[0..18] + 'Z'
+            end
+
+            #logger.debug { "\n\ninspecting booking:\n#{booking.inspect}\n\n" }
+            # Get body data: booking['body'].values.join("")
+
+            # Extract the skype meeting URL
+            if set_skype_url
+                start_integer = real_start.to_i - @skype_check_offset
+                join_integer = real_start.to_i - @skype_start_offset
+                end_integer = real_end.to_i - @skype_end_offset
+
+                if now_int > start_integer && now_int < end_integer && booking['body']
+                    body = booking['body'].values.join('')
+                    match = body.match(/\"pexip\:\/\/(.+?)\"/)
+                    if match
+                        set_skype_url = false
+                        self[:pexip_meeting_uid] = start_integer
+                        self[:pexip_meeting_address] = match[1]
+                    else
+                        links = URI.extract(body).select { |url| url.start_with?('https://meet.lync') }
+                        if links[0].present?
+                            if now_int > join_integer
+                                self[:can_join_skype_meeting] = true
+                                self[:skype_meeting_pending] = true
+                            else
+                                self[:skype_meeting_pending] = true
+                            end
+                            set_skype_url = false
+                            self[:skype_meeting_address] = links[0]
+                        end
+                    end
+                end
+            end
 
             if office_organiser_location == 'attendees'
                 # Grab the first attendee
-                organizer = booking['attendees'][0]['emailAddress']['name']
-            elsif office_organiser_location == 'organizer'
+                if booking.key?('attendees') && !booking['attendees'].empty?
+                    organizer = booking['attendees'][0]['name']
+                else
+                    organizer = ""
+                end
+            else
                 # Grab the organiser
-                organizer = booking['organizer']['emailAddress']['name']
+                organizer = booking['organizer']['name']
+            end
+
+            subject = booking['subject']
+            if booking.key?('sensitivity') && ['private','confidential'].include?(booking['sensitivity'])
+                organizer = "Private"
+                subject = "Private"
             end
 
             results.push({
                 :Start => start_time,
                 :End => end_time,
-                :Subject => booking['subject'],
+                :Subject => subject,
+                :id => booking['id'],
                 :owner => organizer
-                # :setup => 0,
-                # :breakdown => 0
             })
         }
 
-        logger.info "Got #{results.length} results!"
-        logger.info results.to_json
-
         results
+    end
+
+    def log(msg)
+        STDERR.puts msg
+        logger.info msg
+        STDERR.flush
     end
     # =======================================
 end

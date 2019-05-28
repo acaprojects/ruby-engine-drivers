@@ -9,6 +9,10 @@ module Panasonic::LCD; end
 # Documentation:
 # * Protocol: https://aca.im/driver_docs/Panasonic/lcd_protocol2.pdf
 # * Commands: https://aca.im/driver_docs/Panasonic/panasonic_commands.pdf
+# The display must be set to Protocol2 using the IR remote:
+# - Press SETUP
+# - Select OSD language and press ENTER for >3secs
+# - Select Options > LAN Control Protocol: Protocol 2
 
 class Panasonic::LCD::Protocol2
     include ::Orchestrator::Constants
@@ -44,6 +48,7 @@ class Panasonic::LCD::Protocol2
     def on_update
         @username = setting(:username) || 'dispadmin'
         @password = setting(:password) || '@Panasonic'
+        @polling_enabled = setting(:polling_enabled)
     end
 
     def connected
@@ -70,12 +75,12 @@ class Panasonic::LCD::Protocol2
         self[:power_stable] = false
         if is_affirmative?(state)
             self[:power_target] = On
-            do_send(:power_on, retries: 10, name: :power, delay_on_receive: 8000)
+            do_send(:power_on, retries: 10, name: :power, delay: 10000, timeout: 15000)
             logger.debug "requested to power on"
             do_send(:power_query)
         else
             self[:power_target] = Off
-            do_send(:power_off, retries: 10, name: :power, delay_on_receive: 8000)
+            do_send(:power_off, retries: 10, name: :power, delay: 8000)
             logger.debug "requested to power off"
             do_send(:power_query)
         end
@@ -146,7 +151,7 @@ class Panasonic::LCD::Protocol2
 
     def do_poll
         power?(priority: 0).then do
-            if self[:power]
+            if self[:power] && @polling_enabled
                 muted?
                 volume?
             end
@@ -178,6 +183,7 @@ class Panasonic::LCD::Protocol2
             # We're actually handling the connection check performed by makebreak
             # This ensure that the connection is closed
             if command.nil?
+                logger.debug 'disconnecting as no command to process'
                 disconnect
                 return :success
             end

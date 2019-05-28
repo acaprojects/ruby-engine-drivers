@@ -4,7 +4,10 @@ module Lg::Lcd; end
 # Documentation: https://aca.im/driver_docs/LG/LS5_models.pdf
 #  also https://aca.im/driver_docs/LG/SM_models.pdf
 #
-# There is a secret menu that allows you to disable power management
+# To ensure that the display does not go network offline when told to power off, this setting needs to be set:
+# General>Power>PM mode:Screen off always
+#
+# For older displays, the same setting is in a secret menu that is accessed via the IR remote:
 # 1. Press and hold the 'Setting' button on the remote for 7 seconds
 # 2. Press: 0 0 0 0 OK (Press Zero four times and then OK)
 # 3. From the signage setup, turn off DPM
@@ -56,6 +59,8 @@ class Lg::Lcd::ModelLs5
         wake_on_lan(true)
         no_signal_off(false)
         auto_off(false)
+        local_button_lock(true)
+        pm_mode(3)
         do_poll
     end
 
@@ -81,6 +86,8 @@ class Lg::Lcd::ModelLs5
         no_signal_off: 'g',
         auto_off: 'n',
         dpm: 'j',
+        local_button_lock: 'o',
+        pm_mode: 'n',
         aspect_ratio: 'c'
     }
     Lookup = Command.invert
@@ -255,6 +262,16 @@ class Lg::Lcd::ModelLs5
         # The action should be set to: screen off always
     end
 
+    def pm_mode(mode = 3)
+        do_send(Command[:pm_mode], mode, :s, name: :pm_mode)
+    end
+    
+    def local_button_lock(enable = true)
+        #0=off,  1=lock all except Power buttons, 2=lock all buttons. Default to 2 as power off from local button results in network offline
+        val = is_affirmative?(enable) ? 2 : 0
+        do_send(Command[:local_button_lock], val, :t, name: :local_button_lock)
+    end
+
     def no_signal_off(enable = false)
         val = is_affirmative?(enable) ? 1 : 0
         do_send(Command[:no_signal_off], val, :f, name: :disable_no_sig_off)
@@ -357,6 +374,8 @@ class Lg::Lcd::ModelLs5
             logger.debug { "No Signal Auto Off changed!" }
         when :auto_off
             logger.debug { "Auto Off changed!" }
+        when :local_button_lock
+            logger.debug { "Local Button Lock changed!" }
         else
             return :ignore
         end

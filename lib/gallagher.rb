@@ -42,7 +42,7 @@ class Gallagher
             :wsdl => wsdl,
             :log => log,
             :log_level => log_level,
-            :ssl_version => :TLSv1,
+            :ssl_version => :TLSv1_2,
             :ssl_cert_file => cert_path,
             :ssl_ca_cert_file => ca_cert_path,
             :ssl_cert_key_file => key_path,
@@ -59,7 +59,7 @@ class Gallagher
             :wsdl => wsdl,
             :log => log,
             :log_level => log_level,
-            :ssl_version => :TLSv1,
+            :ssl_version => :TLSv1_2,
             :ssl_cert_file => cert_path,
             :ssl_ca_cert_file => ca_cert_path,
             :ssl_cert_key_file => key_path,
@@ -88,7 +88,7 @@ class Gallagher
                 'wsdl:sessionToken': { 'web:Value': gallagher_token},
                 'wsdl:id': {
                     'wsdl:PdfName': 'Unique ID',
-                    'wsdl:Value': "cardholder--#{vivant_id}"
+                    'wsdl:Value': vivant_id
                 },
                 'wsdl:pdfName': 'Unique ID'
             })
@@ -129,7 +129,7 @@ class Gallagher
                 'wsdl:sessionToken': { 'web:Value': gallagher_token},
                 'wsdl:id': {
                     'wsdl:PdfName': 'Unique ID',
-                    'wsdl:Value': "cardholder--#{vivant_id}"
+                    'wsdl:Value': vivant_id
                 },
                 'wsdl:cardType': 'C4 Base Building',
                 'wsdl:cardNumber': {
@@ -159,7 +159,7 @@ class Gallagher
             'wsdl:sessionToken': { 'web:Value': gallagher_token},
             'wsdl:id': {
                 'wsdl:PdfName': 'Unique ID',
-                'wsdl:Value': "cardholder--#{vivant_id}"
+                'wsdl:Value': vivant_id
             }
         })
         card_list = response.body[:cif_query_cards_by_cardholder_response][:cif_query_cards_by_cardholder_result]
@@ -171,18 +171,19 @@ class Gallagher
     end
 
     def has_cards(vivant_id)
-        return get_cards("cardholder--#{vivant_id}").empty?
+        return get_cards(vivant_id).empty?
     end
 
     def set_access(vivant_id, access_group, time_start, time_end)
         # Add five minutes to time start 
-        time_start = (Time.parse(time_start) - 10.minutes).iso8601
+        time_start = (Time.parse(time_start) - 10.minutes).utc.iso8601
+        time_end = (Time.parse(time_end) + 10.minutes).utc.iso8601
         begin
             response = @client.call(:cif_assign_temporary_access, message: {
                 'wsdl:sessionToken': { 'web:Value': gallagher_token},
                 'wsdl:id': {
                     'wsdl:PdfName': 'Unique ID',
-                    'wsdl:Value': "cardholder--#{vivant_id}"
+                    'wsdl:Value': vivant_id
                 },
                 'wsdl:accessGroup': access_group,
                 'wsdl:activationTime': {
@@ -194,10 +195,38 @@ class Gallagher
                     'wsdl:UseDefault':false
                 }
             })
-            return response.body[:connect_response][:connect_result][:value]
+            return response.http.code
+        rescue Savon::SOAPFault => e
+            return e.message
+        end
+    end
+
+
+    def set_pdf(vivant_id, pdf_name, pdf_value)
+        # Add five minutes to time start 
+        method_name = 'cif_update_cardholder_pdf'
+        begin
+            response = @client.call(method_name.to_sym,
+                message: {
+                'wsdl:sessionToken': { 'web:Value': gallagher_token},
+                'wsdl:id': {
+                    'wsdl:PdfName': 'Unique ID',
+                    'wsdl:Value': "cardholder--#{vivant_id}"
+                },
+                'wsdl:pdfValue': {
+                    :'@i:type' => 'web:PdfGeneralValue',
+                    :'@xmlns:i' => 'http://www.w3.org/2001/XMLSchema-instance',
+                    'web:Name': pdf_name,
+                    'web:Type': 'StrEnum',
+                    'web:Value': pdf_value
+                }
+            })
+            return response.body[(method_name + '_response').to_sym]
         rescue Savon::SOAPFault => e
             return e.message
         end
     end
 end
+
+
 

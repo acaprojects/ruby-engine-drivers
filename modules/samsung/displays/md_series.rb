@@ -98,7 +98,9 @@ DESC
         :net_standby => 0xB5,   # Keep NIC active in standby
         :eco_solution => 0xE6,  # Eco options (auto power off)
         :auto_power => 0x33,
-        :screen_split => 0xB2    # Tri / quad split (larger panels only)
+        :screen_split => 0xB2,  # Tri / quad split (larger panels only)
+        :software_version => 0x0E,
+        :serial_number => 0x0B
     }
     COMMAND.merge!(COMMAND.invert)
 
@@ -142,6 +144,49 @@ DESC
 
     def unmute
         power(true)
+    end
+
+    #check software version
+    def software_version?
+        do_send (:software_version)
+    end
+
+    def serial_number?
+        do_send(:serial_number)
+    end
+
+    # ability to send custom mdc commands via backoffice
+    def custom_mdc (command, value = "")
+        do_send(hex_to_byte(command).bytes[0], hex_to_byte(value).bytes)
+    end
+
+    def set_timer(enable = true, volume = 0)
+      # set the time on the display
+      time_cmd = 0xA7
+      time_request = []
+      t = Time.now
+      time_request << t.day
+      hour = t.hour
+      ampm = if hour > 12
+        hour = hour - 12
+        0 # pm
+      else
+        1 # am
+      end
+      time_request << hour
+      time_request << t.min
+      time_request << t.month
+      year = t.year.to_s(16).rjust(4, "0")
+      time_request << year[0..1].to_i(16)
+      time_request << year[2..-1].to_i(16)
+      time_request << ampm
+
+      do_send time_cmd, time_request
+
+      state = is_affirmative?(enable) ? '01' : '00'
+      vol = volume.to_s(16).rjust(2, '0')
+      #              on 03:45 am enabled  off 03:30 am enabled  on-everyday  ignore manual  off-everyday  ignore manual  volume 15  input HDMI   holiday apply
+      custom_mdc "A4", "03-2D-01 #{state}  03-1E-01   #{state}      01          80               01           80          #{vol}        21          01"
     end
 
     INPUTS = {
@@ -280,6 +325,25 @@ DESC
     end
 
 
+    #
+    # Colour control
+    [
+        :contrast,
+        :brightness,
+        :sharpness,
+        :colour,
+        :tint,
+        :red_gain,
+        :green_gain,
+        :blue_gain
+    ].each do |command|
+        define_method command do |val, **options|
+            val = in_range(val.to_i, 100)
+            do_send(command, val, options)
+        end
+    end
+
+
     protected
 
 
@@ -374,16 +438,21 @@ DESC
             when :screen_split
                 state = value[0]
                 self[:screen_split] = state.positive?
+            when :software_version
+                self[:software_version] = array_to_str(value)
+            when :serial_number
+                self[:serial_number] = array_to_str(value)
+            else
+                logger.debug "Samsung responded with ACK: #{value}"
             end
-            :success
 
+            byte_to_hex(response)
         when :nak
-            logger.debug "Samsung responded with NAK: #{value}"
+            logger.warn "Samsung responded with NAK: #{byte_to_hex(Array(value))}"
             :failed  # Failed response
-
         else
-            logger.debug "Samsung aborted with: #{byte_to_hex(array_to_str(value))}"
-            :abort   # unknown result
+            logger.warn "Samsung aborted with: #{byte_to_hex(Array(value))}"
+            byte_to_hex(response)
         end
     end
 
@@ -422,8 +491,11 @@ DESC
         data << (data.reduce(:+) & 0xFF)              # Add checksum
         data = [0xAA] + data                          # Add header
 
-        logger.debug { "Sending to Samsung: #{array_to_str(data)}" }
+        logger.debug { "Sending to Samsung: #{byte_to_hex(array_to_str(data))}" }
 
-        send(array_to_str(data), options)
+        send(array_to_str(data), options).catch do |reason|
+            disconnect
+            thread.reject(reason)
+        end
     end
 end

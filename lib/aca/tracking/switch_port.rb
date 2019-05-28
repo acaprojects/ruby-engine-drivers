@@ -186,7 +186,7 @@ class Aca::Tracking::SwitchPort < CouchbaseOrm::Base
 
             # Block the MAC address from being discovered for a period of time
             begin
-                self.class.set("temporarily_block_mac-#{self.mac_address}", ttl: temporary)
+                self.class.set("temporarily_block_mac-#{mac}", ttl: (temporary * 2))
                 ::Aca::Tracking::UserDevices.with_mac(mac).each do |user|
                     user.remove(mac)
                 end

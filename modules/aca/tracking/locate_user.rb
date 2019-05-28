@@ -31,7 +31,8 @@ class Aca::Tracking::LocateUser
         },
         ignore_hostnames: {},
         accept_hostnames: {},
-        temporary_macs: {}
+        temporary_macs: {},
+        ignore_users: {}
     })
 
     def on_load
@@ -62,17 +63,25 @@ class Aca::Tracking::LocateUser
             @cmx = nil
         end
 
+        self[:domain_controller_posted_at] ||= 0
+        self[:radius_controller_posted_at] ||= 0
+        self[:meraki_enabled] = @meraki_enabled
+        self[:meraki_failed_requests] ||= 0
+        self[:cmx_enabled] = @cmx_enabled
+        self[:cmx_failed_requests] ||= 0
+
         @temporary = Set.new((setting(:temporary_macs) || {}).values)
         @blacklist = Set.new((setting(:ignore_vendors) || {}).values)
         @ignore_hosts = Set.new((setting(:ignore_hostnames) || {}).values)
         @accept_hosts = Set.new((setting(:accept_hostnames) || {}).values)
         @ignore_byod_hosts = Set.new((setting(:ignore_byod_hosts) || {}).values)
         @accept_byod_hosts = Set.new((setting(:accept_byod_hosts) || {}).values)
+        @ignore_users = Set.new((setting(:ignore_users) || {}).values.map(&:downcase))
         @warnings ||= {}
         @filters ||= {}
     end
 
-    protect_method :clear_warnings, :warnings, :clean_up
+    protect_method :clear_warnings, :warnings, :clean_up, :macs_assigned_to, :check_ownership_of, :user_list, :remove_user
 
     # Provides a list of users and the black listed mac addresses
     # This allows one to update configuration of these machines
@@ -84,6 +93,47 @@ class Aca::Tracking::LocateUser
 
     def clear_filters
         @filters = {}
+    end
+
+    # Returns the mac addresses assigned to the current user
+    def macs_assigned_to(username)
+        {
+            wired: ::Aca::Tracking::UserDevices.for_user(username).macs,
+            wireless: ::Aca::Tracking::UserDevices.for_user("wifi_#{username}").macs,
+            byod: ::Aca::Tracking::UserDevices.for_user("byod_#{username}").macs
+        }
+    end
+
+    # Returns the username currently assigned to a MAC address
+    def check_ownership_of(mac_address)
+        ::Aca::Tracking::UserDevices.with_mac(mac_address).first&.username
+    end
+
+    # Get a list of all the users in the system
+    def user_list
+        usernames = Aca::Tracking::UserDevices.by_domain.to_a.map(&:username)
+        usernames.map! do |name|
+            if name.start_with?('wifi_') || name.start_with?('byod_')
+                name = name.split('_', 2)[1]
+            end
+            name
+        end
+        Set.new(usernames).to_a.sort
+    end
+
+    # deletes a user from the database
+    def remove_user(username, prefix = nil)
+        models = []
+        if prefix
+            models << ::Aca::Tracking::UserDevices.for_user("#{prefix}#{username}")
+        else
+            models << ::Aca::Tracking::UserDevices.for_user(username)
+            models << ::Aca::Tracking::UserDevices.for_user("wifi_#{username}")
+            models << ::Aca::Tracking::UserDevices.for_user("byod_#{username}")
+        end
+        models.select!(&:persisted?)
+        models.each(&:destroy)
+        "removed #{models.length} entries"
     end
 
     # Removes all the references to a particular vendors mac addresses
@@ -106,14 +156,18 @@ class Aca::Tracking::LocateUser
     def lookup(*ips)
         ttl = 10.minutes.ago.to_i
         ips.each do |ip, login, domain, hostname|
+            next if @ignore_users.include?(login.downcase)
             perform_lookup(ip, login, domain, hostname, ttl)
         end
+
+        self[:domain_controller_posted_at] = Time.now.to_i
     end
 
     # This is used to directly map MAC addresses to usernames
     # Typically from a RADIUS server like MS Network Policy Server
     def associate(*macs)
         macs.each do |mac, login, hostname|
+            next if @ignore_users.include?(login.downcase)
             begin
                 parts = login.split("\\")
                 login = parts[-1]
@@ -133,6 +187,8 @@ class Aca::Tracking::LocateUser
                 logger.print_error(e, "associating MAC #{mac} to #{login}")
             end
         end
+
+        self[:radius_controller_posted_at] = Time.now.to_i
     end
 
     # For use with shared desktop computers that anyone can log into
@@ -251,6 +307,12 @@ class Aca::Tracking::LocateUser
                             return
                         end
                     end
+                elsif resp.status != 404
+                    self[:meraki_failed_requests] += 1
+                    self[:meraki_failure] = {
+                        time: Time.now.to_i,
+                        code: resp.status
+                    }
                 end
             end
 
@@ -273,6 +335,12 @@ class Aca::Tracking::LocateUser
                             return
                         end
                     end
+                elsif resp.status != 204
+                    self[:cmx_failed_requests] += 1
+                    self[:cmx_failure] = {
+                        time: Time.now.to_i,
+                        code: resp.status
+                    }
                 end
             end
 
