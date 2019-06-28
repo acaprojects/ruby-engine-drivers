@@ -139,7 +139,7 @@ class Aca::GoogleRefreshBooking
         if CAN_LDAP
             @ldap_creds = setting(:ldap_creds)
             if @ldap_creds
-                encrypt = @ldap_creds[:encryption]
+                encrypt = @ldap_creds[:encryption] 
                 encrypt[:method] = encrypt[:method].to_sym if encrypt && encrypt[:method]
                 @tree_base = setting(:tree_base)
                 @ldap_user = @ldap_creds.delete :auth
@@ -161,8 +161,10 @@ class Aca::GoogleRefreshBooking
             @google_secret = setting(:google_client_secret)
             @google_redirect_uri = setting(:google_redirect_uri)
             @google_refresh_token = setting(:google_refresh_token)
+            @google_admin_email = setting(:google_admin_email)
             @google_scope = setting(:google_scope)
             @google_room = (setting(:google_room) || system.email)
+            @google_timezone = setting(:timezone) || "Sydney"
             # supports: SMTP, PSMTP, SID, UPN (user principle name)
             # NOTE:: Using UPN we might be able to remove the LDAP requirement
             @google_connect_type = (setting(:google_connect_type) || :SMTP).to_sym
@@ -211,6 +213,11 @@ class Aca::GoogleRefreshBooking
                 end
             end
         end
+
+        @google  = ::Google::Admin.new({
+            admin_email: nil,
+            domain: ENV['GOOGLE_DOMAIN']
+        })
 
         fetch_bookings
         schedule.clear
@@ -307,37 +314,8 @@ class Aca::GoogleRefreshBooking
     end
 
 
-
-    # ======================================
-    # ROOM BOOKINGS:
-    # ======================================
-    def fetch_bookings(*args)
-
-    
-        # @google_organiser_location = setting(:google_organiser_location)
-        # @google_client_id = setting(:google_client_id)
-        # @google_secret = setting(:google_client_secret)
-        # @google_redirect_uri = setting(:google_redirect_uri)
-        # @google_refresh_token = setting(:google_refresh_token)
-        # @google_room = (setting(:google_room) || system.email)
-
-        # client = OAuth2::Client.new(@google_client_id, @google_secret, {site: @google_site, token_url: @google_token_url})
-
-        options = {
-            client_id: @google_client_id,
-            client_secret: @google_secret,
-            scope: @google_scope,
-            redirect_uri: @google_redirect_uri,
-            refresh_token: @google_refresh_token,
-            grant_type: "refresh_token"
-        }
-
-        authorization = Google::Auth::UserRefreshCredentials.new options
-
-        #Calendar = Google::Apis::CalendarV3
-        calendar = Calendar::CalendarService.new
-        calendar.authorization = authorization
-        events = calendar.list_events(system.email)
+    def fetch_bookings(*args)    
+        events = @google.get_bookings(email: system.email, start_param: DateTime.now - 1.day, end_param: DateTime.now + 1.day ) 
         
         task {
             todays_bookings(events)
@@ -345,7 +323,6 @@ class Aca::GoogleRefreshBooking
             self[:today] = bookings
         }, proc { |e| logger.print_error(e, 'error fetching bookings') })
     end
-
 
     # ======================================
     # Meeting Helper Functions
@@ -510,82 +487,40 @@ class Aca::GoogleRefreshBooking
     # EWS Requests to occur in a worker thread
     # =======================================
     def make_google_booking(user_email: nil, subject: 'On the spot booking', room_email:, start_time:, end_time:, organizer:)
-
-        booking_data = {
-            subject: subject,
-            start: { dateTime: start_time, timeZone: "UTC" },
-            end: { dateTime: end_time, timeZone: "UTC" },
-            location: { displayName: @google_room, locationEmailAddress: @google_room },
-            attendees: [ emailAddress: { address: organizer, name: "User"}]
-        }.to_json
-
-        logger.debug "Creating booking:"
-        logger.debug booking_data
-
-        client = OAuth2::Client.new(@google_client_id, @google_secret, {site: @google_site, token_url: @google_token_url})
-
-        begin
-            access_token = client.client_credentials.get_token({
-                :scope => @google_scope
-                # :client_secret => ENV["GOOGLE_APP_CLIENT_SECRET"],
-                # :client_id => ENV["GOOGLE_APP_CLIENT_ID"]
-            }).token
-        rescue Exception => e
-            logger.debug e.message
-            logger.debug e.backtrace.inspect
-            raise e
+        if start_time > 1500000000000
+            start_time = (start_time.to_i / 1000).to_i
+            end_time = (end_time.to_i / 1000).to_i
+        else
+            start_time = start_time
+            end_time = end_time
         end
 
-
-        # Set out domain, endpoint and content type
-        domain = 'https://graph.microsoft.com'
-        host = 'graph.microsoft.com'
-        endpoint = "/v1.0/users/#{@google_room}/events"
-        content_type = 'application/json;odata.metadata=minimal;odata.streaming=true'
-
-        # Create the request URI and config
-        google_api = UV::HttpEndpoint.new(domain, tls_options: {host_name: host})
-        headers = {
-            'Authorization' => "Bearer #{access_token}",
-            'Content-Type' => content_type
-        }
-
-        # Make the request
-        response = google_api.post(path: "#{domain}#{endpoint}", body: booking_data, headers: headers).value
-
-        logger.debug response.body
-        logger.debug response.to_json
-        logger.debug JSON.parse(response.body)['id']
-
-        id = JSON.parse(response.body)['id']
+        results = @google.create_booking({
+                room_email: room_email,
+                start_param: start_time,
+                end_param: end_time,
+                subject: subject,
+                current_user: (organizer || nil),
+                timezone: ENV['TIMEZONE'] || 'Sydney'
+            })
+        
+        id = results['id']
 
         # Return the booking IDs
         id
     end
 
     def todays_bookings(events)
-        results = []
 
-        events.each{|event| 
-            start_time = ActiveSupport::TimeZone.new('UTC').parse(event.start_time).iso8601[0..18]
-            end_time = ActiveSupport::TimeZone.new('UTC').parse(event.end_time).iso8601[0..18]
+        logger.info "Got #{events.length} results!"
+        logger.info events.to_json
 
-            organiser = ""
-            
-            results.push({
-                :Start => start_time,
-                :End => end_time,
-                :Subject => event.title,
-                :owner => organiser
-                # :setup => 0,
-                # :breakdown => 0
-            })
-        }
-
-        logger.info "Got #{results.length} results!"
-        logger.info results.to_json
-
-        results
+        events
     end
-    # =======================================
+    
+    def log(data)
+        STDERR.puts data
+        logger.info data
+        STDERR.flush
+    end
 end

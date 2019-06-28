@@ -193,7 +193,7 @@ class Microsoft::Exchange
     end
 
     def get_bookings(email:, start_param:DateTime.now.midnight, end_param:(DateTime.now.midnight + 2.days), use_act_as: false)
-	begin
+    begin
         # Get all the room emails
         room_emails = Orchestrator::ControlSystem.all.to_a.map { |sys| sys.email }
         if [Integer, String].include?(start_param.class)
@@ -249,11 +249,11 @@ class Microsoft::Exchange
             bookings.push(booking)
         }
         bookings
-	rescue Exception => msg  
-	    STDERR.puts msg
-	    STDERR.flush
-	    return []
-	end
+    rescue Exception => msg  
+        STDERR.puts msg
+        STDERR.flush
+        return []
+    end
     end
 
     def create_booking(room_email:, start_param:, end_param:, subject:, description:nil, current_user:, attendees: nil, timezone:'Sydney', permission: 'impersonation', mailbox_location: 'user')
