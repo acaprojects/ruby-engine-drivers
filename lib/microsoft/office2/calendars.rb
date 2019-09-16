@@ -49,14 +49,14 @@ module Microsoft::Office2::Calendars
         end
         request = graph_request(request_method: 'post', endpoints: [endpoint], data: {name: name})
         check_response(request)
-        JSON.parse(request.body)['value']
+        JSON.parse(request.body)
     end
 
     def create_calendargroup(mailbox:, name:)
         endpoint = "/v1.0/users/#{mailbox}/calendarGroups"
         request = graph_request(request_method: 'post', endpoints: [endpoint], data: {name: name})
         check_response(request)
-        JSON.parse(request.body)['value']
+        JSON.parse(request.body)
     end
 
     
