@@ -172,6 +172,10 @@ class Cisco::CollaborationEndpoint::RoomKit < Cisco::CollaborationEndpoint::Room
             Instance_: (1..6),
             PresentationSource_: (1..2)
 
+    command 'UserInterface WebView Display' => :webview_display,
+            url: String
+    command 'UserInterface WebView Clear' => :webview_clear
+
     # Provide compatabilty with the router module for activating presentation.
     def switch_to(input)
         if [0, nil, :none, 'none', :blank, 'blank'].include? input
