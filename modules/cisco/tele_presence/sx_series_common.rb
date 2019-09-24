@@ -11,6 +11,11 @@ module Cisco::TelePresence::SxSeriesCommon
         @corporate_dir = setting(:use_corporate_directory) || false
         @default_source = setting(:presentation) || 3
         @count = 0
+
+        @dir_sync&.cancel
+        @dir_sync = schedule.cron("0 5 * * *") { extract_phonebook }
+
+        extract_phonebook if self[:connected] && !self[:complete_phonebook].present?
     end
 
     def connected
