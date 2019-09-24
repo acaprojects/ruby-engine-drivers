@@ -6,13 +6,13 @@ module Cisco::TelePresence::SxSeriesCommon
         self[:presentation] = :none
         on_update
     end
-    
+
     def on_update
         @corporate_dir = setting(:use_corporate_directory) || false
         @default_source = setting(:presentation) || 3
         @count = 0
     end
-    
+
     def connected
         super
 
@@ -33,7 +33,7 @@ module Cisco::TelePresence::SxSeriesCommon
             end
         end
     end
-    
+
     def disconnected
         super
 
@@ -114,17 +114,56 @@ module Cisco::TelePresence::SxSeriesCommon
         :ContactType => :Contact,
         :SearchField => :Name
     }
-    def search(text, opts = {})
+    def search(text, opts = {}, **options)
         opts[:PhonebookType] ||= 'Corporate' if @corporate_dir
         opts = SearchDefaults.merge(opts)
-        opts[:SearchString] = text
-        command(:phonebook, :search, params(opts), name: :phonebook, max_waits: 400)
+        opts[:SearchString] = text if text
+        command(:phonebook, :search, params(opts), **{name: :phonebook, max_waits: 100}.merge(options))
     end
-    
+
     def clear_search_results
         self[:search_results] = []
     end
 
+    def extract_phonebook
+        # [{
+        #     type: "folder",
+        #     id: "c_12",
+        #     name: "Name of the Folder",
+        #     contents: []
+        # }, ...]
+        @complete_phonebook = []
+        @current_folder = @complete_phonebook
+        @folder_queue = []
+
+        search(nil, {
+          ContactType: "Any",
+          Limit: 1000
+        }, name: :extract, max_waits: 10000).then do
+            loop do
+                @results.each do |entry|
+                  @current_folder << entry
+                  @folder_queue << entry if entry[:folder_id]
+                end
+                break if @folder_queue.empty?
+
+                folder = @folder_queue.shift
+                @current_folder = folder[:contents]
+
+                begin
+                    search(nil, {
+                      ContactType: "Any",
+                      FolderId: folder[:folder_id],
+                      Limit: 1000
+                    }, name: :extract, max_waits: 10000).value
+                rescue => error
+                    logger.print_error error, 'extracting phonebook data'
+                end
+            end
+
+            self[:complete_phonebook] = @complete_phonebook
+        end
+    end
 
     # Options include: auto, custom, equal, fullscreen, overlay, presentationlargespeaker, presentationsmallspeaker, prominent, single, speaker_full
     def layout(mode, target = :local)
@@ -201,11 +240,11 @@ module Cisco::TelePresence::SxSeriesCommon
         }), name: :video_output_mode)
         self[:video_output_mode] = video_mode
     end
-    
+
     def video_output_mode?
         status 'Video Monitors'
     end
-    
+
     # ====================
     # END Common functions
     # ====================
@@ -258,7 +297,7 @@ module Cisco::TelePresence::SxSeriesCommon
             command :FarEndControl, :Camera, :Move, "CallId:#{call_id} Value:#{req}"
         end
     end
-    
+
     def wake(**options)
         command :Standby, :Deactivate, params(options)
     end
@@ -276,7 +315,7 @@ module Cisco::TelePresence::SxSeriesCommon
     def sleep(**options)
         command :Standby, :Activate, params(options)
     end
-    
+
     ResponseType = {
         '**' => :complete,
         '*r' => :results,
@@ -300,7 +339,8 @@ module Cisco::TelePresence::SxSeriesCommon
                         @search_count += 1
                         @results[0][:count] = @search_count
                     end
-                    self[:search_results] = @results
+
+                    self[:search_results] = @results if command[:name] != :extract
                 elsif @call_status
                     @call_status[:id] = @last_call_id
                     self[:call_status] = @call_status
@@ -359,6 +399,17 @@ module Cisco::TelePresence::SxSeriesCommon
                     @results = []
                 end
 
+            when 'Folder'
+                contact = @results[result[3].to_i - 1]
+                if contact.nil?
+                    contact = {
+                        contents: []
+                    }
+                    @results << contact
+                end
+                entry = result[4].chop
+                contact[entry.underscore.to_sym] = result[5]
+
             when 'Contact'
                 contact = @results[result[3].to_i - 1]
                 if contact.nil?
@@ -413,7 +464,7 @@ module Cisco::TelePresence::SxSeriesCommon
                 end
             end
         when :video
-            case result[2] 
+            case result[2]
                 when 'Monitors:'
                     self[:video_output_mode] = result[3]
                 when 'Selfview'
@@ -430,4 +481,3 @@ module Cisco::TelePresence::SxSeriesCommon
         :ignore
     end
 end
-
