@@ -117,7 +117,7 @@ module Microsoft::Office2::Events
     
     # Return a booking with a matching icaluid
     def get_booking_by_icaluid(icaluid:, mailbox:, calendargroup_id: nil, calendar_id: nil)
-        query_params['$filter'] = "iCalUId eq '#{icaluid}'"
+        query_params =  {'$filter': "iCalUId eq '#{icaluid}'" }
         endpoint = "/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"
         response = graph_request(request_method: 'get', endpoints: [endpoint], query: query_params)
         check_response(response)
@@ -208,7 +208,6 @@ module Microsoft::Office2::Events
             rooms: [],
             subject: "Meeting",
             description: nil,
-            organizer: { name: nil, email: mailbox },
             attendees: [],
             recurrence: nil,
             is_private: false,
@@ -229,7 +228,6 @@ module Microsoft::Office2::Events
             timezone: options[:timezone],
             location: options[:location],
             attendees: options[:attendees].dup,
-            organizer: options[:organizer],
             recurrence: options[:recurrence],
             extensions: options[:extensions],
             is_private: options[:is_private]
@@ -240,7 +238,7 @@ module Microsoft::Office2::Events
             options[:extensions] = options[:extensions].dup
             options[:extensions]["@odata.type"] = "microsoft.graph.openTypeExtension"
             options[:extensions]["extensionName"] = "Com.Acaprojects.Extensions"
-            request = graph_request(request_method: 'patch', endpoints: ["/v1.0/users/#{mailbox}/events/#{booking_id}/extensions/Microsoft.OutlookServices.OpenTypeExtension.Com.Acaprojects.Extensions"], data: options[:extensions])
+            request = graph_request(request_method: 'put', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events/#{booking_id}/extensions/Microsoft.OutlookServices.OpenTypeExtension.Com.Acaprojects.Extensions"], data: options[:extensions])
             check_response(request)
             ext_data = JSON.parse(request.body)
         end
