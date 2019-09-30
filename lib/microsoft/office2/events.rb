@@ -115,6 +115,14 @@ module Microsoft::Office2::Events
         bookings_by_room
     end
     
+    # Return a booking with a matching icaluid
+    def get_booking_by_icaluid(icaluid:, mailbox:, calendargroup_id: nil, calendar_id: nil)
+        query_params['$filter'] = "iCalUId eq '#{icaluid}'"
+        endpoint = "/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"
+        response = graph_request(request_method: 'get', endpoints: [endpoint], query: query_params)
+        check_response(response)
+        JSON.parse(response.body)&.dig('value', 0)
+    end
     
     ##
     # Create an Office365 event in the mailbox passed in. This may have rooms and other 
