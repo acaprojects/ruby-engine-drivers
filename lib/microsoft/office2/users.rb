@@ -7,7 +7,7 @@ module Microsoft::Office2::Users
         query_params = { '$select': select }.compact
         response = graph_request(request_method: 'get', endpoints: ["/v1.0/users/#{id}"], query: query_params)
         check_response(response)
-        u = JSON.parse(request.body)
+        u = JSON.parse(response.body)
         Microsoft::Office2::User.new(client: self, user: u).user
     end
     
