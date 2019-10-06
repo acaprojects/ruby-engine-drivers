@@ -44,7 +44,7 @@ class Pexip::Management
     end
 
     MeetingTypes = ["conference", "lecture", "two_stage_dialing", "test_call"]
-    def new_meeting(name = nil, conf_alias = nil, type = "conference", pin: rand(9999), expire: true, **options)
+    def new_meeting(name = nil, conf_alias = nil, type = "conference", pin: rand(9999), expire: true, tag: 'pstn', **options)
         type = type.to_s.strip.downcase
         raise "unknown meeting type" unless MeetingTypes.include?(type)
 
@@ -55,7 +55,8 @@ class Pexip::Management
             name: name.to_s,
             service_type: type,
             pin: pin.to_s.rjust(4, '0'),
-            aliases: [{"alias" => conf_alias}]
+            aliases: [{"alias" => conf_alias}],
+            tag: tag
         }.merge(options).to_json, headers: {
             'Authorization' => [@username, @password],
             'Content-Type' => 'application/json',
