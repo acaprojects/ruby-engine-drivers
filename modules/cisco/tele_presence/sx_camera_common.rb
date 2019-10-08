@@ -20,7 +20,7 @@ module Cisco::TelePresence::SxCameraCommon
         self[:tilt_min] = -2500  # Down
         self[:tilt_center] = 0
 
-        self[:zoom_max] = 8500 # 65535
+        self[:zoom_max] = 11800
         self[:zoom_min] = 0
 
         super
@@ -31,6 +31,7 @@ module Cisco::TelePresence::SxCameraCommon
     def on_update
         @presets = setting(:presets) || {}
         self[:presets] = @presets.keys
+        self[:zoom_max] = 11800
 
         @index = setting(:camera_index) || 1
         self[:camera_index] = @index
