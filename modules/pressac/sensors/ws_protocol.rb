@@ -84,7 +84,7 @@ class Pressac::Sensors::WsProtocol
         case sensor[:deviceType]
         when 'Under-Desk-Sensor'
             id       = sensor[:deviceName]
-            occupied = sensor[:motionDetected] == "true"
+            occupied = sensor[:motionDetected] == true
             if occupied  
                 @busy_desks.add(id)
                 @free_desks.delete(id)
