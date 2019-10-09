@@ -81,9 +81,9 @@ class Pressac::Sensors::WsProtocol
         logger.debug { "received: #{raw_string}" }
         sensor = JSON.parse(raw_string, symbolize_names: true)
 
-        case sensor[:devicetype]
+        case sensor[:deviceType]
         when 'Under-Desk-Sensor'
-            id       = sensor[:devicename]
+            id       = sensor[:deviceName]
             occupied = sensor[:motionDetected] == "true"
             if occupied  
                 @busy_desks.add(id)
@@ -96,9 +96,12 @@ class Pressac::Sensors::WsProtocol
             self[:free_desks] = @free_desks.to_a
             self[:all_desks]  = self[:all_desks] | [id]
             self[:desk][id]  = {
+                id:      sensor[:deviceId],
                 motion:  occupied,
-                voltage: sensor[:supplyVoltage],
-                id:      sensor[:deviceid]
+                voltage: sensor[:supplyVoltage][:value],
+                gatewayName: sensor[:gatewayName],
+                location: sensor[:location],
+                timestamp: sensor[:timestamp]
             }
         when 'CO2-Temperature-and-Humidity'
             self[:environment][sensor[:devicename]] = {
