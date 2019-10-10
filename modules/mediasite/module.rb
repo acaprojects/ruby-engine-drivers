@@ -49,24 +49,30 @@ class Mediasite::Module
     def get_request(url)
         req_url = url
         logger.debug(req_url)
-        uri = URI(req_url)
-        req = Net::HTTP::Get.new(uri)
-        req.basic_auth(setting(:username), setting(:password))
-        req['sfapikey'] = setting(:api_key)
-        http = Net::HTTP.new(uri.hostname, uri.port)
-        http.use_ssl = true
-        JSON.parse(http.request(req).body)
+        
+        task {
+            uri = URI(req_url)
+            req = Net::HTTP::Get.new(uri)
+            req.basic_auth(setting(:username), setting(:password))
+            req['sfapikey'] = setting(:api_key)
+            http = Net::HTTP.new(uri.hostname, uri.port)
+            http.use_ssl = true
+            JSON.parse(http.request(req).body)
+        }.value
     end
 
     def post_request(url)
         req_url = setting(:url) + url
-        uri = URI(req_url)
-        req = Net::HTTP::Post.new(uri)
-        req.basic_auth(setting(:username), setting(:password))
-        req['sfapikey'] = setting(:api_key)
-        http = Net::HTTP.new(uri.hostname, uri.port)
-        http.use_ssl = true
-        http.request(req)
+        
+        task {
+            uri = URI(req_url)
+            req = Net::HTTP::Post.new(uri)
+            req.basic_auth(setting(:username), setting(:password))
+            req['sfapikey'] = setting(:api_key)
+            http = Net::HTTP.new(uri.hostname, uri.port)
+            http.use_ssl = true
+            http.request(req)
+        }.value
         :success
     end
 
