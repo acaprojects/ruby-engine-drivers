@@ -83,26 +83,27 @@ class Pressac::Sensors::WsProtocol
 
         case sensor[:deviceType]
         when 'Under-Desk-Sensor'
-            id       = sensor[:deviceName]
-            occupied = sensor[:motionDetected] == true
+            sensor_name = sensor[:deviceName]
+            gateway     = sensor[:gatewayName]
+            occupied    = sensor[:motionDetected] == true
             if occupied  
-                @busy_desks.add(id)
-                @free_desks.delete(id)
+                @busy_desks.add(sensor_name)
+                @free_desks.delete(sensor_name)
             else
-                @busy_desks.delete(id)
-                @free_desks.add(id)
+                @busy_desks.delete(sensor_name)
+                @free_desks.add(sensor_name)
             end
             self[:busy_desks] = @busy_desks.to_a
             self[:free_desks] = @free_desks.to_a
-            self[:all_desks]  = self[:all_desks] | [id]
-            self[:desk][id]  = {
+            self[:all_desks]  = self[:all_desks] | [sensor_name]
+            self[:gateways][gateway][sensor_name]  = {
                 id:      sensor[:deviceId],
                 motion:  occupied,
                 voltage: sensor[:supplyVoltage][:value],
-                gatewayName: sensor[:gatewayName],
                 location: sensor[:location],
-                timestamp: sensor[:timestamp]
-            }
+                timestamp: sensor[:timestamp],
+                gateway: gateway
+            } if gateway
         when 'CO2-Temperature-and-Humidity'
             self[:environment][sensor[:devicename]] = {
                 temp:           sensor[:temperature],
@@ -119,9 +120,9 @@ class Pressac::Sensors::WsProtocol
             busy_desks:  self[:busy_desks],
             free_desks:  self[:free_desks],
             all_desks:   self[:all_desks],
-            desk:        self[:desk],
+            gateways:    self[:gateways],
             last_update: self[:last_update]
-    }
+        }
         define_setting(:status, status)
     end
 
