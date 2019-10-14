@@ -17,8 +17,8 @@ module Pressac::Sensors; end
 class Pressac::Sensors::WsProtocol
     include ::Orchestrator::Constants
 
-    descriptive_name 'Pressac Sensors via NR websocket'
-    generic_name :Sensors
+    descriptive_name 'Pressac Sensors via websocket (local Node-RED)'
+    generic_name :Websocket
     tcp_port 1880
     wait_response false
     default_settings({
@@ -27,7 +27,7 @@ class Pressac::Sensors::WsProtocol
 
     def on_load
         status = setting(:status) || {}
-        self[:desk]       = status[:desk]       || {}   # A hash of all desk names to their sensor values: { desk_name: {data: value, ..}, .. }
+        #self[:gateways]   = status[:gateways]   || {}   # A hash of all gateway names => sensor names => {data: value, ..}
         self[:busy_desks] = status[:busy_desks] || []   # Array of desk names
         self[:free_desks] = status[:free_desks] || []
         self[:all_desks]  = status[:all_desks]  || []
@@ -83,8 +83,8 @@ class Pressac::Sensors::WsProtocol
 
         case sensor[:deviceType]
         when 'Under-Desk-Sensor'
-            sensor_name = sensor[:deviceName]
-            gateway     = sensor[:gatewayName]
+            sensor_name = sensor[:deviceName].to_sym
+            gateway     = sensor[:gatewayName].to_sym
             occupied    = sensor[:motionDetected] == true
             if occupied  
                 @busy_desks.add(sensor_name)
@@ -96,7 +96,7 @@ class Pressac::Sensors::WsProtocol
             self[:busy_desks] = @busy_desks.to_a
             self[:free_desks] = @free_desks.to_a
             self[:all_desks]  = self[:all_desks] | [sensor_name]
-            self[:gateways][gateway][sensor_name]  = {
+            self[gateway][sensor_name]  = {
                 id:      sensor[:deviceId],
                 motion:  occupied,
                 voltage: sensor[:supplyVoltage][:value],
