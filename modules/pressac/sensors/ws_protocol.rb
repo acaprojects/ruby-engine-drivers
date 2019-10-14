@@ -17,8 +17,8 @@ module Pressac::Sensors; end
 class Pressac::Sensors::WsProtocol
     include ::Orchestrator::Constants
 
-    descriptive_name 'Pressac Sensors via NR websocket'
-    generic_name :Sensors
+    descriptive_name 'Pressac Sensors via websocket (local Node-RED)'
+    generic_name :Websocket
     tcp_port 1880
     wait_response false
     default_settings({
@@ -27,7 +27,7 @@ class Pressac::Sensors::WsProtocol
 
     def on_load
         status = setting(:status) || {}
-        self[:desk]       = status[:desk]       || {}   # A hash of all desk names to their sensor values: { desk_name: {data: value, ..}, .. }
+        #self[:gateways]   = status[:gateways]   || {}   # A hash of all gateway names => sensor names => {data: value, ..}
         self[:busy_desks] = status[:busy_desks] || []   # Array of desk names
         self[:free_desks] = status[:free_desks] || []
         self[:all_desks]  = status[:all_desks]  || []
@@ -83,26 +83,27 @@ class Pressac::Sensors::WsProtocol
 
         case sensor[:deviceType]
         when 'Under-Desk-Sensor'
-            id       = sensor[:deviceName]
-            occupied = sensor[:motionDetected] == true
+            sensor_name = sensor[:deviceName].to_sym
+            gateway     = sensor[:gatewayName].to_sym
+            occupied    = sensor[:motionDetected] == true
             if occupied  
-                @busy_desks.add(id)
-                @free_desks.delete(id)
+                @busy_desks.add(sensor_name)
+                @free_desks.delete(sensor_name)
             else
-                @busy_desks.delete(id)
-                @free_desks.add(id)
+                @busy_desks.delete(sensor_name)
+                @free_desks.add(sensor_name)
             end
             self[:busy_desks] = @busy_desks.to_a
             self[:free_desks] = @free_desks.to_a
-            self[:all_desks]  = self[:all_desks] | [id]
-            self[:desk][id]  = {
+            self[:all_desks]  = self[:all_desks] | [sensor_name]
+            self[gateway][sensor_name]  = {
                 id:      sensor[:deviceId],
                 motion:  occupied,
                 voltage: sensor[:supplyVoltage][:value],
-                gatewayName: sensor[:gatewayName],
                 location: sensor[:location],
-                timestamp: sensor[:timestamp]
-            }
+                timestamp: sensor[:timestamp],
+                gateway: gateway
+            } if gateway
         when 'CO2-Temperature-and-Humidity'
             self[:environment][sensor[:devicename]] = {
                 temp:           sensor[:temperature],
@@ -119,9 +120,9 @@ class Pressac::Sensors::WsProtocol
             busy_desks:  self[:busy_desks],
             free_desks:  self[:free_desks],
             all_desks:   self[:all_desks],
-            desk:        self[:desk],
+            gateways:    self[:gateways],
             last_update: self[:last_update]
-    }
+        }
         define_setting(:status, status)
     end
 
