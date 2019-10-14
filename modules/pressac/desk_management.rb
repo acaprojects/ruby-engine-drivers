@@ -55,7 +55,7 @@ class ::Pressac::DeskManagement
         @zones.each do |zone,gateways|
             gateways.each do |gateway|
                 # Populate our initial status with the current data from all known sensors
-                update_zone(zone, gateway)
+                update_zone(zone, gateway.to_sym)
             end
         end
         
@@ -63,36 +63,42 @@ class ::Pressac::DeskManagement
         device,index = @hub.split('_')
         @zones.each do |zone,gateways|
             gateways.each do |gateway|
-                @subscriptions << system.subscribe(device, index.to_i, gateway) do |notification|
-                    update_zone(zone, gateway, notification)
+                @subscriptions << system.subscribe(device, index.to_i, gateway.to_sym) do |notification|
+                    update_zone(zone, gateway.to_sym)
                 end
             end
         end
     end
 
     # Update one zone with the current data from one gateway
-    def update_zone(zone, gateway, notification=nil)
+    def update_zone(zone, gateway)
         # The below values reflect just this ONE gateway, not neccesarily the whole zone
-        all_desks  = id system[@hub][gateway][:all_desks]
-        busy_desks = id system[@hub][gateway][:busy_desks]
+        begin
+            gateway_data = system[@hub][:gateways][gateway] || {}
+        rescue
+            gateway_data = {}
+        end
+        logger.debug "#{zone}: #{gateway_data}"
+        all_desks  = id gateway_data[:all_desks]
+        busy_desks = id gateway_data[:busy_desks]
         free_desks = all_desks - busy_desks
 
-        # add the desks from this sensor to the zone's list and count of all ids
-        self[zone+':desk_ids']   = self[zone] | all_desks
-        self[zone+':desk_count'] = self[zone+':desk_ids'].count
-        self[:last_update] = Time.now.in_time_zone($TZ).to_s
 
-        # determine desks that changed state, and track time of change
-        previously_free = notification.old_value
+        # determine desks that changed state by comparing to current status (which has not yet been updated)
+        #previously_free = self[zone] - free_desks
         previously_busy = all_desks  - previously_free
         newly_free      = free_desks - previously_free
         newly_busy      = busy_desks - previously_busy
         logger.debug "Newly free: #{newly_free}\nNewly busy: #{newly_busy}"
 
+        
         newly_free.each { |d| desks_pending_free[d] ||= Time.now.to_i; desks_pending_busy.delete(d) }
         newly_busy.each { |d| desks_pending_busy[d] ||= Time.now.to_i; desks_pending_free.delete(d) }
         self[:newly_free] = newly_free
         self[:newly_busy] = newly_busy
+        self[zone+':desk_ids']   = self[zone] | all_desks
+        self[zone+':desk_count'] = self[zone+':desk_ids'].count
+        self[:last_update] = Time.now.in_time_zone($TZ).to_s
     end
 
     def expose_desk_status(zone, busy_desks, free_desks)
