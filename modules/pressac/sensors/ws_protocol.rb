@@ -27,7 +27,7 @@ class Pressac::Sensors::WsProtocol
 
     def on_load
         status = setting(:status) || {}
-        #self[:gateways]   = status[:gateways]   || {}   # A hash of all gateway names => sensor names => {data: value, ..}
+        self[:gateways]   = status[:gateways]   || {}   # A hash of all gateway names => sensor names => {data: value, ..}
         self[:busy_desks] = status[:busy_desks] || []   # Array of desk names
         self[:free_desks] = status[:free_desks] || []
         self[:all_desks]  = status[:all_desks]  || []
@@ -96,14 +96,18 @@ class Pressac::Sensors::WsProtocol
             self[:busy_desks] = @busy_desks.to_a
             self[:free_desks] = @free_desks.to_a
             self[:all_desks]  = self[:all_desks] | [sensor_name]
-            self[gateway][sensor_name]  = {
-                id:      sensor[:deviceId],
-                motion:  occupied,
-                voltage: sensor[:supplyVoltage][:value],
-                location: sensor[:location],
-                timestamp: sensor[:timestamp],
-                gateway: gateway
-            } if gateway
+            if gateway
+                self[:gateways][gateway] ||= {}
+                self[:gateways][gateway][sensor_name]  = {
+                    id:      sensor[:deviceId],
+                    motion:  occupied,
+                    voltage: sensor[:supplyVoltage][:value],
+                    location: sensor[:location],
+                    timestamp: sensor[:timestamp],
+                    gateway: gateway
+                }
+                self[gateway] = Time.now.to_i
+            end
         when 'CO2-Temperature-and-Humidity'
             self[:environment][sensor[:devicename]] = {
                 temp:           sensor[:temperature],
