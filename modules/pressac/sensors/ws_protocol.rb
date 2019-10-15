@@ -27,13 +27,13 @@ class Pressac::Sensors::WsProtocol
 
     def on_load
         status = setting(:status) || {}
-        self[:busy_desks] = status[:busy_desks] || []   # Array of desk names
-        self[:free_desks] = status[:free_desks] || []
-        self[:all_desks]  = status[:all_desks]  || []
+        self[:busy_desks] = status[:busy_desks] || {}   # hash of gateway names => Array of desk names
+        self[:free_desks] = status[:free_desks] || {}
+        self[:all_desks]  = status[:all_desks]  || {}
         self[:last_update] = status[:last_update]  || "Never"
         self[:environment] = {}                         # Environment sensor values (temp, humidity)
-        @busy_desks = self[:busy_desks].to_set
-        @free_desks = self[:free_desks].to_set
+        @busy_desks = self[:busy_desks]
+        @free_desks = self[:free_desks]
         
         on_update
     end
@@ -48,6 +48,27 @@ class Pressac::Sensors::WsProtocol
     end
 
     def disconnected
+    end
+
+    def mock(sensor, occupied)
+        gateway = which_gateway(sensor)
+        self[:gateways][gateway][:busy_desks] = occuupied ? self[:gateways][gateway][:busy_desks] | [sensor] : self[:gateways][gateway][:busy_desks] -  sensor
+        self[:gateways][gateway][:free_desks] = occuupied ? self[:gateways][gateway][:free_desks] -  sensor  : self[:gateways][gateway][:free_desks] | [sensor]
+        self[:gateways][gateway][sensor_name] = self[gateway] = {
+            id:        'mock_data'
+            name:      sensor,
+            motion:    occupied,
+            voltage:   '3.0',
+            location:  nil,
+            timestamp: Time.now.to_s,
+            gateway:   gateway
+        }
+    end
+
+    def which_gateway(sensor)
+        self[:gateways]&.each do |g,sensors|
+            return g if sensors.include? sensor
+        end
     end
 
 
@@ -80,33 +101,41 @@ class Pressac::Sensors::WsProtocol
         logger.debug { "received: #{raw_string}" }
         sensor = JSON.parse(raw_string, symbolize_names: true)
 
-        case sensor[:deviceType]
+        case (sensor[:deviceType] || sensor[:devicetype])
         when 'Under-Desk-Sensor'
-            sensor_name = sensor[:deviceName].to_sym
-            gateway     = sensor[:gatewayName].to_sym
-            occupied    = sensor[:motionDetected] == true
-            if occupied  
-                @busy_desks.add(sensor_name)
-                @free_desks.delete(sensor_name)
+            # Variations in captialisation of sensor's key names exist amongst different firmware versions
+            sensor_name = sensor[:deviceName].to_sym  || sensor[:devicename].to_sym
+            gateway     = sensor[:gatewayName].to_sym || 'unknown_gateway'.to_sym
+            occupancy   = sensor[:motionDetected] == true
+
+            @free_desks[gateway]     ||= [].to_set
+            @busy_desks[gateway]     ||= [].to_set
+            self[:gateways][gateway] ||= {}
+            
+            if occupancy
+                @busy_desks[gateway].add(sensor_name)
+                @free_desks[gateway].delete(sensor_name)
             else
-                @busy_desks.delete(sensor_name)
-                @free_desks.add(sensor_name)
+                @busy_desks[gateway].delete(sensor_name)
+                @free_desks[gateway].add(sensor_name)
             end
-            self[:busy_desks] = @busy_desks.to_a
-            self[:free_desks] = @free_desks.to_a
-            self[:all_desks]  = self[:all_desks] | [sensor_name]
-            if gateway
-                self[gateway] ||= {}
-                self[gateway][sensor_name]  = {
-                    id:      sensor[:deviceId],
-                    motion:  occupied,
-                    voltage: sensor[:supplyVoltage][:value],
-                    location: sensor[:location],
-                    timestamp: sensor[:timestamp],
-                    gateway: gateway
-                }
-                signal_status(gateway)
-            end
+            self[:gateways][gateway][:busy_desks] = @busy_desks[gateway].to_a
+            self[:gateways][gateway][:free_desks] = @free_desks[gateway].to_a
+            self[:gateways][gateway][:all_desks]  = @busy_desks[gateway] + @free_desks[gateway]
+            
+            # store the new sensor data under the gateway name (self[:gateways][gateway][sensor_name]), 
+            # AND as the latest notification from this gateway (self[gateway]) (for the purpose of the DeskManagent logic upstream)
+            self[:gateways][gateway][sensor_name] = self[gateway] = {
+                id:        sensor[:deviceId] || sensor[:deviceid],
+                name:      sensor_name,
+                motion:    occupancy,
+                voltage:   sensor[:supplyVoltage][:value] || sensor[:supplyVoltage],
+                location:  sensor[:location],
+                timestamp: sensor[:timestamp],
+                gateway:   gateway
+            }
+            #signal_status(gateway)
+            self[:gateways][gateway][:last_update] = sensor[:timestamp]
         when 'CO2-Temperature-and-Humidity'
             self[:environment][sensor[:devicename]] = {
                 temp:           sensor[:temperature],
