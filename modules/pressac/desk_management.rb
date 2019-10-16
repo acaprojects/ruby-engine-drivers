@@ -52,9 +52,9 @@ class ::Pressac::DeskManagement
         
         saved_status = setting('zzz_status')
         if saved_status
-            @saved_status.keys.each { |key, value| self[key] = value }
+            saved_status&.each { |key, value| self[key] = value }
         else
-            @zones.keys.each do |zone_id|
+            @zones.keys&.each do |zone_id|
                 self[zone_id] = []
                 self[zone_id+':desk_ids']       = []
                 self[zone_id+':occupied_count'] = 0
