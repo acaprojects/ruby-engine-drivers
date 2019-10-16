@@ -114,11 +114,11 @@ class Pressac::Sensors::WsProtocol
             self[:gateways][gateway] ||= {}
             
             if occupancy
-                @busy_desks[gateway].add(sensor_name)
-                @free_desks[gateway].delete(sensor_name)
+                @busy_desks[gateway] | [sensor_name]
+                @free_desks[gateway] - [sensor_name]
             else
-                @busy_desks[gateway].delete(sensor_name)
-                @free_desks[gateway].add(sensor_name)
+                @busy_desks[gateway] - [sensor_name]
+                @free_desks[gateway] | [sensor_name]
             end
             self[:gateways][gateway][:busy_desks] = @busy_desks[gateway].to_a
             self[:gateways][gateway][:free_desks] = @free_desks[gateway].to_a
