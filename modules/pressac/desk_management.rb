@@ -50,18 +50,14 @@ class ::Pressac::DeskManagement
         @desks_pending_busy ||= {}
         @desks_pending_free ||= {}
         
-        @zones.keys.each do |zone_id|
-            if setting('purge_data')
-                self[zone_id] = []
-                self[zone_id+':desk_ids']       = []
-                self[zone_id+':occupied_count'] = 0
-                self[zone_id+':desk_count']     = 0
-            else
-                self[zone_id] ||= []                     # occupied (busy) desk ids in this zone
-                self[zone_id+':desk_ids']       ||= []   # all desk ids in this zone
-                self[zone_id+':occupied_count'] ||= 0
-                self[zone_id+':desk_count']     ||= 0
-            end
+        saved_status = setting('zzz_status')
+        if saved_status
+            @saved_status.keys.each { |key, value| self[key] = value }
+        else
+            self[zone_id] = []
+            self[zone_id+':desk_ids']       = []
+            self[zone_id+':occupied_count'] = 0
+            self[zone_id+':desk_count']     = 0
         end
 
         @zones.each do |zone,gateways|
@@ -184,6 +180,23 @@ class ::Pressac::DeskManagement
     def expose_desk_status(desk_name, zone, occupied)
         self[zone] = occupied ? (self[zone] | [desk_name]) : (self[zone] - desk_name)
         self[zone+':occupied_count'] = self[zone].count
+        persist_current_status
+    end
+
+    def persist_current_status
+        status = {
+            desks_pending_busy:  self[:busy_desks],
+            desks_pending_free:  self[:free_desks],
+            last_update:         self[:last_update],
+        }
+
+        @zones.each do |zone, gateways|
+            status[zone]                   = self[zone]
+            status[zone+':desk_ids']       = self[zone+':desk_ids']
+            status[zone+':desk_count']     = self[zone+':desk_count']
+            status[zone+':occupied_count'] = self[zone+':occupied_count']
+        end
+        define_setting(:zzz_status, status)
     end
 
     # Transform an array of Sensor Names to SVG Map IDs, IF the user has specified a mapping in settings(sensor_to_desk_mappings)
