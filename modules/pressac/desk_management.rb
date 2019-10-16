@@ -54,10 +54,12 @@ class ::Pressac::DeskManagement
         if saved_status
             @saved_status.keys.each { |key, value| self[key] = value }
         else
-            self[zone_id] = []
-            self[zone_id+':desk_ids']       = []
-            self[zone_id+':occupied_count'] = 0
-            self[zone_id+':desk_count']     = 0
+            @zones.keys.each do |zone_id|
+                self[zone_id] = []
+                self[zone_id+':desk_ids']       = []
+                self[zone_id+':occupied_count'] = 0
+                self[zone_id+':desk_count']     = 0
+            end
         end
 
         @zones.each do |zone,gateways|
