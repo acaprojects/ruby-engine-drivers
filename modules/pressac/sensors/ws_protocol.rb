@@ -30,6 +30,7 @@ class Pressac::Sensors::WsProtocol
         self[:busy_desks] = status[:busy_desks] || {}   # hash of gateway names => Array of desk names
         self[:free_desks] = status[:free_desks] || {}
         self[:all_desks]  = status[:all_desks]  || {}
+        self[:gateways]   = status[:gateways]  || {}
         self[:last_update] = status[:last_update]  || "Never"
         self[:environment] = {}                         # Environment sensor values (temp, humidity)
         @busy_desks = self[:busy_desks]
@@ -55,7 +56,7 @@ class Pressac::Sensors::WsProtocol
         self[:gateways][gateway][:busy_desks] = occuupied ? self[:gateways][gateway][:busy_desks] | [sensor] : self[:gateways][gateway][:busy_desks] -  sensor
         self[:gateways][gateway][:free_desks] = occuupied ? self[:gateways][gateway][:free_desks] -  sensor  : self[:gateways][gateway][:free_desks] | [sensor]
         self[:gateways][gateway][sensor_name] = self[gateway] = {
-            id:        'mock_data'
+            id:        'mock_data',
             name:      sensor,
             motion:    occupied,
             voltage:   '3.0',

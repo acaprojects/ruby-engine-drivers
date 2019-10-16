@@ -51,10 +51,17 @@ class ::Pressac::DeskManagement
         @desks_pending_free ||= {}
         
         @zones.keys.each do |zone_id|
-            self[zone_id] ||= []                     # occupied (busy) desk ids in this zone
-            self[zone_id+':desk_ids']       ||= []   # all desk ids in this zone
-            self[zone_id+':occupied_count'] ||= 0
-            self[zone_id+':desk_count']     ||= 0
+            if setting('purge_data')
+                self[zone_id] = []
+                self[zone_id+':desk_ids']       = []
+                self[zone_id+':occupied_count'] = 0
+                self[zone_id+':desk_count']     = 0
+            else
+                self[zone_id] ||= []                     # occupied (busy) desk ids in this zone
+                self[zone_id+':desk_ids']       ||= []   # all desk ids in this zone
+                self[zone_id+':occupied_count'] ||= 0
+                self[zone_id+':desk_count']     ||= 0
+            end
         end
 
         @zones.each do |zone,gateways|
@@ -95,7 +102,7 @@ class ::Pressac::DeskManagement
     def update_zone(zone, gateway)
         # The below values reflect just this ONE gateway, not neccesarily the whole zone
         begin
-            gateway_data = system[@hub][:gateways][gateway]
+            gateway_data = system[@hub][:gateways][gateway] || {}
         rescue
             gateway_data = {}
         end
@@ -113,7 +120,7 @@ class ::Pressac::DeskManagement
     # Update desks_pending_busy/free hashes with a single sensor's data recieved from a notification
     def update_desk(notification)
         current_state  = notification.value
-        previous_state = notification.old_value
+        previous_state = notification.old_value || {motion: false}
         # sample_state = {
         #     id:        string,
         #     name:      string,
@@ -122,19 +129,38 @@ class ::Pressac::DeskManagement
         #     location:  string,
         #     timestamp: string,
         #     gateway:   string }
-        d = id [notification.value[:name]]
+        desk = notification.value
+        desk_name = id([desk[:name]])&.first
+
+        logger.debug "NOTIFICATION FROM DESK SENSOR============"
+        logger.debug notification.value
+        logger.debug desk[:gateway]
 
         if current_state[:motion] && !previous_state[:motion]
-            @desks_pending_busy[d] ||= { timestamp: Time.now.to_i, gateway: d[:gateway]}
-            @desks_pending_free.delete(d)
+            @desks_pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
+            @desks_pending_free.delete(desk_name)
         elsif !current_state[:motion] && previous_state[:motion]
-            @desks_pending_free[d] ||= { timestamp: Time.now.to_i, gateway: d[:gateway]}
-            @desks_pending_busy.delete(d)
+            @desks_pending_free[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
+            @desks_pending_busy.delete(desk_name)
         end
         
-        self[zone+':desk_ids']   = self[zone] | [d]
-        self[zone+':desk_count'] = self[zone+':desk_ids'].count
-        self[:last_update] = Time.now.in_time_zone($TZ).to_s
+        zone = which_zone(desk[:gateway])
+        logger.debug "=======VALUE FOR ZONE: #{zone}, #{desk[:gateway]}"
+        if zone
+            zone = zone.to_s
+            self[zone+':desk_ids']   = self[zone+':desk_ids'] | [desk_name]
+            self[zone+':desk_count'] = self[zone+':desk_ids'].count
+            self[:last_update] = Time.now.in_time_zone($TZ).to_s
+        end
+    end
+
+    # return the (first) zone that a gateway is in
+    def which_zone(gateway)
+        @zones&.each do |zone, gateways|
+            logger.debug "#{zone}: #{gateways}"
+            return zone if gateways.include? gateway.to_s
+        end
+        nil
     end
 
     def determine_desk_status
@@ -151,18 +177,13 @@ class ::Pressac::DeskManagement
                 @desks_pending_free.delete(desk)
             end
         end
+        self[:desks_pending_busy] = @desks_pending_busy
+        self[:desks_pending_free] = @desks_pending_free
     end
 
     def expose_desk_status(desk_name, zone, occupied)
         self[zone] = occupied ? (self[zone] | [desk_name]) : (self[zone] - desk_name)
         self[zone+':occupied_count'] = self[zone].count
-    end
-
-    # return the (first) zone that a gateway is in
-    def which_zone(gateway)
-        @zones&.each do |z,gateways|
-            return z if gateways.include? gateway
-        end
     end
 
     # Transform an array of Sensor Names to SVG Map IDs, IF the user has specified a mapping in settings(sensor_to_desk_mappings)
