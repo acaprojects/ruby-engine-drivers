@@ -180,7 +180,7 @@ class ::Pressac::DeskManagement
     end
 
     def expose_desk_status(desk_name, zone, occupied)
-        +        self[zone] = occupied ? (self[zone] | [desk_name]) : (self[zone] - [desk_name])
+        self[zone] = occupied ? (self[zone] | [desk_name]) : (self[zone] - [desk_name])
         self[zone+':occupied_count'] = self[zone].count
         persist_current_status
     end
