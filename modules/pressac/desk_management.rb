@@ -134,22 +134,23 @@ class ::Pressac::DeskManagement
         logger.debug notification.value
         logger.debug desk[:gateway]
 
-        if current_state[:motion] && !previous_state[:motion]
+        if current_state[:motion]
             @desks_pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
             @desks_pending_free.delete(desk_name)
-        elsif !current_state[:motion] && previous_state[:motion]
+        elsif !current_state[:motion]
             @desks_pending_free[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
             @desks_pending_busy.delete(desk_name)
         end
         
         zone = which_zone(desk[:gateway])
-        logger.debug "=======VALUE FOR ZONE: #{zone}, #{desk[:gateway]}"
         if zone
             zone = zone.to_s
             self[zone+':desk_ids']   = self[zone+':desk_ids'] | [desk_name]
             self[zone+':desk_count'] = self[zone+':desk_ids'].count
             self[:last_update] = Time.now.in_time_zone($TZ).to_s
         end
+        self[:desks_pending_busy] = @desks_pending_busy
+        self[:desks_pending_free] = @desks_pending_free
     end
 
     # return the (first) zone that a gateway is in
