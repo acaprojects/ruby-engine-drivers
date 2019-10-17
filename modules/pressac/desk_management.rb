@@ -43,8 +43,8 @@ class ::Pressac::DeskManagement
         @zones    = setting('zone_to_gateway_mappings') || {}
         @desk_ids = setting('sensor_name_to_desk_mappings') || {}
         # convert '1m2s' to '62'
-        @busy_delay = UV::Scheduler.parse_duration(setting('delaty_until_shown_as_busy') || '0m') / 1000
-        @free_delay = UV::Scheduler.parse_duration(setting('delaty_until_shown_as_free') || '0m') / 1000
+        @busy_delay = UV::Scheduler.parse_duration(setting('delay_until_shown_as_busy') || '0m') / 1000
+        @free_delay = UV::Scheduler.parse_duration(setting('delay_until_shown_as_free') || '0m') / 1000
 
         # Initialize desk tracking variables to [] or 0, but keep existing values if they exist (||=)
         @desks_pending_busy ||= {}
@@ -128,7 +128,7 @@ class ::Pressac::DeskManagement
         #     timestamp: string,
         #     gateway:   string }
         desk = notification.value
-        desk_name = id([desk[:name]])&.first
+        desk_name = id([desk[:name].to_sym])&.first
 
         logger.debug "NOTIFICATION FROM DESK SENSOR============"
         logger.debug notification.value
@@ -164,31 +164,38 @@ class ::Pressac::DeskManagement
     def determine_desk_status
         now = Time.now.to_i
         @desks_pending_busy.each do |desk,sensor|
-            if sensor[:timestamp] + @busy_delay > now
+            if now > sensor[:timestamp] + @busy_delay
                 expose_desk_status(desk, which_zone(sensor[:gateway]), true)
-                @desks_pending_busy.delete(desk)
+                @desks_pending_busy.delete(desk.to_sym)
             end
         end
         @desks_pending_free.each do |desk,sensor|
-            if sensor[:timestamp] + @free_delay > now
+            if now > sensor[:timestamp] + @free_delay
                 expose_desk_status(desk, which_zone(sensor[:gateway]), false) 
-                @desks_pending_free.delete(desk)
+                @desks_pending_free.delete(desk.to_sym)
             end
         end
         self[:desks_pending_busy] = @desks_pending_busy
         self[:desks_pending_free] = @desks_pending_free
+        persist_current_status
     end
 
     def expose_desk_status(desk_name, zone, occupied)
-        self[zone] = occupied ? (self[zone] | [desk_name]) : (self[zone] - [desk_name])
+        if occupied
+            self[zone]             = self[zone] - [desk_name]
+            self[zone+':desk_ids'] = self[zone+':desk_ids'] | [desk_name]
+        else
+            self[zone]             = self[zone] | [desk_name]
+            self[zone+':desk_ids'] = self[zone+':desk_ids'] - [desk_name]
+        end
         self[zone+':occupied_count'] = self[zone].count
-        persist_current_status
+        self[zone+':desk_count']     = self[zone+':desk_ids'].count
     end
 
     def persist_current_status
         status = {
-            desks_pending_busy:  self[:busy_desks],
-            desks_pending_free:  self[:free_desks],
+            desks_pending_busy:  @desks_pending_busy,
+            desks_pending_free:  @desks_pending_free,
             last_update:         self[:last_update],
         }
 
