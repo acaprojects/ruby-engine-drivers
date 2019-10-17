@@ -26,6 +26,8 @@ class Pressac::Sensors::WsProtocol
     })
 
     def on_load
+        @busy_desks = {}
+        @free_desks = {}
         status = setting(:status) || {}
         self[:gateways]   = status[:gateways]  || {}
         self[:last_update] = status[:last_update]  || "Never"
@@ -104,21 +106,19 @@ class Pressac::Sensors::WsProtocol
             gateway     = sensor[:gatewayName].to_sym || 'unknown_gateway'.to_sym
             occupancy   = sensor[:motionDetected] == true
 
-            @busy_desks ||= {}
-            @free_desks ||= {}
-            @free_desks[gateway]     ||= [].to_set
-            @busy_desks[gateway]     ||= [].to_set
+            @free_desks[gateway]     ||= []
+            @busy_desks[gateway]     ||= []
             self[:gateways][gateway] ||= {}
             
             if occupancy
-                @busy_desks[gateway] | [sensor_name]
-                @free_desks[gateway] - [sensor_name]
+                @busy_desks[gateway] = @busy_desks[gateway] | [sensor_name]
+                @free_desks[gateway] = @free_desks[gateway] - [sensor_name]
             else
-                @busy_desks[gateway] - [sensor_name]
-                @free_desks[gateway] | [sensor_name]
+                @busy_desks[gateway] = @busy_desks[gateway] - [sensor_name]
+                @free_desks[gateway] = @free_desks[gateway] | [sensor_name]
             end
-            self[:gateways][gateway][:busy_desks] = @busy_desks[gateway].to_a
-            self[:gateways][gateway][:free_desks] = @free_desks[gateway].to_a
+            self[:gateways][gateway][:busy_desks] = @busy_desks[gateway]
+            self[:gateways][gateway][:free_desks] = @free_desks[gateway]
             self[:gateways][gateway][:all_desks]  = @busy_desks[gateway] + @free_desks[gateway]
             
             # store the new sensor data under the gateway name (self[:gateways][gateway][sensor_name]), 
