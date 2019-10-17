@@ -41,7 +41,7 @@ class ::Pressac::DeskManagement
 
         @hub      = setting('iot_hub_device') || "Websocket_1"
         @zones    = setting('zone_to_gateway_mappings') || {}
-        @desk_ids = setting('sensor_to_desk_mappings') || {}
+        @desk_ids = setting('sensor_name_to_desk_mappings') || {}
         # convert '1m2s' to '62'
         @busy_delay = UV::Scheduler.parse_duration(setting('delaty_until_shown_as_busy') || '0m') / 1000
         @free_delay = UV::Scheduler.parse_duration(setting('delaty_until_shown_as_free') || '0m') / 1000
