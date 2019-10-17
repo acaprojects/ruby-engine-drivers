@@ -317,7 +317,7 @@ module Microsoft::Office2::Events
             timeZone: timezone
         } if end_param
 
-        # If we have rooms then use that, otherwise use locations, which we expect to be in the correct o365 graph OData format
+        # If we have rooms then use that, otherwise use the location string. Fall back is [].
         event_json[:locations] = rooms.present? ? rooms.map { |r| { displayName: r[:name] } } : location ? [{displayName: location}] : []
 
         event_json[:organizer] = {
