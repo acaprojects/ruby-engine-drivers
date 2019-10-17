@@ -143,7 +143,7 @@ module Microsoft::Office2::Events
     # @option options [Boolean] :is_private Whether to mark the booking as private or just normal
     # @option options [String] :timezone The timezone of the booking. This will be overridden by a timezone in the room's settings
     # @option options [Hash] :extensions A hash holding a list of extensions to be added to the booking
-    # @option options [String] :location The location field to set. This will not be used if a room is passed in
+    # @option options [String] :locations The locations field to set. This will not be used if a room is passed in
     def create_booking(mailbox:, start_param:, end_param:, calendargroup_id: nil, calendar_id: nil, options: {})
         default_options = {
             rooms: [],
@@ -155,7 +155,7 @@ module Microsoft::Office2::Events
             is_private: false,
             timezone: 'UTC',
             extensions: {},
-            location: nil
+            locations: nil
         }
         # Merge in our default options with those passed in
         options = options.reverse_merge(default_options)
@@ -168,7 +168,7 @@ module Microsoft::Office2::Events
             start_param: start_param,
             end_param: end_param,
             timezone: options[:timezone],
-            location: options[:location],
+            locations: options[:rooms] || options[:locations],
             attendees: options[:attendees].dup,
             organizer: options[:organizer],
             recurrence: options[:recurrence],
