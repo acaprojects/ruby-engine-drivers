@@ -29,6 +29,7 @@ class Microsoft::Office2::Client
     include Microsoft::Office2::Events
     include Microsoft::Office2::Users
     include Microsoft::Office2::Contacts
+    include Microsoft::Office2::Calendars
 
     ##
     # Initialize the client for making requests to the Office365 API.
@@ -45,6 +46,7 @@ class Microsoft::Office2::Client
             app_site: "https://login.microsoftonline.com",
             app_scope: "https://graph.microsoft.com/.default",
             graph_domain: "https://graph.microsoft.com",
+            https_proxy: nil,
             save_token: Proc.new{ |token| User.bucket.set("office-token", token) },
             get_token: Proc.new{ User.bucket.get("office-token", quiet: true) }
         )
@@ -56,8 +58,9 @@ class Microsoft::Office2::Client
         @graph_domain = graph_domain
         @get_token = get_token
         @save_token = save_token
+        @https_proxy = https_proxy
         oauth_options = { site: @app_site,  token_url: @app_token_url }
-        oauth_options[:connection_opts] = { proxy: @internet_proxy } if @internet_proxy
+        oauth_options[:connection_opts] = { proxy: @https_proxy } if @https_proxy
         @graph_client ||= OAuth2::Client.new(
             @client_id,
             @client_secret,
@@ -130,7 +133,7 @@ class Microsoft::Office2::Client
     end
 
     def log_graph_request(request_method, data, query, headers, graph_path, endpoints=nil)
-        return unless ENV['RAILS_ENV'] == "development"
+        return unless ENV['O365_LOG_REQUESTS']
         STDERR.puts "--------------NEW GRAPH REQUEST------------"
         STDERR.puts "#{request_method} to #{graph_path}"
         STDERR.puts "Data:"
@@ -146,7 +149,7 @@ class Microsoft::Office2::Client
     end
 
     def check_response(response)
-        STDOUT.puts "GRAPH API Response:\n #{response}" if ENV['RAILS_ENV'] == "development"
+        STDOUT.puts "GRAPH API Response:\n #{response}" if ENV['O365_LOG_RESPONSE']
         case response.status
         when 200, 201, 204
             return
@@ -162,6 +165,8 @@ class Microsoft::Office2::Client
             raise Microsoft::Error::ErrorAccessDenied.new(response.body)
         when 404
             raise Microsoft::Error::ResourceNotFound.new(response.body)
+        when 409
+            raise Microsoft::Error::ErrorFolderExists.new(response.body)
         end
     end
 

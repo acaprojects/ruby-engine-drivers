@@ -1,0 +1,19 @@
+Desk sensor:
+{
+    "deviceid":"050B1EE8",
+    "devicename":"Desk01",
+    "dbm":"-53",
+    "devicetype":"Under-Desk-Sensor",
+    "motionDetected":"false",
+    "supplyVoltage":"3.26"
+}
+
+Environment sensor:
+{
+    "deviceid":"05189BE4",
+    "devicename":"PEnvironSensor-02","dbm":"-44",
+    "devicetype":"CO2-Temperature-and-Humidity",
+    "concentration":"1740",
+    "temperature":"27.2",
+    "humidity":"55"
+}

@@ -5,7 +5,7 @@ module Microsoft::Office2::Calendars
     # 
     # @param mailbox [String] The mailbox where the calendars will be created/read
     # @param limit [String] The maximum number of calendars to return
-    def list_calendars(mailbox:, calendargroup_id:nil, limit:nil)
+    def list_calendars(mailbox:, calendargroup_id:nil, match:nil, search:nil, limit:nil)
         query_params = { '$top': (limit || 99) }
         case calendargroup_id
         when nil
@@ -15,6 +15,13 @@ module Microsoft::Office2::Calendars
         else
             endpoint = "/v1.0/users/#{mailbox}/calendarGroups/#{calendargroup_id}/calendars"
         end
+
+        if match
+            query_params['$filter'] = "name eq '#{match}'"
+        elsif search
+            query_params['$filter'] = "startswith(name,'#{search}')"
+        end
+
         request = graph_request(request_method: 'get', endpoints: [endpoint], query: query_params)
         check_response(request)
         JSON.parse(request.body)['value']
@@ -42,14 +49,14 @@ module Microsoft::Office2::Calendars
         end
         request = graph_request(request_method: 'post', endpoints: [endpoint], data: {name: name})
         check_response(request)
-        JSON.parse(request.body)['value']
+        JSON.parse(request.body)
     end
 
     def create_calendargroup(mailbox:, name:)
         endpoint = "/v1.0/users/#{mailbox}/calendarGroups"
         request = graph_request(request_method: 'post', endpoints: [endpoint], data: {name: name})
         check_response(request)
-        JSON.parse(request.body)['value']
+        JSON.parse(request.body)
     end
 
     
