@@ -110,7 +110,7 @@ class ::Pressac::DeskManagement
         free_desks = id gateway_data[:free_desks]
         all_desks  = id gateway_data[:all_desks]
 
-        self[zone+':desk_ids']   = self[zone] | all_desks
+        self[zone+':desk_ids']   = self[zone+':desk_ids'] | all_desks
         self[zone+':desk_count'] = self[zone+':desk_ids'].count
         self[:last_update] = Time.now.in_time_zone($TZ).to_s
     end
@@ -128,27 +128,24 @@ class ::Pressac::DeskManagement
         #     timestamp: string,
         #     gateway:   string }
         desk = notification.value
-        desk_name = id([desk[:name].to_sym])&.first
+        desk_name_str = id([desk[:name].to_sym])&.first
+        desk_name = desk_name_str.to_sym
 
-        logger.debug "NOTIFICATION FROM DESK SENSOR============"
-        logger.debug notification.value
-        logger.debug desk[:gateway]
+        zone = which_zone(desk[:gateway])
+        return unless zone
 
-        if current_state[:motion]
+        if current_state[:motion] && !self[zone].include?(desk_name_str)      # if motion, and desk is currently free
             @desks_pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
             @desks_pending_free.delete(desk_name)
-        elsif !current_state[:motion]
+        elsif !current_state[:motion] && self[zone].include?(desk_name_str)   # if no motion, and desk is currently busy
             @desks_pending_free[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
             @desks_pending_busy.delete(desk_name)
         end
-        
-        zone = which_zone(desk[:gateway])
-        if zone
-            zone = zone.to_s
-            self[zone+':desk_ids']   = self[zone+':desk_ids'] | [desk_name]
-            self[zone+':desk_count'] = self[zone+':desk_ids'].count
-            self[:last_update] = Time.now.in_time_zone($TZ).to_s
-        end
+
+        zone = zone.to_s
+        self[zone+':desk_ids']   = self[zone+':desk_ids'] | [desk_name]
+        self[zone+':desk_count'] = self[zone+':desk_ids'].count
+        self[:last_update] = Time.now.in_time_zone($TZ).to_s
         self[:desks_pending_busy] = @desks_pending_busy
         self[:desks_pending_free] = @desks_pending_free
     end
@@ -183,11 +180,9 @@ class ::Pressac::DeskManagement
 
     def expose_desk_status(desk_name, zone, occupied)
         if occupied
-            self[zone]             = self[zone] - [desk_name]
-            self[zone+':desk_ids'] = self[zone+':desk_ids'] | [desk_name]
+            self[zone] = self[zone] | [desk_name]
         else
-            self[zone]             = self[zone] | [desk_name]
-            self[zone+':desk_ids'] = self[zone+':desk_ids'] - [desk_name]
+            self[zone] = self[zone] - [desk_name]
         end
         self[zone+':occupied_count'] = self[zone].count
         self[zone+':desk_count']     = self[zone+':desk_ids'].count
