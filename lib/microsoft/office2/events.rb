@@ -143,7 +143,7 @@ module Microsoft::Office2::Events
     # @option options [Boolean] :is_private Whether to mark the booking as private or just normal
     # @option options [String] :timezone The timezone of the booking. This will be overridden by a timezone in the room's settings
     # @option options [Hash] :extensions A hash holding a list of extensions to be added to the booking
-    # @option options [String] :locations The locations field to set. This will not be used if a room is passed in
+    # @option options [String] :location The location field to set. This will not be used if a room is passed in
     def create_booking(mailbox:, start_param:, end_param:, calendargroup_id: nil, calendar_id: nil, options: {})
         default_options = {
             rooms: [],
@@ -155,7 +155,7 @@ module Microsoft::Office2::Events
             is_private: false,
             timezone: 'UTC',
             extensions: {},
-            locations: nil
+            location: nil
         }
         # Merge in our default options with those passed in
         options = options.reverse_merge(default_options)
@@ -168,7 +168,7 @@ module Microsoft::Office2::Events
             start_param: start_param,
             end_param: end_param,
             timezone: options[:timezone],
-            locations: options[:rooms] || options[:locations],
+            location: options[:location],
             attendees: options[:attendees].dup,
             organizer: options[:organizer],
             recurrence: options[:recurrence],
@@ -296,9 +296,6 @@ module Microsoft::Office2::Events
             attendees.push({ type: "resource", emailAddress: { address: room[:email], name: room[:name] } })
         end
 
-        # If we have rooms then build the location from that, otherwise use the passed in value
-        event_location = rooms.map{ |room| room[:name] }.join(" and ")
-        event_location = ( event_location.present? ? event_location : location )
 
         event_json = {}
         event_json[:subject] = subject
@@ -320,9 +317,8 @@ module Microsoft::Office2::Events
             timeZone: timezone
         } if end_param
 
-        event_json[:location] = {
-            displayName: location
-        } if location
+        # If we have rooms then use that, otherwise use locations, which we expect to be in the correct o365 graph OData format
+        event_json[:locations] = rooms.present? ? rooms.map { |r| { displayName: r[:name] } } : location ? [{displayName: location}] : []
 
         event_json[:organizer] = {
             emailAddress: {
