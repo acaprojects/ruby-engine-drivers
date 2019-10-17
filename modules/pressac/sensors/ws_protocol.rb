@@ -27,14 +27,9 @@ class Pressac::Sensors::WsProtocol
 
     def on_load
         status = setting(:status) || {}
-        self[:busy_desks] = status[:busy_desks] || {}   # hash of gateway names => Array of desk names
-        self[:free_desks] = status[:free_desks] || {}
-        self[:all_desks]  = status[:all_desks]  || {}
         self[:gateways]   = status[:gateways]  || {}
         self[:last_update] = status[:last_update]  || "Never"
-        self[:environment] = {}                         # Environment sensor values (temp, humidity)
-        @busy_desks = self[:busy_desks]
-        @free_desks = self[:free_desks]
+        self[:environment] = {}  # Environment sensor values (temp, humidity)
         
         on_update
     end
@@ -109,6 +104,8 @@ class Pressac::Sensors::WsProtocol
             gateway     = sensor[:gatewayName].to_sym || 'unknown_gateway'.to_sym
             occupancy   = sensor[:motionDetected] == true
 
+            @busy_desks ||= {}
+            @free_desks ||= {}
             @free_desks[gateway]     ||= [].to_set
             @busy_desks[gateway]     ||= [].to_set
             self[:gateways][gateway] ||= {}
@@ -150,9 +147,6 @@ class Pressac::Sensors::WsProtocol
         self[:last_update] = Time.now.in_time_zone($TZ).to_s
         # Save the current status to database, so that it can retrieved when engine restarts
         status = {
-            busy_desks:  self[:busy_desks],
-            free_desks:  self[:free_desks],
-            all_desks:   self[:all_desks],
             last_update: self[:last_update],
             gateways:    self[:gateways]
         }
