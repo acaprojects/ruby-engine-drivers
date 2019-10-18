@@ -44,7 +44,7 @@ class Pexip::Management
     end
 
     MeetingTypes = ["conference", "lecture", "two_stage_dialing", "test_call"]
-    def new_meeting(name = nil, conf_alias = nil, type = "conference", pin: rand(9999), **options)
+    def new_meeting(name = nil, conf_alias = nil, type = "conference", pin: rand(9999), expire: true, tag: 'pstn', **options)
         type = type.to_s.strip.downcase
         raise "unknown meeting type" unless MeetingTypes.include?(type)
 
@@ -55,7 +55,8 @@ class Pexip::Management
             name: name.to_s,
             service_type: type,
             pin: pin.to_s.rjust(4, '0'),
-            aliases: [{"alias" => conf_alias}]
+            aliases: [{"alias" => conf_alias}],
+            tag: tag
         }.merge(options).to_json, headers: {
             'Authorization' => [@username, @password],
             'Content-Type' => 'application/json',
@@ -63,13 +64,20 @@ class Pexip::Management
         }) do |data|
             if (200...300).include?(data.status)
                 vmr_id = URI(data['Location']).path.split("/").reject(&:empty?)[-1]
-                @vmr_ids[vmr_id] = Time.now.to_i
-                define_setting(:vmr_ids, @vmr_ids)
+                if expire
+                  @vmr_ids[vmr_id] = Time.now.to_i
+                  define_setting(:vmr_ids, @vmr_ids)
+                end
                 vmr_id
             else
                 :retry
             end
         end
+    end
+
+    def add_meeting_to_expire(vmr_id)
+      @vmr_ids[vmr_id] = Time.now.to_i
+      define_setting(:vmr_ids, @vmr_ids)
     end
 
     def get_meeting(meeting)
@@ -116,7 +124,7 @@ class Pexip::Management
       time = Time.now.to_i
       delete = []
       @vmr_ids.each do |id, created|
-        delete << id if (created + older_than) >= time
+        delete << id if (created + older_than) <= time
       end
       promises = delete.map { |id| end_meeting(id, false) }
       thread.all(*promises).then do

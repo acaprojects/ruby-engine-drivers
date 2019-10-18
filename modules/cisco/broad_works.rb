@@ -48,6 +48,7 @@ class Cisco::BroadWorks
         @proxy = setting(:proxy) || ENV["HTTPS_PROXY"] || ENV["https_proxy"]
         @callcenters = setting(:callcenters) || {}
         self[:achievements] = setting(:achievements) || []
+        self[:news] = setting(:news) || []
 
         # "sub_id" => "callcenter id"
         @subscription_lookup ||= {}
@@ -79,6 +80,12 @@ class Cisco::BroadWorks
       achievements ||= []
       define_setting(:achievements, achievements)
       self[:achievements] = achievements
+    end
+
+    def set_news(news)
+      news ||= []
+      define_setting(:news, news)
+      self[:news] = news
     end
 
     def reset_stats

@@ -283,7 +283,7 @@ class Cisco::Switch::SnoopingCatalyst
             end
 
             # @interface_macs
-            @connected_interfaces = @check_interface
+            @connected_interfaces = @check_interface & @interface_macs.keys
             self[:interfaces] = @connected_interfaces.to_a
             self[:reserved] = @reserved_interface.to_a
             @snooping.clear

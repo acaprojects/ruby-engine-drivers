@@ -1,4 +1,16 @@
 module Microsoft::Office2::Users
+    # Retrieve the properties and relationships of a user object.
+    # https://docs.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http
+    # @param id [String] The user id or email (user principle name)
+    # @param select [String] comma seperated string of property names to include in the response instead of the default set
+    def get_user(id:, select: nil)
+        query_params = { '$select': select }.compact
+        response = graph_request(request_method: 'get', endpoints: ["/v1.0/users/#{id}"], query: query_params)
+        check_response(response)
+        u = JSON.parse(response.body)
+        Microsoft::Office2::User.new(client: self, user: u).user
+    end
+    
     ##
     # Retrieve a list of users stored in Office365
     # 

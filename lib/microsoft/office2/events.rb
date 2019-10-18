@@ -296,9 +296,6 @@ module Microsoft::Office2::Events
             attendees.push({ type: "resource", emailAddress: { address: room[:email], name: room[:name] } })
         end
 
-        # If we have rooms then build the location from that, otherwise use the passed in value
-        event_location = rooms.map{ |room| room[:name] }.join(" and ")
-        event_location = ( event_location.present? ? event_location : location )
 
         event_json = {}
         event_json[:subject] = subject
@@ -320,9 +317,8 @@ module Microsoft::Office2::Events
             timeZone: timezone
         } if end_param
 
-        event_json[:location] = {
-            displayName: location
-        } if location
+        # If we have rooms then use that, otherwise use the location string. Fall back is [].
+        event_json[:locations] = rooms.present? ? rooms.map { |r| { displayName: r[:name] } } : location ? [{displayName: location}] : []
 
         event_json[:organizer] = {
             emailAddress: {

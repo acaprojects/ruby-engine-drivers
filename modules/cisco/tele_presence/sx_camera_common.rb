@@ -20,22 +20,23 @@ module Cisco::TelePresence::SxCameraCommon
         self[:tilt_min] = -2500  # Down
         self[:tilt_center] = 0
 
-        self[:zoom_max] = 8500 # 65535
+        self[:zoom_max] = 11800
         self[:zoom_min] = 0
 
         super
 
         on_update
     end
-    
+
     def on_update
         @presets = setting(:presets) || {}
         self[:presets] = @presets.keys
+        self[:zoom_max] = 11800
 
         @index = setting(:camera_index) || 1
         self[:camera_index] = @index
     end
-    
+
     def connected
         self[:power] = true
 
@@ -47,7 +48,7 @@ module Cisco::TelePresence::SxCameraCommon
             do_poll
         end
     end
-    
+
     def disconnected
         self[:power] = false
 
@@ -117,7 +118,7 @@ module Cisco::TelePresence::SxCameraCommon
     def zoom(position)
         val = in_range(position.to_i, self[:zoom_max], self[:zoom_min])
 
-        command('Camera PositionSet', params({
+        command('Cameras Camera PositionSet', params({
             :CameraId => @index,
             :Zoom => val
         }), name: :zoom).then do
@@ -159,7 +160,7 @@ module Cisco::TelePresence::SxCameraCommon
             end
         else
             options[:retries] = 0
-            
+
             # Calculate direction
             dir_hori = :stop
             if pan_speed > 0
@@ -167,7 +168,7 @@ module Cisco::TelePresence::SxCameraCommon
             elsif pan_speed < 0
                 dir_hori = :left
             end
-            
+
             dir_vert = :stop
             if tilt_speed > 0
                 dir_vert = :up
@@ -251,7 +252,7 @@ module Cisco::TelePresence::SxCameraCommon
 
     def save_position(number)
         number = in_range(number, 15, 1)
-        
+
         command('Camera Preset Store', params({
             :CameraId => @index,
             :PresetId => number
@@ -265,28 +266,28 @@ module Cisco::TelePresence::SxCameraCommon
     # ---------------
 
     def connected?
-        status "Camera #{@index} Connected", priority: 0, name: :connected?
+        status "Cameras Camera #{@index} Connected", priority: 0, name: :connected?
     end
 
     def pantilt?
-        status "Camera #{@index} Position Pan", priority: 0, name: :pan?
-        status "Camera #{@index} Position Tilt", priority: 0, name: :tilt?
+        status "Cameras Camera #{@index} Position Pan", priority: 0, name: :pan?
+        status "Cameras Camera #{@index} Position Tilt", priority: 0, name: :tilt?
     end
 
     def zoom?
-        status "Camera #{@index} Position Zoom", priority: 0, name: :zoom?
+        status "Cameras Camera #{@index} Position Zoom", priority: 0, name: :zoom?
     end
 
     def manufacturer?
-        status "Camera #{@index} Manufacturer", priority: 0, name: :manufacturer?
+        status "Cameras Camera #{@index} Manufacturer", priority: 0, name: :manufacturer?
     end
 
     def model?
-        status "Camera #{@index} Model", priority: 0, name: :model?
+        status "Cameras Camera #{@index} Model", priority: 0, name: :model?
     end
 
     def flipped?
-        status "Camera #{@index} Flip", priority: 0, name: :flipped?
+        status "Cameras Camera #{@index} Flip", priority: 0, name: :flipped?
     end
 
 
@@ -299,7 +300,7 @@ module Cisco::TelePresence::SxCameraCommon
         end
     end
 
-    
+
     IsResponse = '*s'.freeze
     IsComplete = '**'.freeze
     def received(data, resolve, command)
@@ -316,12 +317,12 @@ module Cisco::TelePresence::SxCameraCommon
         end
 
         if result[0] == IsResponse
-            type = result[3].downcase.gsub(':', '').to_sym
+            type = result[4].downcase.gsub(':', '').to_sym
 
             case type
             when :position
                 # Tilt: Pan: Zoom: etc so we massage to our desired status variables
-                self[result[4].downcase.gsub(':', '').to_sym] = result[-1].to_i
+                self[result[5].downcase.gsub(':', '').to_sym] = result[-1].to_i
             when :connected
                 self[:connected] = result[-1].downcase == 'true'
             when :model
@@ -335,7 +336,7 @@ module Cisco::TelePresence::SxCameraCommon
 
             return :ignore
         end
-        
+
         return :success
     end
 end

@@ -49,24 +49,30 @@ class Mediasite::Module
     def get_request(url)
         req_url = url
         logger.debug(req_url)
-        uri = URI(req_url)
-        req = Net::HTTP::Get.new(uri)
-        req.basic_auth(setting(:username), setting(:password))
-        req['sfapikey'] = setting(:api_key)
-        http = Net::HTTP.new(uri.hostname, uri.port)
-        http.use_ssl = true
-        JSON.parse(http.request(req).body)
+        
+        task {
+            uri = URI(req_url)
+            req = Net::HTTP::Get.new(uri)
+            req.basic_auth(setting(:username), setting(:password))
+            req['sfapikey'] = setting(:api_key)
+            http = Net::HTTP.new(uri.hostname, uri.port)
+            http.use_ssl = true
+            JSON.parse(http.request(req).body)
+        }.value
     end
 
     def post_request(url)
         req_url = setting(:url) + url
-        uri = URI(req_url)
-        req = Net::HTTP::Post.new(uri)
-        req.basic_auth(setting(:username), setting(:password))
-        req['sfapikey'] = setting(:api_key)
-        http = Net::HTTP.new(uri.hostname, uri.port)
-        http.use_ssl = true
-        http.request(req)
+        
+        task {
+            uri = URI(req_url)
+            req = Net::HTTP::Post.new(uri)
+            req.basic_auth(setting(:username), setting(:password))
+            req['sfapikey'] = setting(:api_key)
+            http = Net::HTTP.new(uri.hostname, uri.port)
+            http.use_ssl = true
+            http.request(req)
+        }.value
         :success
     end
 
@@ -93,9 +99,9 @@ class Mediasite::Module
 
     # State tracking of recording appliance. While there are numerous recorder states (currently 11 different states), we wish to present these as a simplified state set: Offline, Idle, Recording, Paused.
     STATES = {
-        'Unknown' => 'Offline',
+        'Unknown' => 'offline',
         'Idle' => 'stop',
-        'Busy' => 'stop',
+        'Busy' => 'offline',
         'RecordStart' => 'active',
         'Recording' => 'active',
         'RecordEnd' => 'active',
@@ -103,13 +109,22 @@ class Mediasite::Module
         'Paused' => 'paused',
         'Resuming' => 'active',
         'OpeningSession' => 'active',
-        'ConfiguringDevices' => 'stop'
+        'ConfiguringDevices' => 'offline'
     }.freeze
 
     def state
         res = get_request(create_url("/api/v1/Recorders('#{self[:device_id]}')/Status"))
         self[:previous_state] = self[:state]
         self[:state] = res['RecorderState']
+
+        if STATES[self[:state]] == 'active' || STATES[self[:state]] == 'paused'
+          self[:current] = {
+              'state' => STATES[self[:state]],
+              'start_time' => ''
+          }
+        else
+          self[:current] = nil
+        end
 
         res = get_request(create_url("/api/v1/Recorders('#{self[:device_id]}')/CurrentPresentationMetadata"))
         self[:title] = res['Title']
@@ -128,23 +143,19 @@ class Mediasite::Module
     end
 
     def live?
-        live = false
-        res = get_request(create_url("/api/v1/Recorders('#{self[:device_id]}')/ScheduledRecordingTimes"))
-        res['value'].each { |schedule|
-            current_time = ActiveSupport::TimeZone.new('UTC').now
-            start_time = ActiveSupport::TimeZone.new('UTC').parse(schedule['StartTime'])
-            end_time = ActiveSupport::TimeZone.new('UTC').parse(schedule['EndTime'])
-            if start_time <= current_time && current_time <= end_time
-                presentation = get_request(schedule['ScheduleLink'] + '/Presentations')
-                live = presentation['value'][0]['Status'] == 'Live'
-                self[:current] = {
-                    'state' => STATES[self[:state]],
-                    'start_time' => start_time.in_time_zone('Sydney')
-                }
-                break
-            end
-        }
-        live
+      live = self[:state] == 'Recording'
+      res = get_request(create_url("/api/v1/Recorders('#{self[:device_id]}')/ScheduledRecordingTimes"))
+      res['value'].each do |schedule|
+          current_time = ActiveSupport::TimeZone.new('UTC').now
+          start_time = ActiveSupport::TimeZone.new('UTC').parse(schedule['StartTime'])
+          end_time = ActiveSupport::TimeZone.new('UTC').parse(schedule['EndTime'])
+          if start_time <= current_time && current_time <= end_time
+              presentation = get_request(schedule['ScheduleLink'] + '/Presentations')
+              live = presentation['value'][0]['Status'] == 'Live'
+              break
+          end
+      end
+      live
     end
 
     def start
