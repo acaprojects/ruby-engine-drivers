@@ -165,7 +165,7 @@ class ::Pressac::DeskManagement
         new_free_desks = {}
         @desks_pending_busy.each do |desk,sensor|
             if now > sensor[:timestamp] + @busy_delay
-                zone = which_zone(sensor[:gateway]
+                zone = which_zone(sensor[:gateway])
                 new_busy_desks[zone] ||= []
                 new_busy_desks[zone] = new_busy_desks[zone] | [desk]
                 @desks_pending_busy.delete(desk)
@@ -173,7 +173,7 @@ class ::Pressac::DeskManagement
         end
         @desks_pending_free.each do |desk,sensor|
             if now > sensor[:timestamp] + @free_delay
-                zone = which_zone(sensor[:gateway]
+                zone = which_zone(sensor[:gateway])
                 new_free_desks[zone] ||= []
                 new_free_desks[zone] = new_free_desks[zone] | [desk]
                 @desks_pending_free.delete(desk)
