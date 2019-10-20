@@ -80,7 +80,7 @@ class ::Pressac::DeskManagement
         end
         schedule.clear
         schedule.every('1m') { determine_desk_status }
-        schedule.every('1h') { unexpose_unresponsive_desks }
+        #schedule.every('1h') { unexpose_unresponsive_desks }
     end
 
     # @param zone [String] the engine zone id
@@ -161,35 +161,39 @@ class ::Pressac::DeskManagement
 
     def determine_desk_status
         now = Time.now.to_i
-	new_busy_desks = []
-	new_free_desks = []
+        new_busy_desks = {}
+        new_free_desks = {}
         @desks_pending_busy.each do |desk,sensor|
             if now > sensor[:timestamp] + @busy_delay
-                expose_desk_status(desk, which_zone(sensor[:gateway]), true)
-                @desks_pending_busy.delete(desk.to_sym)
+                zone = which_zone(sensor[:gateway]
+                new_busy_desks[zone] ||= []
+                new_busy_desks[zone] = new_busy_desks[zone] | [desk]
+                @desks_pending_busy.delete(desk)
             end
         end
         @desks_pending_free.each do |desk,sensor|
             if now > sensor[:timestamp] + @free_delay
-                expose_desk_status(desk, which_zone(sensor[:gateway]), false) 
-                @desks_pending_free.delete(desk.to_sym)
+                zone = which_zone(sensor[:gateway]
+                new_free_desks[zone] ||= []
+                new_free_desks[zone] = new_free_desks[zone] | [desk]
+                @desks_pending_free.delete(desk)
             end
         end
         self[:desks_pending_busy] = @desks_pending_busy
         self[:desks_pending_free] = @desks_pending_free
+        expose_desks(new_busy_desks, new_free_desks)
         persist_current_status
     end
 
-    def expose_desk_status(desk_name, zone, occupied)
-	    desk_name_str = desk_name.to_s
-        if occupied
-            self[zone] = self[zone] | [desk_name_str]
-        else
-            self[zone] = self[zone] - [desk_name_str]
+    def expose_desks(busy, free)
+        @zones.keys&.each do |z|
+            total_busy = self[z] | busy[z] - free[z]
+            total_ids  = self[z+':desk_ids'] | busy[z] | free[z]
+            self[z]                   = total_busy
+            self[z+':desk_ids']       = total_ids
+            self[z+':desk_count']     = total_ids.count
+            self[z+':occupied_count'] = total_busy.count
         end
-	    signal_status(zone)
-        self[zone+':occupied_count'] = self[zone].count
-        self[zone+':desk_count']     = self[zone+':desk_ids'].count
     end
 
     def persist_current_status
