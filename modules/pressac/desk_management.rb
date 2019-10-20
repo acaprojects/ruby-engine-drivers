@@ -128,7 +128,7 @@ class ::Pressac::DeskManagement
         #     timestamp: string,
         #     gateway:   string }
         desk = notification.value
-        desk_name_str = id([desk[:name].to_sym])&.first
+	desk_name_str = id([desk[:name].to_sym])&.first.to_s
         desk_name = desk_name_str.to_sym
 
         zone = which_zone(desk[:gateway])
@@ -161,6 +161,8 @@ class ::Pressac::DeskManagement
 
     def determine_desk_status
         now = Time.now.to_i
+	new_busy_desks = []
+	new_free_desks = []
         @desks_pending_busy.each do |desk,sensor|
             if now > sensor[:timestamp] + @busy_delay
                 expose_desk_status(desk, which_zone(sensor[:gateway]), true)
@@ -179,11 +181,13 @@ class ::Pressac::DeskManagement
     end
 
     def expose_desk_status(desk_name, zone, occupied)
+	desk_name_str = desk_name.to_s
         if occupied
-            self[zone] = self[zone] | [desk_name]
+            self[zone] = self[zone] | [desk_name_str]
         else
-            self[zone] = self[zone] - [desk_name]
+            self[zone] = self[zone] - [desk_name_str]
         end
+	signal_status(zone)
         self[zone+':occupied_count'] = self[zone].count
         self[zone+':desk_count']     = self[zone+':desk_ids'].count
     end
