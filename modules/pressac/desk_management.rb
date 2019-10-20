@@ -187,8 +187,8 @@ class ::Pressac::DeskManagement
 
     def expose_desks(busy, free)
         @zones.keys&.each do |z|
-            total_busy = self[z] | busy[z] - free[z]
-            total_ids  = self[z+':desk_ids'] | busy[z] | free[z]
+            total_busy = self[z]             | (busy[z] || []) - (free[z] || [])
+            total_ids  = self[z+':desk_ids'] | (busy[z] || []) | (free[z] || [])
             self[z]                   = total_busy
             self[z+':desk_ids']       = total_ids
             self[z+':desk_count']     = total_ids.count
