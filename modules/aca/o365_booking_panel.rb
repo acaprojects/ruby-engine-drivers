@@ -89,9 +89,10 @@ class Aca::O365BookingPanel
         self[:last_meeting_started] = setting(:last_meeting_started)
         self[:cancel_meeting_after] = setting(:cancel_meeting_after)
 
-        fetch_bookings
         schedule.clear
-        schedule.every(setting(:update_every) || '5m') { fetch_bookings }
+        schedule.in(rand(10000)) { fetch_bookings }
+        fetch_interval = UV::Scheduler.parse_duration(setting(:update_every) || '5m') + rand(10000)
+        schedule.every(fetch_interval)) { fetch_bookings }
     end
 
     def fetch_bookings(*args)
