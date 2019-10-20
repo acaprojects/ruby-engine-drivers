@@ -61,13 +61,6 @@ class ::Pressac::DeskManagement
                 self[zone_id+':desk_count']     = 0
             end
         end
-
-        @zones.each do |zone,gateways|
-            gateways.each do |gateway|
-                # Populate our initial status with the current data from all known sensors
-                update_zone(zone, gateway.to_sym)
-            end
-        end
         
         # Subscribe to live updates from each gateway
         device,index = @hub.split('_')
@@ -96,25 +89,6 @@ class ::Pressac::DeskManagement
 
 
     protected
-
-    # Update one zone with the current data from one gateway
-    def update_zone(zone, gateway)
-        # The below values reflect just this ONE gateway, not neccesarily the whole zone
-        begin
-            gateway_data = system[@hub][:gateways][gateway] || {}
-        rescue
-            gateway_data = {}
-        end
-        logger.debug "#{zone}: #{gateway_data}"
-
-        busy_desks = id gateway_data[:busy_desks]
-        free_desks = id gateway_data[:free_desks]
-        all_desks  = id gateway_data[:all_desks]
-
-        self[zone+':desk_ids']   = self[zone+':desk_ids'] | all_desks
-        self[zone+':desk_count'] = self[zone+':desk_ids'].count
-        self[:last_update] = Time.now.in_time_zone($TZ).to_s
-    end
 
     # Update desks_pending_busy/free hashes with a single sensor's data recieved from a notification
     def update_desk(notification)
