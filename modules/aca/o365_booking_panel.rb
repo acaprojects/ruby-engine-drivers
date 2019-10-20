@@ -92,7 +92,7 @@ class Aca::O365BookingPanel
         schedule.clear
         schedule.in(rand(10000)) { fetch_bookings }
         fetch_interval = UV::Scheduler.parse_duration(setting(:update_every) || '5m') + rand(10000)
-        schedule.every(fetch_interval)) { fetch_bookings }
+        schedule.every(fetch_interval) { fetch_bookings }
     end
 
     def fetch_bookings(*args)
