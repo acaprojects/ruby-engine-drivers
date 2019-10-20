@@ -182,7 +182,10 @@ module Microsoft::Office2::Events
             request = graph_request(request_method: 'post', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"], data: event_json)
             check_response(request)
         rescue Microsoft::Error::Conflict => e
-            retry if (retries += 1) < 3
+	    if (retries += 1) < 3
+	        sleep(rand())
+                retry
+	    end
         end
         Microsoft::Office2::Event.new(client: self, event: JSON.parse(request.body)).event
     end
@@ -253,9 +256,11 @@ module Microsoft::Office2::Events
             request = graph_request(request_method: 'patch', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events/#{booking_id}"], data: event_json)
             check_response(request)
         rescue Microsoft::Error::Conflict => e
-            retry if (retries += 1) < 3
-        end
- 
+            if (retries += 1) < 3
+                sleep(rand()*2)
+                retry
+            end
+        end 
         Microsoft::Office2::Event.new(client: self, event: JSON.parse(request.body).merge({'extensions' => [ext_data]})).event
     end
 
@@ -270,7 +275,10 @@ module Microsoft::Office2::Events
             request = graph_request(request_method: 'delete', endpoints: [endpoint])
             check_response(request)
         rescue Microsoft::Error::Conflict => e
-            retry if (retries += 1) < 3
+            if (retries += 1) < 3
+                sleep(rand()*2)
+                retry
+            end
         end
         200
     end
