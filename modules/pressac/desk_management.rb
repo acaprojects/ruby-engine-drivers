@@ -78,7 +78,7 @@ class ::Pressac::DeskManagement
             end
         end
         schedule.clear
-        schedule.every('1m') { determine_desk_status }
+        schedule.every('30s') { determine_desk_status }
         #schedule.every('1h') { unexpose_unresponsive_desks }
     end
 
@@ -109,23 +109,19 @@ class ::Pressac::DeskManagement
         #     timestamp: string,
         #     gateway:   string }
         desk = notification.value
-	    desk_name_str = id([desk[:name].to_sym])&.first.to_s
-        desk_name = desk_name_str.to_sym
+        desk_name = id([desk[:name].to_sym])&.first.to_s
 
-        zone = @which_zone[desk[:gateway]]
+	zone = @which_zone[desk[:gateway].to_s]
         return unless zone
 
-        if current_state[:motion] && !self[zone].include?(desk_name_str)      # if motion, and desk is currently free
-            @pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
-            @pending_free.delete(desk_name)
-        elsif !current_state[:motion] && self[zone].include?(desk_name_str)   # if no motion, and desk is currently busy
+        if current_state[:motion] && !self[zone].include?(desk_name)      # if motion, and desk is currently free
+	    @pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
+	    @pending_free.delete(desk_name)
+        elsif !current_state[:motion] && self[zone].include?(desk_name)   # if no motion, and desk is currently busy
             @pending_free[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
             @pending_busy.delete(desk_name)
         end
 
-        zone = zone.to_s
-        self[zone+':desk_ids']   = self[zone+':desk_ids'] | [desk_name]
-        self[zone+':desk_count'] = self[zone+':desk_ids'].count
         self[:last_update] = Time.now.in_time_zone($TZ).to_s
         self[:pending_busy] = @pending_busy
         self[:pending_free] = @pending_free
@@ -141,14 +137,14 @@ class ::Pressac::DeskManagement
         now = Time.now.to_i
         @pending_busy.each do |desk,sensor|
             if now > sensor[:timestamp] + @busy_delay
-                zone = @which_zone[sensor[:gateway]]
-                new_status[zone][:busy] |= [desk]
+   	        zone = @which_zone[sensor[:gateway].to_s]
+                new_status[zone][:busy] |= [desk] if zone
             end
         end
         @pending_free.each do |desk,sensor|
             if now > sensor[:timestamp] + @free_delay
-                zone = @which_zone[sensor[:gateway]]
-                new_status[zone][:free] |= [desk]
+	        zone = @which_zone[sensor[:gateway].to_s]
+                new_status[zone][:free] |= [desk] if zone
             end
         end
         expose_desks(new_status)
@@ -158,11 +154,13 @@ class ::Pressac::DeskManagement
     end
 
     def expose_desks(new_status)
-        new_status&.each do |z|
-            self[z]                   = self[z]             | z[:busy] - z[:free]
-            self[z+':desk_ids']       = self[z+':desk_ids'] | z[:busy] | z[:free]
-            self[z+':desk_count']     = total_ids.count
-            self[z+':occupied_count'] = total_busy.count
+	    new_status&.each do |z,desks|
+	    zone = z.to_sym
+	    self[zone] ||= []
+	    self[zone]                = self[zone]          - desks[:free] | desks[:busy]
+            self[z+':desk_ids']       = self[z+':desk_ids'] | desks[:free] | desks[:busy]
+            self[z+':desk_count']     = self[z+':desk_ids'].count
+	    self[z+':occupied_count'] = self[zone].count
         end
     end
 
