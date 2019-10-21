@@ -39,17 +39,16 @@ class Extron::Switcher::In < Extron::Base
         do_send("#{input}!")
     end
 
-    # nil as these functions can be used to request state too
     def switch(map)
-        send("#{input.keys[-1]}!")
+       send("#{map.keys[-1]}!")
     end
 
     def switch_video(map)
-        send("#{input.keys[-1]}&")
+        send("#{map.keys[-1]}&")
     end
 
     def switch_audio(map)
-        send("#{input.keys[-1]}$")
+        send("#{map.keys[-1]}$")
     end
 
 
