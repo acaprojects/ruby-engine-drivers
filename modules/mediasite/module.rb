@@ -29,7 +29,6 @@ class Mediasite::Module
     end
 
     def on_update
-        schedule.clear
         self[:room_name] = room_name
         self[:device_id] = get_device_id
         poll
@@ -40,6 +39,7 @@ class Mediasite::Module
     end
 
     def poll
+        schedule.clear
         state
         schedule.every("#{setting(:update_every)}s") do
             state
@@ -49,7 +49,7 @@ class Mediasite::Module
     def get_request(url)
         req_url = url
         logger.debug(req_url)
-        
+
         task {
             uri = URI(req_url)
             req = Net::HTTP::Get.new(uri)
@@ -63,7 +63,7 @@ class Mediasite::Module
 
     def post_request(url)
         req_url = setting(:url) + url
-        
+
         task {
             uri = URI(req_url)
             req = Net::HTTP::Post.new(uri)
@@ -136,8 +136,8 @@ class Mediasite::Module
         res = get_request(create_url("/api/v1/Recorders('#{self[:device_id]}')/ActiveInputs"))
         self[:dual] = res['ActiveInputs'].size >= 2 if res['ActiveInputs']
 
-        res = get_request(create_url("/api/v1/Recorders('#{self[:device_id]}')/TimeRemaining"))
-        self[:time_remaining] = res['SecondsRemaining']
+        #res = get_request(create_url("/api/v1/Recorders('#{self[:device_id]}')/TimeRemaining"))
+        #self[:time_remaining] = res['SecondsRemaining']
 
         self[:volume] = 0 # TODO:
     end
@@ -152,7 +152,11 @@ class Mediasite::Module
           if start_time <= current_time && current_time <= end_time
               presentation = get_request(schedule['ScheduleLink'] + '/Presentations')
               live = presentation['value'][0]['Status'] == 'Live'
+              self[:time_remaining] = (end_time - current_time).to_i
+              logger.debug "Time remaining is #{distance_of_time_in_words(self[:time_remaining])}"
               break
+          else
+            self[:time_remaining] = 0
           end
       end
       live
