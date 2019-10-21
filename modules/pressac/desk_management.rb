@@ -112,7 +112,7 @@ class ::Pressac::DeskManagement
 	    desk_name_str = id([desk[:name].to_sym])&.first.to_s
         desk_name = desk_name_str.to_sym
 
-        zone = @which_zone(desk[:gateway])
+        zone = @which_zone[desk[:gateway]]
         return unless zone
 
         if current_state[:motion] && !self[zone].include?(desk_name_str)      # if motion, and desk is currently free
@@ -141,13 +141,13 @@ class ::Pressac::DeskManagement
         now = Time.now.to_i
         @pending_busy.each do |desk,sensor|
             if now > sensor[:timestamp] + @busy_delay
-                zone = @which_zone(sensor[:gateway])
+                zone = @which_zone[sensor[:gateway]]
                 new_status[zone][:busy] |= [desk]
             end
         end
         @pending_free.each do |desk,sensor|
             if now > sensor[:timestamp] + @free_delay
-                zone = @which_zone(sensor[:gateway])
+                zone = @which_zone[sensor[:gateway]]
                 new_status[zone][:free] |= [desk]
             end
         end
@@ -193,7 +193,7 @@ class ::Pressac::DeskManagement
             last_update = Time.parse(sensor[:timestamp])
             if Time.now > last_update + 1.hour
                 desk_name = id([sensor[:name]]).first.to_s
-                zone = @which_zone(sensor[:gateway])
+                zone = @which_zone[sensor[:gateway]]
                 self[zone]                   = self[zone] - [desk_name]
                 self[zone+':desk_ids']       = self[zone+':desk_ids'] - [desk_name]
                 self[zone+':desk_count']     = self[zone+':desk_ids'].count
