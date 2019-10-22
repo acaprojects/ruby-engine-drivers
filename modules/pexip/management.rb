@@ -50,11 +50,12 @@ class Pexip::Management
 
         conf_alias ||= SecureRandom.uuid
         name ||= conf_alias
+        pin = pin.to_s.rjust(4, '0') if pin
 
         post('/api/admin/configuration/v1/conference/', body: {
             name: name.to_s,
             service_type: type,
-            pin: pin.to_s.rjust(4, '0'),
+            pin: pin,
             aliases: [{"alias" => conf_alias}],
             tag: tag
         }.merge(options).to_json, headers: {
