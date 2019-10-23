@@ -145,20 +145,20 @@ class Mediasite::Module
     def live?
       live = self[:state] == 'Recording'
       res = get_request(create_url("/api/v1/Recorders('#{self[:device_id]}')/ScheduledRecordingTimes"))
+      current_schedule = false
       res['value'].each do |schedule|
           current_time = ActiveSupport::TimeZone.new('UTC').now
           start_time = ActiveSupport::TimeZone.new('UTC').parse(schedule['StartTime'])
           end_time = ActiveSupport::TimeZone.new('UTC').parse(schedule['EndTime'])
           if start_time <= current_time && current_time <= end_time
+              current_schedule = true
               presentation = get_request(schedule['ScheduleLink'] + '/Presentations')
               live = presentation['value'][0]['Status'] == 'Live'
               self[:time_remaining] = (end_time - current_time).to_i
-              logger.debug "Time remaining is #{distance_of_time_in_words(self[:time_remaining])}"
               break
-          else
-            self[:time_remaining] = 0
           end
       end
+      self[:time_remaining] = 0 if !current_schedule
       live
     end
 
