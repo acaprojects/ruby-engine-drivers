@@ -12,7 +12,13 @@ module Pressac::Sensors; end
 # Pressac desk / environment / other sensor modules wirelessly connect to 
 # Pressac Smart Gateway (https://www.pressac.com/smart-gateway/) uses AMQP or MQTT protocol to push data to MS Azure IOT Hub via internet 
 # Local Node-RED docker container (default hostname: node-red) connects to the same Azure IOT hub via AMQP over websocket (using "Azure IoT Hub Receiver" https://flows.nodered.org/node/node-red-contrib-azure-iot-hub)
-# Engine module (instance of this driver) connects to Node-RED via websockets. Typically ws://node-red:1880/ws/pressac/
+#   Initial setup: Install the Azure IOT Hub module to the node-red docker container by running:
+#    - docker exec -it node-red npm install node-red-contrib-azure-iot-hub
+#    - visit http://<engine>:1880 to configure node-red:
+#       - create an "Azure IoT Hub Receiver" node. Connect it it to your IOT Hub by setting the connectionstring (see heading "Reading all messages received into Azure IoT Hub": https://flows.nodered.org/node/node-red-contrib-azure-iot-hub)
+#       - create a "websocket output" node and connect the output of the Azure node to the input of the websocket node
+#       - edit the websocket node and set the Type to be "listen on" and Path to be "/ws/pressac"
+# Engine module (instance of this driver) connects to Node-RED via websockets. Typically "ws://node-red:1880/ws/pressac/"
 
 class Pressac::Sensors::WsProtocol
     include ::Orchestrator::Constants
