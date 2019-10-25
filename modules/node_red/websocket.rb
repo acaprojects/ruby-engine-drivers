@@ -38,6 +38,13 @@ class NodeRed::Websocket
     def disconnected
     end
 
+    def send_text(message)
+        @ws.text(message)
+    end
+
+    def send_binary(array)
+        @ws.binary(array)
+    end
 
     protected
 
