@@ -108,7 +108,7 @@ module Microsoft::Office2::Events
             # Go through each booking and extract more info from it
             bookings.each_with_index do |booking, i|
                 bookings[i] = Microsoft::Office2::Event.new(client: self, event: booking, available_to: options[:available_to], available_from: options[:available_from]).event
-                is_available = false if !bookings[i]['is_free'] && !options[:ignore_bookings].include?(bookings[i]['id'])
+                is_available = false if !bookings[i]['is_free'] && !options[:ignore_bookings].include?(bookings[i]['icaluid'])
             end
             bookings_by_room[mailboxes[res['id'].to_i]] = {available: is_available, bookings: bookings}
         end
