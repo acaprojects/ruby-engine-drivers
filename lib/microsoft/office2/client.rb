@@ -16,6 +16,7 @@ module Microsoft
         class BadRequest < Error; end
         class ErrorInvalidIdMalformed < Error; end
         class ErrorAccessDenied < Error; end
+        class Conflict < Error; end
     end
 end
 
@@ -166,7 +167,7 @@ class Microsoft::Office2::Client
         when 404
             raise Microsoft::Error::ResourceNotFound.new(response.body)
         when 409
-            raise Microsoft::Error::ErrorFolderExists.new(response.body)
+            raise Microsoft::Error::Conflict.new(response.body)
         end
     end
 

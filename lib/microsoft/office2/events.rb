@@ -108,7 +108,7 @@ module Microsoft::Office2::Events
             # Go through each booking and extract more info from it
             bookings.each_with_index do |booking, i|
                 bookings[i] = Microsoft::Office2::Event.new(client: self, event: booking, available_to: options[:available_to], available_from: options[:available_from]).event
-                is_available = false if !bookings[i]['is_free'] && !options[:ignore_bookings].include?(bookings[i]['id'])
+                is_available = false if !bookings[i]['is_free'] && !options[:ignore_bookings].include?(bookings[i]['icaluid'])
             end
             bookings_by_room[mailboxes[res['id'].to_i]] = {available: is_available, bookings: bookings}
         end
@@ -177,8 +177,16 @@ module Microsoft::Office2::Events
         )
         
         # Make the request and check the response
-        request = graph_request(request_method: 'post', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"], data: event_json)
-        check_response(request)
+        begin
+            retries ||= 0
+            request = graph_request(request_method: 'post', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"], data: event_json)
+            check_response(request)
+        rescue Microsoft::Error::Conflict => e
+	    if (retries += 1) < 3
+	        sleep(rand())
+                retry
+	    end
+        end
         Microsoft::Office2::Event.new(client: self, event: JSON.parse(request.body)).event
     end
 
@@ -244,9 +252,15 @@ module Microsoft::Office2::Events
         end
 
         # Make the request and check the response
-        request = graph_request(request_method: 'patch', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events/#{booking_id}"], data: event_json)
-        check_response(request)
- 
+        begin
+            request = graph_request(request_method: 'patch', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events/#{booking_id}"], data: event_json)
+            check_response(request)
+        rescue Microsoft::Error::Conflict => e
+            if (retries += 1) < 3
+                sleep(rand()*2)
+                retry
+            end
+        end 
         Microsoft::Office2::Event.new(client: self, event: JSON.parse(request.body).merge({'extensions' => [ext_data]})).event
     end
 
@@ -257,8 +271,15 @@ module Microsoft::Office2::Events
     # @param booking_id [String] The ID of the booking to be deleted
     def delete_booking(mailbox:, booking_id:, calendargroup_id: nil, calendar_id: nil)
         endpoint = "/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events/#{booking_id}"
-        request = graph_request(request_method: 'delete', endpoints: [endpoint])
-        check_response(request)
+        begin
+            request = graph_request(request_method: 'delete', endpoints: [endpoint])
+            check_response(request)
+        rescue Microsoft::Error::Conflict => e
+            if (retries += 1) < 3
+                sleep(rand()*2)
+                retry
+            end
+        end
         200
     end
     
@@ -296,9 +317,6 @@ module Microsoft::Office2::Events
             attendees.push({ type: "resource", emailAddress: { address: room[:email], name: room[:name] } })
         end
 
-        # If we have rooms then build the location from that, otherwise use the passed in value
-        event_location = rooms.map{ |room| room[:name] }.join(" and ")
-        event_location = ( event_location.present? ? event_location : location )
 
         event_json = {}
         event_json[:subject] = subject
@@ -320,9 +338,8 @@ module Microsoft::Office2::Events
             timeZone: timezone
         } if end_param
 
-        event_json[:location] = {
-            displayName: location
-        } if location
+        # If we have rooms then use that, otherwise use the location string. Fall back is [].
+        event_json[:locations] = rooms.present? ? rooms.map { |r| { displayName: r[:name] } } : location ? [{displayName: location}] : []
 
         event_json[:organizer] = {
             emailAddress: {

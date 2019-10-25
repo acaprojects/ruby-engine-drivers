@@ -12,7 +12,13 @@ module Pressac::Sensors; end
 # Pressac desk / environment / other sensor modules wirelessly connect to 
 # Pressac Smart Gateway (https://www.pressac.com/smart-gateway/) uses AMQP or MQTT protocol to push data to MS Azure IOT Hub via internet 
 # Local Node-RED docker container (default hostname: node-red) connects to the same Azure IOT hub via AMQP over websocket (using "Azure IoT Hub Receiver" https://flows.nodered.org/node/node-red-contrib-azure-iot-hub)
-# Engine module (instance of this driver) connects to Node-RED via websockets. Typically ws://node-red:1880/ws/pressac/
+#   Initial setup: Install the Azure IOT Hub module to the node-red docker container by running:
+#    - docker exec -it node-red npm install node-red-contrib-azure-iot-hub
+#    - visit http://<engine>:1880 to configure node-red:
+#       - create an "Azure IoT Hub Receiver" node. Connect it it to your IOT Hub by setting the connectionstring (see heading "Reading all messages received into Azure IoT Hub": https://flows.nodered.org/node/node-red-contrib-azure-iot-hub)
+#       - create a "websocket output" node and connect the output of the Azure node to the input of the websocket node
+#       - edit the websocket node and set the Type to be "listen on" and Path to be "/ws/pressac"
+# Engine module (instance of this driver) connects to Node-RED via websockets. Typically "ws://node-red:1880/ws/pressac/"
 
 class Pressac::Sensors::WsProtocol
     include ::Orchestrator::Constants
@@ -26,15 +32,12 @@ class Pressac::Sensors::WsProtocol
     })
 
     def on_load
+        @busy_desks = {}
+        @free_desks = {}
         status = setting(:status) || {}
-        self[:busy_desks] = status[:busy_desks] || {}   # hash of gateway names => Array of desk names
-        self[:free_desks] = status[:free_desks] || {}
-        self[:all_desks]  = status[:all_desks]  || {}
         self[:gateways]   = status[:gateways]  || {}
         self[:last_update] = status[:last_update]  || "Never"
-        self[:environment] = {}                         # Environment sensor values (temp, humidity)
-        @busy_desks = self[:busy_desks]
-        @free_desks = self[:free_desks]
+        self[:environment] = {}  # Environment sensor values (temp, humidity)
         
         on_update
     end
@@ -53,9 +56,9 @@ class Pressac::Sensors::WsProtocol
 
     def mock(sensor, occupied)
         gateway = which_gateway(sensor)
-        self[:gateways][gateway][:busy_desks] = occuupied ? self[:gateways][gateway][:busy_desks] | [sensor] : self[:gateways][gateway][:busy_desks] -  sensor
-        self[:gateways][gateway][:free_desks] = occuupied ? self[:gateways][gateway][:free_desks] -  sensor  : self[:gateways][gateway][:free_desks] | [sensor]
-        self[:gateways][gateway][sensor_name] = self[gateway] = {
+        self[:gateways][gateway][:busy_desks] = occupied ? self[:gateways][gateway][:busy_desks] | [sensor] : self[:gateways][gateway][:busy_desks] -  [sensor]
+        self[:gateways][gateway][:free_desks] = occupied ? self[:gateways][gateway][:free_desks] -  [sensor]  : self[:gateways][gateway][:free_desks] | [sensor]
+        self[:gateways][gateway][sensor] = self[gateway] = {
             id:        'mock_data',
             name:      sensor,
             motion:    occupied,
@@ -109,19 +112,19 @@ class Pressac::Sensors::WsProtocol
             gateway     = sensor[:gatewayName].to_sym || 'unknown_gateway'.to_sym
             occupancy   = sensor[:motionDetected] == true
 
-            @free_desks[gateway]     ||= [].to_set
-            @busy_desks[gateway]     ||= [].to_set
+            @free_desks[gateway]     ||= []
+            @busy_desks[gateway]     ||= []
             self[:gateways][gateway] ||= {}
             
             if occupancy
-                @busy_desks[gateway] | [sensor_name]
-                @free_desks[gateway] - [sensor_name]
+                @busy_desks[gateway] = @busy_desks[gateway] | [sensor_name]
+                @free_desks[gateway] = @free_desks[gateway] - [sensor_name]
             else
-                @busy_desks[gateway] - [sensor_name]
-                @free_desks[gateway] | [sensor_name]
+                @busy_desks[gateway] = @busy_desks[gateway] - [sensor_name]
+                @free_desks[gateway] = @free_desks[gateway] | [sensor_name]
             end
-            self[:gateways][gateway][:busy_desks] = @busy_desks[gateway].to_a
-            self[:gateways][gateway][:free_desks] = @free_desks[gateway].to_a
+            self[:gateways][gateway][:busy_desks] = @busy_desks[gateway]
+            self[:gateways][gateway][:free_desks] = @free_desks[gateway]
             self[:gateways][gateway][:all_desks]  = @busy_desks[gateway] + @free_desks[gateway]
             
             # store the new sensor data under the gateway name (self[:gateways][gateway][sensor_name]), 
@@ -150,9 +153,6 @@ class Pressac::Sensors::WsProtocol
         self[:last_update] = Time.now.in_time_zone($TZ).to_s
         # Save the current status to database, so that it can retrieved when engine restarts
         status = {
-            busy_desks:  self[:busy_desks],
-            free_desks:  self[:free_desks],
-            all_desks:   self[:all_desks],
             last_update: self[:last_update],
             gateways:    self[:gateways]
         }
