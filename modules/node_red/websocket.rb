@@ -73,7 +73,7 @@ class NodeRed::Websocket
 
     def on_message(raw_string)
         logger.debug { "received: #{raw_string}" }
-        sensor = JSON.parse(raw_string, symbolize_names: true)
+        self[:message_received] = raw_string
     end
 
     # connection is closing
