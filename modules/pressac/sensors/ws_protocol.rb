@@ -50,9 +50,9 @@ class Pressac::Sensors::WsProtocol
 
     def mock(sensor, occupied)
         gateway = which_gateway(sensor)
-        self[:gateways][gateway][:busy_desks] = occuupied ? self[:gateways][gateway][:busy_desks] | [sensor] : self[:gateways][gateway][:busy_desks] -  sensor
-        self[:gateways][gateway][:free_desks] = occuupied ? self[:gateways][gateway][:free_desks] -  sensor  : self[:gateways][gateway][:free_desks] | [sensor]
-        self[:gateways][gateway][sensor_name] = self[gateway] = {
+        self[:gateways][gateway][:busy_desks] = occupied ? self[:gateways][gateway][:busy_desks] | [sensor] : self[:gateways][gateway][:busy_desks] -  [sensor]
+        self[:gateways][gateway][:free_desks] = occupied ? self[:gateways][gateway][:free_desks] -  [sensor]  : self[:gateways][gateway][:free_desks] | [sensor]
+        self[:gateways][gateway][sensor] = self[gateway] = {
             id:        'mock_data',
             name:      sensor,
             motion:    occupied,
