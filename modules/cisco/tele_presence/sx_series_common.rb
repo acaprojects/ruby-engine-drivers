@@ -366,6 +366,7 @@ module Cisco::TelePresence::SxSeriesCommon
                     end
 
                     self[:incall] = false
+                    self[:presentation] = :none
                     self[:call_status] = {}
                     @last_call_id = nil
                     @call_status = nil
