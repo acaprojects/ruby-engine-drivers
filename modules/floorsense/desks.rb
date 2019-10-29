@@ -91,7 +91,7 @@ class Floorsense::Desks
         end
     end
 
-    def locate(user : String)
+    def locate(user)
         token = get_token
         uri = "/restapi/user-locate?name=#{URI.encode_www_form_component user}"
 
