@@ -118,7 +118,7 @@ module Cisco::TelePresence::SxCameraCommon
     def zoom(position)
         val = in_range(position.to_i, self[:zoom_max], self[:zoom_min])
 
-        command('Cameras Camera PositionSet', params({
+        command('Camera PositionSet', params({
             :CameraId => @index,
             :Zoom => val
         }), name: :zoom).then do

@@ -9,10 +9,16 @@ module Pressac::Sensors; end
 
 # Data flow:
 # ==========
-# Pressac desk / environment / other sensor modules wirelessly connect to 
-# Pressac Smart Gateway (https://www.pressac.com/smart-gateway/) uses AMQP or MQTT protocol to push data to MS Azure IOT Hub via internet 
+# Pressac desk / environment / other sensor modules wirelessly connect to
+# Pressac Smart Gateway (https://www.pressac.com/smart-gateway/) uses AMQP or MQTT protocol to push data to MS Azure IOT Hub via internet
 # Local Node-RED docker container (default hostname: node-red) connects to the same Azure IOT hub via AMQP over websocket (using "Azure IoT Hub Receiver" https://flows.nodered.org/node/node-red-contrib-azure-iot-hub)
-# Engine module (instance of this driver) connects to Node-RED via websockets. Typically ws://node-red:1880/ws/pressac/
+#   Initial setup: Install the Azure IOT Hub module to the node-red docker container by running:
+#    - docker exec -it node-red npm install node-red-contrib-azure-iot-hub
+#    - visit http://<engine>:1880 to configure node-red:
+#       - create an "Azure IoT Hub Receiver" node. Connect it it to your IOT Hub by setting the connectionstring (see heading "Reading all messages received into Azure IoT Hub": https://flows.nodered.org/node/node-red-contrib-azure-iot-hub)
+#       - create a "websocket output" node and connect the output of the Azure node to the input of the websocket node
+#       - edit the websocket node and set the Type to be "listen on" and Path to be "/ws/pressac"
+# Engine module (instance of this driver) connects to Node-RED via websockets. Typically "ws://node-red:1880/ws/pressac/"
 
 class Pressac::Sensors::WsProtocol
     include ::Orchestrator::Constants
@@ -28,16 +34,24 @@ class Pressac::Sensors::WsProtocol
     def on_load
         @busy_desks = {}
         @free_desks = {}
-        status = setting(:status) || {}
-        self[:gateways]   = status[:gateways]  || {}
-        self[:last_update] = status[:last_update]  || "Never"
-        self[:environment] = {}  # Environment sensor values (temp, humidity)
-        
+
+        # Environment sensor values (temp, humidity)
+        @environment = {}
+        self[:environment] = {}
+
         on_update
     end
 
     # Called after dependency reload and settings updates
     def on_update
+        status = setting(:status) || {}
+
+        @gateways = status[:gateways] || {}
+        self[:gateways] = @gateways.dup
+
+        @last_update = status[:last_update] || "Never"
+        self[:last_update] = @last_update.dup
+
         @ws_path  = setting('websocket_path')
     end
 
@@ -50,9 +64,10 @@ class Pressac::Sensors::WsProtocol
 
     def mock(sensor, occupied)
         gateway = which_gateway(sensor)
-        self[:gateways][gateway][:busy_desks] = occuupied ? self[:gateways][gateway][:busy_desks] | [sensor] : self[:gateways][gateway][:busy_desks] -  sensor
-        self[:gateways][gateway][:free_desks] = occuupied ? self[:gateways][gateway][:free_desks] -  sensor  : self[:gateways][gateway][:free_desks] | [sensor]
-        self[:gateways][gateway][sensor_name] = self[gateway] = {
+
+        @gateways[gateway][:busy_desks] = occupied ? @gateways[gateway][:busy_desks] | [sensor] : @gateways[gateway][:busy_desks] -  [sensor]
+        @gateways[gateway][:free_desks] = occupied ? @gateways[gateway][:free_desks] - [sensor] : @gateways[gateway][:free_desks] | [sensor]
+        @gateways[gateway][sensor] = self[gateway] = {
             id:        'mock_data',
             name:      sensor,
             motion:    occupied,
@@ -61,10 +76,12 @@ class Pressac::Sensors::WsProtocol
             timestamp: Time.now.to_s,
             gateway:   gateway
         }
+
+        self[:gateways] = @gateways.deep_dup
     end
 
     def which_gateway(sensor)
-        self[:gateways]&.each do |g,sensors|
+        @gateways.each do |g, sensors|
             return g if sensors.include? sensor
         end
     end
@@ -108,8 +125,8 @@ class Pressac::Sensors::WsProtocol
 
             @free_desks[gateway]     ||= []
             @busy_desks[gateway]     ||= []
-            self[:gateways][gateway] ||= {}
-            
+            @gateways[gateway] ||= {}
+
             if occupancy
                 @busy_desks[gateway] = @busy_desks[gateway] | [sensor_name]
                 @free_desks[gateway] = @free_desks[gateway] - [sensor_name]
@@ -117,13 +134,13 @@ class Pressac::Sensors::WsProtocol
                 @busy_desks[gateway] = @busy_desks[gateway] - [sensor_name]
                 @free_desks[gateway] = @free_desks[gateway] | [sensor_name]
             end
-            self[:gateways][gateway][:busy_desks] = @busy_desks[gateway]
-            self[:gateways][gateway][:free_desks] = @free_desks[gateway]
-            self[:gateways][gateway][:all_desks]  = @busy_desks[gateway] + @free_desks[gateway]
-            
-            # store the new sensor data under the gateway name (self[:gateways][gateway][sensor_name]), 
+            @gateways[gateway][:busy_desks] = @busy_desks[gateway]
+            @gateways[gateway][:free_desks] = @free_desks[gateway]
+            @gateways[gateway][:all_desks]  = @busy_desks[gateway] + @free_desks[gateway]
+
+            # store the new sensor data under the gateway name (self[:gateways][gateway][sensor_name]),
             # AND as the latest notification from this gateway (self[gateway]) (for the purpose of the DeskManagent logic upstream)
-            self[:gateways][gateway][sensor_name] = self[gateway] = {
+            @gateways[gateway][sensor_name] = self[gateway] = {
                 id:        sensor[:deviceId] || sensor[:deviceid],
                 name:      sensor_name,
                 motion:    occupancy,
@@ -133,22 +150,25 @@ class Pressac::Sensors::WsProtocol
                 gateway:   gateway
             }
             #signal_status(gateway)
-            self[:gateways][gateway][:last_update] = sensor[:timestamp]
+            @gateways[gateway][:last_update] = sensor[:timestamp]
+            self[:gateways] = @gateways.deep_dup
         when 'CO2-Temperature-and-Humidity'
-            self[:environment][sensor[:devicename]] = {
+            @environment[sensor[:devicename]] = {
                 temp:           sensor[:temperature],
                 humidity:       sensor[:humidity],
                 concentration:  sensor[:concentration],
                 dbm:            sensor[:dbm],
                 id:             sensor[:deviceid]
             }
+            self[:environment] = @environment.deep_dup
         end
 
         self[:last_update] = Time.now.in_time_zone($TZ).to_s
+
         # Save the current status to database, so that it can retrieved when engine restarts
         status = {
             last_update: self[:last_update],
-            gateways:    self[:gateways]
+            gateways:    @gateways.deep_dup
         }
         define_setting(:status, status)
     end

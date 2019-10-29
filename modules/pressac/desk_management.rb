@@ -17,7 +17,7 @@ class ::Pressac::DeskManagement
             "zone-xxx" => ["pressac_gateway_name_1"],
             "zone-zzz" => ["pressac_gateway_name_2", "pressac_gateway_name_3"]
         },
-        sensor_to_desk_mappings: {
+        sensor_name_to_desk_mappings: {
             "Note" => "This mapping is optional. If not present, the sensor NAME will be used and must match SVG map IDs",
             "Desk01" => "table-SYD.2.17.A",
             "Desk03" => "table-SYD.2.17.B"
@@ -179,7 +179,7 @@ class ::Pressac::DeskManagement
         define_setting(:zzz_status, status)
     end
 
-    # Transform an array of Sensor Names to SVG Map IDs, IF the user has specified a mapping in settings(sensor_to_desk_mappings)
+    # Transform an array of Sensor Names to SVG Map IDs, IF the user has specified a mapping in settings(sensor_name_to_desk_mappings)
     def id(array)
         return [] if array.nil?
         array.map { |i| @desk_ids[i] || i } 
