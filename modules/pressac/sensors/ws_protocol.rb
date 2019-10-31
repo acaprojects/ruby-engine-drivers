@@ -42,7 +42,7 @@ class Pressac::Sensors::WsProtocol
 
     # Called after dependency reload and settings updates
     def on_update
-        status = setting('status') || {}
+        status = setting(:status) || {}
 
         @gateways = status[:gateways] || {}
         self[:gateways] = @gateways.dup
@@ -84,9 +84,12 @@ class Pressac::Sensors::WsProtocol
 
     def list_stale_sensors
         stale = []
+        now = Time.now.to_i
         @gateways.each do |g, sensors|
-            sensors.each do |sensor|
-                stale << {sensor[:name] => sensor[:last_update] || "Unknown"} if Time.now.to_i - (sensor[:last_update_epoch] || 0 ) > @stale_sensor_threshold
+            sensors.each do |name, sensor|
+                if now - (sensor[:last_update_epoch] || 0 ) > @stale_sensor_threshold
+                    stale << {name => (sensor[:last_update] || "Unknown")} 
+                end
             end
         end
         logger.debug "Sensors that have not posted updates in the past #{setting('stale_sensor_threshold')}:\n#{stale}"
@@ -132,6 +135,7 @@ class Pressac::Sensors::WsProtocol
 
             # store the new sensor data under the gateway name (self[:gateways][gateway][sensor_name]),
             # AND as the latest notification from this gateway (self[gateway]) (for the purpose of the DeskManagent logic upstream)
+            @gateways[gateway] ||= {}
             @gateways[gateway][sensor_name] = {
                 id:        sensor[:deviceId] || sensor[:deviceid],
                 name:      sensor_name,
