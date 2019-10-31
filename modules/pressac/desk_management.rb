@@ -117,10 +117,10 @@ class ::Pressac::DeskManagement
         logger.debug "===Updating: #{desk_name} in #{zone}"
         return unless zone
 
-        if current_state[:motion] && !self[zone].include?(desk_name)      # if motion, and desk is currently free
+        if current_state[:motion]
             @pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
             @pending_free.delete(desk_name)
-        elsif !current_state[:motion] && self[zone].include?(desk_name)   # if no motion, and desk is currently busy
+        elsif !current_state[:motion]
             @pending_free[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
             @pending_busy.delete(desk_name)
         end
