@@ -112,6 +112,7 @@ class ::Pressac::DeskManagement
         desk_name = id([desk[:name].to_sym])&.first.to_s
 
 	    zone = @which_zone[desk[:gateway].to_s]
+        logger.debug "===Updating: #{desk_name} in #{zone}"
         return unless zone
 
         if current_state[:motion] && !self[zone].include?(desk_name)      # if motion, and desk is currently free
@@ -148,6 +149,9 @@ class ::Pressac::DeskManagement
                 new_status[zone][:free] |= [desk] if zone
             end
         end
+
+        self[:new_status] = @new_status.deep_dup
+
         expose_desks(new_status)
         @pending_busy = {}
         @pending_free = {}
