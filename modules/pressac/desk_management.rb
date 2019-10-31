@@ -150,7 +150,7 @@ class ::Pressac::DeskManagement
             end
         end
 
-        self[:new_status] = @new_status.deep_dup
+        self[:new_status] = new_status.deep_dup
 
         expose_desks(new_status)
         @pending_busy = {}
