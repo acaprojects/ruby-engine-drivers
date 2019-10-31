@@ -92,7 +92,7 @@ class Pressac::Sensors::WsProtocol
         stale = []
         @gateways.each do |g, sensors|
             sensors.each do |sensor|
-                stale << {sensor[:name]: sensor[:last_update] } if Time.now.to_i - sensor.last_update_epoch > @stale_sensor_threshold
+                stale << {sensor[:name] => sensor[:last_update]} if Time.now.to_i - sensor.last_update_epoch > @stale_sensor_threshold
             end
         end
         logger.debug "Sensors that have not posted updates in the past #{setting('stale_sensor_threshold')}:\n#{stale}"
