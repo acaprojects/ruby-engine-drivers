@@ -29,6 +29,7 @@ class Pressac::Sensors::WsProtocol
     wait_response false
     default_settings({
         websocket_path: '/ws/pressac/',
+        stale_sensor_threshold: '20m'
     })
 
     def on_load
@@ -44,7 +45,7 @@ class Pressac::Sensors::WsProtocol
 
     # Called after dependency reload and settings updates
     def on_update
-        status = setting(:status) || {}
+        status = setting('status') || {}
 
         @gateways = status[:gateways] || {}
         self[:gateways] = @gateways.dup
@@ -53,6 +54,7 @@ class Pressac::Sensors::WsProtocol
         self[:last_update] = @last_update.dup
 
         @ws_path  = setting('websocket_path')
+        @stale_sensor_threshold = UV::Scheduler.parse_duration(setting('stale_sensor_threshold') || '20m') / 1000
     end
 
     def connected
@@ -84,6 +86,16 @@ class Pressac::Sensors::WsProtocol
         @gateways.each do |g, sensors|
             return g if sensors.include? sensor
         end
+    end
+
+    def list_stale_sensors
+        stale = []
+        @gateways.each do |g, sensors|
+            sensors.each do |sensor|
+                stale << {sensor[:name]: sensor[:last_update] } if Time.now.to_i - sensor.last_update_epoch > @stale_sensor_threshold
+            end
+        end
+        logger.debug "Sensors that have not posted updates in the past #{setting('stale_sensor_threshold')}:\n#{stale}"
     end
 
 
@@ -147,6 +159,8 @@ class Pressac::Sensors::WsProtocol
                 voltage:   sensor[:supplyVoltage][:value] || sensor[:supplyVoltage],
                 location:  sensor[:location],
                 timestamp: sensor[:timestamp],
+                last_update: Time.now.in_time_zone($TZ).to_s,
+                last_update_epoch: Time.now.to_i
                 gateway:   gateway
             }
             #signal_status(gateway)
