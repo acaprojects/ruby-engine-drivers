@@ -160,7 +160,7 @@ class Pressac::Sensors::WsProtocol
                 location:  sensor[:location],
                 timestamp: sensor[:timestamp],
                 last_update: Time.now.in_time_zone($TZ).to_s,
-                last_update_epoch: Time.now.to_i
+                last_update_epoch: Time.now.to_i,
                 gateway:   gateway
             }
             #signal_status(gateway)
