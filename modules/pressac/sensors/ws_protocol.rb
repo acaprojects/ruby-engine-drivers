@@ -140,7 +140,7 @@ class Pressac::Sensors::WsProtocol
 
             # store the new sensor data under the gateway name (self[:gateways][gateway][sensor_name]),
             # AND as the latest notification from this gateway (self[gateway]) (for the purpose of the DeskManagent logic upstream)
-            @gateways[gateway][sensor_name] = self[gateway] = {
+            @gateways[gateway][sensor_name] = {
                 id:        sensor[:deviceId] || sensor[:deviceid],
                 name:      sensor_name,
                 motion:    occupancy,
@@ -151,6 +151,7 @@ class Pressac::Sensors::WsProtocol
             }
             #signal_status(gateway)
             @gateways[gateway][:last_update] = sensor[:timestamp]
+            self[gateway] = @gateways[gateway][sensor_name].dup
             self[:gateways] = @gateways.deep_dup
         when 'CO2-Temperature-and-Humidity'
             @environment[sensor[:devicename]] = {

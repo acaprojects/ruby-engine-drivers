@@ -111,12 +111,12 @@ class ::Pressac::DeskManagement
         desk = notification.value
         desk_name = id([desk[:name].to_sym])&.first.to_s
 
-	zone = @which_zone[desk[:gateway].to_s]
+	    zone = @which_zone[desk[:gateway].to_s]
         return unless zone
 
         if current_state[:motion] && !self[zone].include?(desk_name)      # if motion, and desk is currently free
-	    @pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
-	    @pending_free.delete(desk_name)
+            @pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
+            @pending_free.delete(desk_name)
         elsif !current_state[:motion] && self[zone].include?(desk_name)   # if no motion, and desk is currently busy
             @pending_free[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
             @pending_busy.delete(desk_name)
@@ -128,6 +128,7 @@ class ::Pressac::DeskManagement
     end
 
     def determine_desk_status
+        persist_current_status
         new_status = {}
         @zones.each do |zone, gateways|
             new_status[zone] =  {}
@@ -148,9 +149,10 @@ class ::Pressac::DeskManagement
             end
         end
         expose_desks(new_status)
-        self[:pending_busy] = @pending_busy = {}
-        self[:pending_free] = @pending_free = {}
-        persist_current_status
+        @pending_busy = {}
+        @pending_free = {}
+        self[:pending_busy] = {}
+        self[:pending_free] = {}
     end
 
     def expose_desks(new_status)
@@ -158,8 +160,8 @@ class ::Pressac::DeskManagement
 	    zone = z.to_sym
 	    self[zone] ||= []
 	    self[zone]                = self[zone]          - desks[:free] | desks[:busy]
-            self[z+':desk_ids']       = self[z+':desk_ids'] | desks[:free] | desks[:busy]
-            self[z+':desk_count']     = self[z+':desk_ids'].count
+        self[z+':desk_ids']       = self[z+':desk_ids'] | desks[:free] | desks[:busy]
+        self[z+':desk_count']     = self[z+':desk_ids'].count
 	    self[z+':occupied_count'] = self[zone].count
         end
     end
