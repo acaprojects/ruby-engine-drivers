@@ -70,6 +70,9 @@ class ::Pressac::DeskManagement
         
         # Subscribe to live updates from each gateway
         device,index = @hub.split('_')
+        @subscriptions << system.subscribe(device, index.to_i, :stale) do |notification|
+            unexpose_unresponsive_desks(notification)
+        end
         @zones.each do |zone,gateways|
             gateways.each do |gateway|
                 @subscriptions << system.subscribe(device, index.to_i, gateway.to_sym) do |notification|
@@ -79,7 +82,6 @@ class ::Pressac::DeskManagement
         end
         schedule.clear
         schedule.every('30s') { determine_desk_status }
-        #schedule.every('1h') { unexpose_unresponsive_desks }
     end
 
     # @param zone [String] the engine zone id
@@ -191,18 +193,20 @@ class ::Pressac::DeskManagement
         array.map { |i| @desk_ids[i] || i } 
     end
 
-    def unexpose_unresponsive_desks
-        gateways = system[@hub][:gateways]
-        gateways.each do |gateway, sensor|
-            last_update = Time.parse(sensor[:timestamp])
-            if Time.now > last_update + 1.hour
-                desk_name = id([sensor[:name]]).first.to_s
-                zone = @which_zone[sensor[:gateway]]
-                self[zone]                   = self[zone] - [desk_name]
-                self[zone+':desk_ids']       = self[zone+':desk_ids'] - [desk_name]
-                self[zone+':desk_count']     = self[zone+':desk_ids'].count
-                self[zone+':occupied_count'] = self[zone].count
-            end
+    def unexpose_unresponsive_desks(notification)
+        stale_sensors = notification.value
+        stale_ids = []
+        stale_sensors.each do |sensor, last_update|
+            stale_ids << id([sensor])&.first
+        end
+
+        logger.debug "Removing stale sensors: #{stale_ids}"
+        
+        @zones.keys&.each do |zone_id|
+            self[zone_id]                   = self[zone_id] - stale_ids
+            self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] - stale_ids
+            self[zone_id+':occupied_count'] = self[zone_id].count
+            self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
         end
     end
 end
