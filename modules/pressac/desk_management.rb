@@ -111,7 +111,7 @@ class ::Pressac::DeskManagement
         #     timestamp: string,
         #     gateway:   string }
         desk = notification.value
-        desk_name = id([desk[:name].to_sym])&.first.to_s
+        desk_name = id([desk[:name].to_sym])&.first
 
 	    zone = @which_zone[desk[:gateway].to_s]
         logger.debug "===Updating: #{desk_name} in #{zone}"
@@ -190,15 +190,12 @@ class ::Pressac::DeskManagement
     # Transform an array of Sensor Names to SVG Map IDs, IF the user has specified a mapping in settings(sensor_name_to_desk_mappings)
     def id(array)
         return [] if array.nil?
-        array.map { |i| @desk_ids[i] || i } 
+	array.map { |i| @desk_ids[i] || i&.to_s } 
     end
 
     def unexpose_unresponsive_desks(notification)
         stale_sensors = notification.value
-        stale_ids = []
-        stale_sensors.each do |sensor, last_update|
-            stale_ids << id([sensor])&.first
-        end
+	stale_ids = id(stale_sensors.map {|s| s.keys.first})
 
         logger.debug "Removing stale sensors: #{stale_ids}"
         
