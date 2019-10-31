@@ -54,7 +54,7 @@ class Pressac::Sensors::WsProtocol
         @stale_sensor_threshold = UV::Scheduler.parse_duration(setting('stale_sensor_threshold') || '20m') / 1000
 
         schedule.clear
-        schedule.every(settings('stale_sensor_threshold') { list_stale_sensors }
+        schedule.every(settings('stale_sensor_threshold')) { list_stale_sensors }
     end
 
     def connected
