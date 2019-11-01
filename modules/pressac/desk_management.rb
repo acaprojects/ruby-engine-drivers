@@ -51,15 +51,11 @@ class ::Pressac::DeskManagement
         @pending_free ||= {}
         
         saved_status = setting('zzz_status')
-        if saved_status
-            saved_status&.each { |key, value| self[key] = value }
-        else
-            @zones.keys&.each do |zone_id|
-                self[zone_id] = []
-                self[zone_id+':desk_ids']       = []
-                self[zone_id+':occupied_count'] = 0
-                self[zone_id+':desk_count']     = 0
-            end
+        @zones.keys&.each do |zone_id|
+            self[zone_id]                   ||= saved_status[zone_id] || []
+            self[zone_id+':desk_ids']       ||= saved_status[zone_id+':desk_ids'] || []
+            self[zone_id+':occupied_count'] = self[zone_id]&.count || 0
+            self[zone_id+':desk_count']     = self[zone_id+'desk_ids']&.count || 0
         end
 
         # Create a reverse lookup (gateway => zone)
@@ -70,6 +66,9 @@ class ::Pressac::DeskManagement
         
         # Subscribe to live updates from each gateway
         device,index = @hub.split('_')
+        @subscriptions << system.subscribe(device, index.to_i, :stale) do |notification|
+            unexpose_unresponsive_desks(notification)
+        end
         @zones.each do |zone,gateways|
             gateways.each do |gateway|
                 @subscriptions << system.subscribe(device, index.to_i, gateway.to_sym) do |notification|
@@ -79,7 +78,6 @@ class ::Pressac::DeskManagement
         end
         schedule.clear
         schedule.every('30s') { determine_desk_status }
-        #schedule.every('1h') { unexpose_unresponsive_desks }
     end
 
     # @param zone [String] the engine zone id
@@ -109,15 +107,16 @@ class ::Pressac::DeskManagement
         #     timestamp: string,
         #     gateway:   string }
         desk = notification.value
-        desk_name = id([desk[:name].to_sym])&.first.to_s
+        desk_name = id([desk[:name].to_sym])&.first
 
-	zone = @which_zone[desk[:gateway].to_s]
+	    zone = @which_zone[desk[:gateway].to_s]
+        logger.debug "===Updating: #{desk_name} in #{zone}"
         return unless zone
 
-        if current_state[:motion] && !self[zone].include?(desk_name)      # if motion, and desk is currently free
-	    @pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
-	    @pending_free.delete(desk_name)
-        elsif !current_state[:motion] && self[zone].include?(desk_name)   # if no motion, and desk is currently busy
+        if current_state[:motion]
+            @pending_busy[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
+            @pending_free.delete(desk_name)
+        elsif !current_state[:motion]
             @pending_free[desk_name] ||= { timestamp: Time.now.to_i, gateway: desk[:gateway]}
             @pending_busy.delete(desk_name)
         end
@@ -128,6 +127,7 @@ class ::Pressac::DeskManagement
     end
 
     def determine_desk_status
+        persist_current_status
         new_status = {}
         @zones.each do |zone, gateways|
             new_status[zone] =  {}
@@ -147,10 +147,14 @@ class ::Pressac::DeskManagement
                 new_status[zone][:free] |= [desk] if zone
             end
         end
+
+        self[:new_status] = new_status.deep_dup
+
         expose_desks(new_status)
-        self[:pending_busy] = @pending_busy = {}
-        self[:pending_free] = @pending_free = {}
-        persist_current_status
+        @pending_busy = {}
+        @pending_free = {}
+        self[:pending_busy] = {}
+        self[:pending_free] = {}
     end
 
     def expose_desks(new_status)
@@ -158,8 +162,8 @@ class ::Pressac::DeskManagement
 	    zone = z.to_sym
 	    self[zone] ||= []
 	    self[zone]                = self[zone]          - desks[:free] | desks[:busy]
-            self[z+':desk_ids']       = self[z+':desk_ids'] | desks[:free] | desks[:busy]
-            self[z+':desk_count']     = self[z+':desk_ids'].count
+        self[z+':desk_ids']       = self[z+':desk_ids'] | desks[:free] | desks[:busy]
+        self[z+':desk_count']     = self[z+':desk_ids'].count
 	    self[z+':occupied_count'] = self[zone].count
         end
     end
@@ -182,21 +186,20 @@ class ::Pressac::DeskManagement
     # Transform an array of Sensor Names to SVG Map IDs, IF the user has specified a mapping in settings(sensor_name_to_desk_mappings)
     def id(array)
         return [] if array.nil?
-        array.map { |i| @desk_ids[i] || i } 
+	array.map { |i| @desk_ids[i] || i&.to_s } 
     end
 
-    def unexpose_unresponsive_desks
-        gateways = system[@hub][:gateways]
-        gateways.each do |gateway, sensor|
-            last_update = Time.parse(sensor[:timestamp])
-            if Time.now > last_update + 1.hour
-                desk_name = id([sensor[:name]]).first.to_s
-                zone = @which_zone[sensor[:gateway]]
-                self[zone]                   = self[zone] - [desk_name]
-                self[zone+':desk_ids']       = self[zone+':desk_ids'] - [desk_name]
-                self[zone+':desk_count']     = self[zone+':desk_ids'].count
-                self[zone+':occupied_count'] = self[zone].count
-            end
+    def unexpose_unresponsive_desks(notification)
+        stale_sensors = notification.value
+	stale_ids = id(stale_sensors.map {|s| s.keys.first})
+
+        logger.debug "Removing stale sensors: #{stale_ids}"
+        
+        @zones.keys&.each do |zone_id|
+            self[zone_id]                   = self[zone_id] - stale_ids
+            self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] - stale_ids
+            self[zone_id+':occupied_count'] = self[zone_id].count
+            self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
         end
     end
 end

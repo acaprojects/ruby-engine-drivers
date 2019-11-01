@@ -44,32 +44,42 @@ class Aca::O365BookingPanel
         self[:control_url] = setting(:booking_control_url) || system.config.support_url
 
         self[:timeout] = setting(:timeout)
-        self[:booking_cancel_timeout] = UV::Scheduler.parse_duration(setting(:booking_cancel_timeout)) / 1000 if setting(:booking_cancel_timeout)   # convert '1m2s' to '62'
-        self[:booking_cancel_email_message] = setting(:booking_cancel_email_message)
-        self[:booking_timeout_email_message] = setting(:booking_timeout_email_message)
-        self[:booking_controls] = setting(:booking_controls)
-        self[:booking_catering] = setting(:booking_catering)
-        self[:booking_hide_details] = setting(:booking_hide_details)
-        self[:booking_hide_availability] = setting(:booking_hide_availability)
-        self[:booking_hide_user] = setting(:booking_hide_user)
-        self[:booking_hide_modal] = setting(:booking_hide_modal)
-        self[:booking_hide_title] = setting(:booking_hide_title)
-        self[:booking_hide_description] = setting(:booking_hide_description)
-        self[:booking_hide_timeline] = setting(:booking_hide_timeline)
-        self[:booking_set_host] = setting(:booking_set_host)
-        self[:booking_set_title] = setting(:booking_set_title)
-        self[:booking_set_ext] = setting(:booking_set_ext)
-        self[:booking_search_user] = setting(:booking_search_user)
-        self[:booking_disable_future] = setting(:booking_disable_future)
-        self[:booking_min_duration] = setting(:booking_min_duration)
-        self[:booking_max_duration] = setting(:booking_max_duration)
-        self[:booking_duration_step] = setting(:booking_duration_step)
-        self[:booking_endable] = setting(:booking_endable)
-        self[:booking_ask_cancel] = setting(:booking_ask_cancel)
-        self[:booking_ask_end] = setting(:booking_ask_end)
-        self[:booking_default_title] = setting(:booking_default_title) || "On the spot booking"
-        self[:booking_select_free] = setting(:booking_select_free)
-        self[:booking_hide_all] = setting(:booking_hide_all) || false
+        self[:disabled] = setting(:booking_disabled)
+        self[:cancel_timeout] = UV::Scheduler.parse_duration(setting(:cancel_timeout)) / 1000 if setting(:booking_cancel_timeout)   # convert '1m2s' to '62'
+        self[:cancel_email_message] = setting(:booking_cancel_email_message)
+        self[:timeout_email_message] = setting(:booking_timeout_email_message)
+
+	    self[:controlable] = setting(:booking_can_control)
+        self[:searchable] = setting(:booking_can_search)
+
+	    self[:catering] = setting(:booking_catering)
+        self[:hide_details] = setting(:booking_hide_details)
+        self[:hide_availability] = setting(:booking_hide_availability)
+        self[:hide_user] = setting(:booking_hide_user)
+        self[:hide_modal] = setting(:booking_hide_modal)
+
+
+        self[:hide_all] = setting(:booking_hide_all)
+	    self[:hide_title] = setting(:booking_hide_title)
+        self[:hide_details] = setting(:booking_hide_details)
+        self[:hide_description] = setting(:booking_hide_description)
+        self[:hide_availability] = setting(:booking_hide_availability)
+
+	    self[:hide_timeline] = setting(:booking_hide_timeline)
+        self[:set_host] = setting(:booking_set_host)
+        self[:set_title] = setting(:booking_set_title)
+        self[:set_ext] = setting(:booking_set_ext)
+        self[:search_user] = setting(:booking_search_user)
+        self[:disable_future] = setting(:booking_disable_future)
+        self[:min_duration] = setting(:booking_min_duration)
+        self[:max_duration] = setting(:booking_max_duration)
+        self[:duration_step] = setting(:booking_duration_step)
+        self[:endable] = setting(:booking_endable)
+        self[:ask_cancel] = setting(:booking_ask_cancel)
+        self[:ask_end] = setting(:booking_ask_end)
+        self[:default_title] = setting(:booking_default_title) || "On the spot booking"
+        self[:select_free] = setting(:booking_select_free)
+        self[:hide_all] = setting(:booking_hide_all) || false
 
         office_client_id  = setting(:office_client_id)  || ENV['OFFICE_CLIENT_ID']
         office_secret     = setting(:office_secret)     || ENV["OFFICE_CLIENT_SECRET"]
@@ -88,7 +98,7 @@ class Aca::O365BookingPanel
 
         self[:last_meeting_started] = setting(:last_meeting_started)
         self[:cancel_meeting_after] = setting(:cancel_meeting_after)
-
+        
         schedule.clear
         schedule.in(rand(10000)) { fetch_bookings }
         fetch_interval = UV::Scheduler.parse_duration(setting(:update_every) || '5m') + rand(10000)
@@ -109,17 +119,39 @@ class Aca::O365BookingPanel
         end
 
         logger.debug "RBP>#{@office_room}>CREATE>INPUT:\n #{params}"
+
+        host_email = params.dig(:host, :email)
+        mailbox = host_email || @office_room
+        calendargroup_id = nil
+        calendar_id = nil
+
+        booking_options = {
+            subject:    params[:title] || setting(:booking_default_title),
+            #location: {}
+            attendees:  [ {email: @office_room, type: "resource"} ],
+            timezone:   ENV['TZ'],
+            extensions: { aca_booking: true }
+        }
+        if ENV['O365_PROXY_USER_CALENDARS']
+            room_domain = @office_room.split('@').last
+            user_domain = current_user.email.split('@').last
+            
+            calendar_proxy = host_email ? User.find_by_email(current_user.authority_id, host_email)&.calendar_proxy : nil
+            mailbox = calendar_proxy&.dig(:account) if calendar_proxy&.dig(:account)
+            calendargroup_id = calendar_proxy&.dig(:calendargroup_id)
+            calendar_id = calendar_proxy&.dig(:calendar_id)
+
+            booking_options[:attendees] << params[:host] if params[:host]
+            booking_options[:extensions].merge!( { aca_proxied_organizer: [params.dig(:host, :name), host_email] })
+        end
         begin
             result = @client.create_booking(
-                        mailbox:        params.dig(:host, :email) || @office_room, 
+                        mailbox:        mailbox,
+                        calendargroup_id: calendargroup_id,
+                        calendar_id:    calendar_id,
                         start_param:    epoch(params[:start]), 
-                        end_param:      epoch(params[:end]), 
-                        options: {
-                            subject:    params[:title] || setting(:booking_default_title),
-                            attendees:  [ {email: @office_room, type: "resource"} ],
-                            timezone:   ENV['TZ']   
-                        }
-                    )
+                        end_param:      epoch(params[:end]),
+                        options: booking_options )
         rescue Exception => e
             logger.error "RBP>#{@office_room}>CREATE>ERROR: #{e.message}\n#{e.backtrace.join("\n")}"
             raise e
@@ -145,7 +177,7 @@ class Aca::O365BookingPanel
         start_epoch = Time.parse(start_time).to_i
         ms_epoch = start_epoch * 1000
         too_early_to_cancel = now < start_epoch
-        too_late_to_cancel = self[:booking_cancel_timeout] ?  (now > (start_epoch + self[:booking_cancel_timeout] + 180)) : false   # "180": allow up to 3mins of slippage, in case endpoint is not NTP synced
+        too_late_to_cancel = self[:cancel_timeout] ?  (now > (start_epoch + self[:cancel_timeout] + 180)) : false   # "180": allow up to 3mins of slippage, in case endpoint is not NTP synced
         bookings_to_cancel = bookings_with_start_time(start_epoch)
 
         if bookings_to_cancel > 1
@@ -251,9 +283,9 @@ class Aca::O365BookingPanel
 
             case reason
             when RBP_AUTOCANCEL_TRIGGERED
-                response = delete_or_decline(booking, self[:booking_timeout_email_message])
+                response = delete_or_decline(booking, self[:timeout_email_message])
             when RBP_STOP_PRESSED
-                response = delete_or_decline(booking, self[:booking_cancel_email_message])
+                response = delete_or_decline(booking, self[:cancel_email_message])
             else
                 response = delete_or_decline(booking, "The booking was cancelled due to \"#{reason}\"")
             end
@@ -272,9 +304,13 @@ class Aca::O365BookingPanel
             end_utc     = tz.parse(booking['end']['dateTime']).utc                  
             start_time  = start_utc.iso8601                                     # output looks like: "2019-05-21T15:50:00Z+08:00"
             end_time    = end_utc.iso8601
-
-            name =  booking.dig('organizer',:name)  || booking.dig('attendees',0,'name')
-            email = booking.dig('organizer',:email) || booking.dig('attendees',0,'email')
+            attendees = booking['attendees']
+            name =  booking.dig('organizer',:name)  || "Private"
+            email = booking.dig('organizer',:email) || "Private"
+            if ENV['O365_PROXY_USER_CALENDARS']
+                name =  booking.dig('attendees',1,:name)  || "Private"
+                email = booking.dig('attendees',1,:email) || "Private"
+            end
 
             subject = booking['subject']
             if ['private','confidential'].include?(booking['sensitivity'])
@@ -291,6 +327,7 @@ class Aca::O365BookingPanel
                 :owner => name,
                 :email => email,
                 :organizer => {:name => name, :email => email},
+                :attendees => attendees,
                 :isAllDay => booking['isAllDay']
             })
         }

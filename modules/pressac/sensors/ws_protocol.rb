@@ -29,12 +29,10 @@ class Pressac::Sensors::WsProtocol
     wait_response false
     default_settings({
         websocket_path: '/ws/pressac/',
+        stale_sensor_threshold: '20m'
     })
 
     def on_load
-        @busy_desks = {}
-        @free_desks = {}
-
         # Environment sensor values (temp, humidity)
         @environment = {}
         self[:environment] = {}
@@ -48,11 +46,15 @@ class Pressac::Sensors::WsProtocol
 
         @gateways = status[:gateways] || {}
         self[:gateways] = @gateways.dup
-
         @last_update = status[:last_update] || "Never"
         self[:last_update] = @last_update.dup
+	self[:stale] = []
 
         @ws_path  = setting('websocket_path')
+        @stale_sensor_threshold = UV::Scheduler.parse_duration(setting('stale_sensor_threshold') || '20m') / 1000
+
+        schedule.clear
+        schedule.every(setting('stale_sensor_threshold')) { list_stale_sensors }
     end
 
     def connected
@@ -64,9 +66,6 @@ class Pressac::Sensors::WsProtocol
 
     def mock(sensor, occupied)
         gateway = which_gateway(sensor)
-
-        @gateways[gateway][:busy_desks] = occupied ? @gateways[gateway][:busy_desks] | [sensor] : @gateways[gateway][:busy_desks] -  [sensor]
-        @gateways[gateway][:free_desks] = occupied ? @gateways[gateway][:free_desks] - [sensor] : @gateways[gateway][:free_desks] | [sensor]
         @gateways[gateway][sensor] = self[gateway] = {
             id:        'mock_data',
             name:      sensor,
@@ -84,6 +83,20 @@ class Pressac::Sensors::WsProtocol
         @gateways.each do |g, sensors|
             return g if sensors.include? sensor
         end
+    end
+
+    def list_stale_sensors
+        stale = []
+        now = Time.now.to_i
+        @gateways.each do |g, sensors|
+            sensors.each do |name, sensor|
+                if now - (sensor[:last_update_epoch] || 0 ) > @stale_sensor_threshold
+                    stale << {name => (sensor[:last_update] || "Unknown")} 
+                end
+            end
+        end
+        logger.debug "Sensors that have not posted updates in the past #{setting('stale_sensor_threshold')}:\n#{stale}"
+        self[:stale] = stale
     end
 
 
@@ -123,34 +136,21 @@ class Pressac::Sensors::WsProtocol
             gateway     = sensor[:gatewayName].to_sym || 'unknown_gateway'.to_sym
             occupancy   = sensor[:motionDetected] == true
 
-            @free_desks[gateway]     ||= []
-            @busy_desks[gateway]     ||= []
-            @gateways[gateway] ||= {}
-
-            if occupancy
-                @busy_desks[gateway] = @busy_desks[gateway] | [sensor_name]
-                @free_desks[gateway] = @free_desks[gateway] - [sensor_name]
-            else
-                @busy_desks[gateway] = @busy_desks[gateway] - [sensor_name]
-                @free_desks[gateway] = @free_desks[gateway] | [sensor_name]
-            end
-            @gateways[gateway][:busy_desks] = @busy_desks[gateway]
-            @gateways[gateway][:free_desks] = @free_desks[gateway]
-            @gateways[gateway][:all_desks]  = @busy_desks[gateway] + @free_desks[gateway]
-
             # store the new sensor data under the gateway name (self[:gateways][gateway][sensor_name]),
             # AND as the latest notification from this gateway (self[gateway]) (for the purpose of the DeskManagent logic upstream)
-            @gateways[gateway][sensor_name] = self[gateway] = {
+            @gateways[gateway] ||= {}
+            @gateways[gateway][sensor_name] = {
                 id:        sensor[:deviceId] || sensor[:deviceid],
                 name:      sensor_name,
                 motion:    occupancy,
                 voltage:   sensor[:supplyVoltage][:value] || sensor[:supplyVoltage],
                 location:  sensor[:location],
                 timestamp: sensor[:timestamp],
+                last_update: Time.now.in_time_zone($TZ).to_s,
+                last_update_epoch: Time.now.to_i,
                 gateway:   gateway
             }
-            #signal_status(gateway)
-            @gateways[gateway][:last_update] = sensor[:timestamp]
+            self[gateway] = @gateways[gateway][sensor_name].dup
             self[:gateways] = @gateways.deep_dup
         when 'CO2-Temperature-and-Humidity'
             @environment[sensor[:devicename]] = {
