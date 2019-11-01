@@ -54,8 +54,8 @@ class ::Pressac::DeskManagement
         @zones.keys&.each do |zone_id|
             self[zone_id]                   ||= saved_status[zone_id] || []
             self[zone_id+':desk_ids']       ||= saved_status[zone_id+':desk_ids'] || []
-            self[zone_id+':occupied_count'] = self[zone_id].count
-            self[zone_id+':desk_count']     = self[zone_id+'desk_ids'].count
+            self[zone_id+':occupied_count'] = self[zone_id]&.count || 0
+            self[zone_id+':desk_count']     = self[zone_id+'desk_ids']&.count || 0
         end
 
         # Create a reverse lookup (gateway => zone)
