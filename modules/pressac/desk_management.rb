@@ -125,7 +125,7 @@ class ::Pressac::DeskManagement
         desk_name = id([desk[:name].to_sym])&.first
 
 	    zone = @which_zone[desk[:gateway].to_s]
-        logger.debug "===Updating: #{desk_name} in #{zone}"
+        logger.debug "PRESSAC > DESK > LOGIC: Updating #{desk_name} in #{zone}"
         return unless zone
 
         if current_state[:motion]
@@ -145,11 +145,10 @@ class ::Pressac::DeskManagement
         @custom_delays.each do |setting|
             #regex = Regexp.new([:regex_match])
             if desk_id.match?(setting[:regex_match])
-                logger.debug "REGEX MATCHED #{desk_id} to #{setting[:regex_match]}"
+                logger.debug "PRESSAC > DESK > LOGIC: Regex MATCHED #{desk_id} to #{setting[:regex_match]}"
                 return {busy: setting[:busy_delay], free: setting[:free_delay]} 
             end
         end
-        logger.debug "NO REGEX MATCH for #{desk_id}"
         return {busy: @default_busy_delay, free: @default_free_delay}
     end
 
@@ -220,7 +219,7 @@ class ::Pressac::DeskManagement
         stale_sensors = notification.value
 	stale_ids = id(stale_sensors.map {|s| s.keys.first})
 
-        logger.debug "Removing stale sensors: #{stale_ids}"
+        logger.debug "PRESSAC > DESK > LOGIC: Removing stale sensors: #{stale_ids}"
         
         @zones.keys&.each do |zone_id|
             self[zone_id]                   = self[zone_id] - stale_ids
