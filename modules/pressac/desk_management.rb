@@ -22,6 +22,13 @@ class ::Pressac::DeskManagement
             "Desk01" => "table-SYD.2.17.A",
             "Desk03" => "table-SYD.2.17.B"
         }
+        custom_delays: [
+            {
+                "regex_match": "^Example[0-9]$",
+                "delay_until_shown_as_busy": "5m",
+                "delay_until_shown_as_free": "1h"
+            }
+        ]
     })
 
     def on_load
@@ -42,9 +49,17 @@ class ::Pressac::DeskManagement
         @hub      = setting('iot_hub_device') || "Websocket_1"
         @zones    = setting('zone_to_gateway_mappings') || {}
         @desk_ids = setting('sensor_name_to_desk_mappings') || {}
+        @custom_delays = setting('custom_delays')&.map {|d| 
+                            {
+                                regex_match: d[:regex_match],
+                                busy_delay: UV::Scheduler.parse_duration(d[:delay_until_shown_as_busy] || '0m') / 1000,
+                                free_delay: UV::Scheduler.parse_duration(d[:delay_until_shown_as_free] || '0m') / 1000,
+                            } 
+                        } || []
+
         # convert '1m2s' to '62'
-        @busy_delay = UV::Scheduler.parse_duration(setting('delay_until_shown_as_busy') || '0m') / 1000
-        @free_delay = UV::Scheduler.parse_duration(setting('delay_until_shown_as_free') || '0m') / 1000
+        @default_busy_delay = UV::Scheduler.parse_duration(setting('delay_until_shown_as_busy') || '0m') / 1000
+        @default_free_delay = UV::Scheduler.parse_duration(setting('delay_until_shown_as_free') || '0m') / 1000
 
         # Initialize desk tracking variables to [] or 0, but keep existing values if they exist (||=)
         @pending_busy ||= {}
@@ -126,6 +141,18 @@ class ::Pressac::DeskManagement
         self[:pending_free] = @pending_free
     end
 
+    def delay_of(desk_id)
+        @custom_delays.each do |setting|
+            #regex = Regexp.new([:regex_match])
+            if desk_id.match?(setting[:regex_match])
+                logger.debug "REGEX MATCHED #{sensor_name} to #{setting[:regex_match]}"
+                return {busy: setting[:busy_delay], free: setting[:free_delay]} 
+            end
+        end
+        logger.debug "NO REGEX MATCH for #{sensor_name}"
+        return {busy: @default_busy_delay, free: @default_free_delay}
+    end
+
     def determine_desk_status
         persist_current_status
         new_status = {}
@@ -136,13 +163,13 @@ class ::Pressac::DeskManagement
         
         now = Time.now.to_i
         @pending_busy.each do |desk,sensor|
-            if now > sensor[:timestamp] + @busy_delay
+            if now > sensor[:timestamp] + delay_of(sensor)[:busy]
    	        zone = @which_zone[sensor[:gateway].to_s]
                 new_status[zone][:busy] |= [desk] if zone
             end
         end
         @pending_free.each do |desk,sensor|
-            if now > sensor[:timestamp] + @free_delay
+            if now > sensor[:timestamp] + delay_of(sensor)[:free]
 	        zone = @which_zone[sensor[:gateway].to_s]
                 new_status[zone][:free] |= [desk] if zone
             end
