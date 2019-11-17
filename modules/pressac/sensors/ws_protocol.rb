@@ -91,12 +91,20 @@ class Pressac::Sensors::WsProtocol
         @gateways.each do |g, sensors|
             sensors.each do |name, sensor|
                 if now - (sensor[:last_update_epoch] || 0 ) > @stale_sensor_threshold
-                    stale << {name => (sensor[:last_update] || "Unknown")} 
+                    stale << {name => (sensor[:last_update] || "Unknown")}
+                    @gateways[g].delete(name)
                 end
             end
         end
-        logger.debug "Sensors that have not posted updates in the past #{setting('stale_sensor_threshold')}:\n#{stale}"
         self[:stale] = stale
+        self[:gateways] = @gateways.deep_dup
+        # Save the current status to database, so that it can retrieved when engine restarts
+        status = {
+            last_update: self[:last_update],
+            gateways:    @gateways,
+            stale:       stale
+        }
+        define_setting(:status, status)
     end
 
 
@@ -168,7 +176,8 @@ class Pressac::Sensors::WsProtocol
         # Save the current status to database, so that it can retrieved when engine restarts
         status = {
             last_update: self[:last_update],
-            gateways:    @gateways.deep_dup
+            gateways:    @gateways.deep_dup,
+            stale:       self[:stale]
         }
         define_setting(:status, status)
     end
