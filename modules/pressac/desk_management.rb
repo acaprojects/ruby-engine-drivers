@@ -21,14 +21,14 @@ class ::Pressac::DeskManagement
             "Note" => "This mapping is optional. If not present, the sensor NAME will be used and must match SVG map IDs",
             "Desk01" => "table-SYD.2.17.A",
             "Desk03" => "table-SYD.2.17.B"
-        }
+        },
         custom_delays: [
             {
                 "regex_match": "^Example[0-9]$",
                 "delay_until_shown_as_busy": "5m",
                 "delay_until_shown_as_free": "1h"
             }
-        ]
+ 	]
     })
 
     def on_load
@@ -145,11 +145,11 @@ class ::Pressac::DeskManagement
         @custom_delays.each do |setting|
             #regex = Regexp.new([:regex_match])
             if desk_id.match?(setting[:regex_match])
-                logger.debug "REGEX MATCHED #{sensor_name} to #{setting[:regex_match]}"
+                logger.debug "REGEX MATCHED #{desk_id} to #{setting[:regex_match]}"
                 return {busy: setting[:busy_delay], free: setting[:free_delay]} 
             end
         end
-        logger.debug "NO REGEX MATCH for #{sensor_name}"
+        logger.debug "NO REGEX MATCH for #{desk_id}"
         return {busy: @default_busy_delay, free: @default_free_delay}
     end
 
@@ -163,13 +163,13 @@ class ::Pressac::DeskManagement
         
         now = Time.now.to_i
         @pending_busy.each do |desk,sensor|
-            if now > sensor[:timestamp] + delay_of(sensor)[:busy]
+            if now > sensor[:timestamp] + delay_of(desk)[:busy]
    	        zone = @which_zone[sensor[:gateway].to_s]
                 new_status[zone][:busy] |= [desk] if zone
             end
         end
         @pending_free.each do |desk,sensor|
-            if now > sensor[:timestamp] + delay_of(sensor)[:free]
+            if now > sensor[:timestamp] + delay_of(desk)[:free]
 	        zone = @which_zone[sensor[:gateway].to_s]
                 new_status[zone][:free] |= [desk] if zone
             end
