@@ -65,7 +65,7 @@ class ::Pressac::DeskManagement
         @pending_busy ||= {}
         @pending_free ||= {}
         
-        saved_status = setting('zzz_status')
+        saved_status = setting('zzz_status') || {}
         @zones.keys&.each do |zone_id|
             self[zone_id]                   ||= saved_status[zone_id] || []
             self[zone_id+':desk_ids']       ||= saved_status[zone_id+':desk_ids'] || []
