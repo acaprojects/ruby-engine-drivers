@@ -163,24 +163,23 @@ class ::Pressac::DeskManagement
         now = Time.now.to_i
         @pending_busy.each do |desk,sensor|
             if now > sensor[:timestamp] + delay_of(desk)[:busy]
-   	        zone = @which_zone[sensor[:gateway].to_s]
+   	            zone = @which_zone[sensor[:gateway].to_s]
                 new_status[zone][:busy] |= [desk] if zone
+                @pending_busy.delete(desk)
             end
         end
         @pending_free.each do |desk,sensor|
             if now > sensor[:timestamp] + delay_of(desk)[:free]
-	        zone = @which_zone[sensor[:gateway].to_s]
+	            zone = @which_zone[sensor[:gateway].to_s]
                 new_status[zone][:free] |= [desk] if zone
+                @pending_free.delete(desk)
             end
         end
 
-        self[:new_status] = new_status.deep_dup
-
+        self[:new_status]   = new_status.deep_dup
+        self[:pending_busy] = @pending_busy.deep_dup
+        self[:pending_free] = @pending_free.deep_dup
         expose_desks(new_status)
-        @pending_busy = {}
-        @pending_free = {}
-        self[:pending_busy] = {}
-        self[:pending_free] = {}
     end
 
     def expose_desks(new_status)
