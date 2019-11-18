@@ -19,7 +19,7 @@ class Sony::Camera::ViscaOverIP
 
     # Communication settings
     tokenize delimiter: "\xFF"
-    delay between_sends: 150
+    delay between_sends: 200
 
 
     def on_load
@@ -54,8 +54,8 @@ class Sony::Camera::ViscaOverIP
     end
 
     def on_update
-        timeout = setting(:timeout) || 5000
-        defaults timeout: timeout
+        timeout = setting(:timeout) || 3000
+        defaults timeout: timeout, retries: 1
 
         @presets = setting(:presets) || {}
         self[:presets] = @presets.keys
@@ -63,21 +63,15 @@ class Sony::Camera::ViscaOverIP
     end
 
     def connected
-        schedule.every('60s') do
+        schedule.every('120s') do
             logger.debug "-- Polling Sony Camera"
             power? do
                 if self[:power] == On
                     zoom?
                     pantilt?
-                    autofocus?
                 end
             end
         end
-    end
-
-    def disconnected
-        # Disconnected will be called before connect if initial connect fails
-        schedule.clear
     end
 
 
@@ -266,8 +260,8 @@ class Sony::Camera::ViscaOverIP
 
     # Recall a preset from the database
     def preset(name)
-        name_sym = name.to_sym
-        values = @presets[name_sym]
+        name = name.to_s
+        values = @presets[name]
         if values
             pantilt(values[:pan], values[:tilt])
             zoom(values[:zoom])
@@ -281,18 +275,29 @@ class Sony::Camera::ViscaOverIP
 
     # Recall a preset from the camera
     def recall_position(number)
-        number = in_range(number, 5)
-        cmd = "\x04\x3f\x02"
-        cmd << number
-        send_cmd cmd, name: :recall_position
+        preset(number)
     end
 
-    def save_position(number)
-        number = in_range(number, 5)
-        cmd = "\x04\x3f\x01"
-        cmd << number
-        # No name as we might want to queue this
-        send_cmd cmd
+    def save_position(name)
+        name = name.to_s
+
+        power? do
+            if self[:power] == On
+                zoom?
+                pantilt?.value
+
+                @presets[name] = {
+                  pan: self[:pan],
+                  tilt: self[:pan],
+                  zoom: self[:zoom]
+                }
+
+                self[:presets] = @presets.keys
+                define_setting(:presets, @presets)
+            else
+                raise "camera is powered off"
+            end
+        end
     end
 
 
@@ -373,6 +378,10 @@ class Sony::Camera::ViscaOverIP
         when :autofocus
             self[:auto_focus] = bytes[-1] == 2
         when :pantilt
+            # 0x0111000d0000 008c 90500004 0b09040004020f0c
+            # 0x011100040000 0089 906041
+            return :success unless data.bytesize > 7
+
             hex = byte_to_hex(data[2..5])
             pan_hex = "#{hex[1]}#{hex[3]}#{hex[5]}#{hex[7]}"
             self[:pan] = pan_hex.to_i(16)
