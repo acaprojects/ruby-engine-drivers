@@ -266,6 +266,15 @@ class Sony::Camera::CGI
         self[:presets]
     end
 
+    def delete_position(name)
+      name = name.to_s
+      logger.debug { "removing preset #{name}" }
+      @presets.delete name
+      self[:presets] = @presets.keys
+      define_setting(:presets, @presets)
+      self[:presets]
+    end
+
 
     protected
 
