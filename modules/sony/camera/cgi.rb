@@ -62,9 +62,9 @@ class Sony::Camera::CGI
                     parts = value.split(",")
                     self[:pan] = @pan = twos_complement(parts[0].to_i(16))
                     self[:tilt] = @tilt = twos_complement(parts[1].to_i(16))
-                    self[:zoom] = @zoom = twos_complement(parts[2].to_i(16))
+                    self[:zoom] = @zoom = parts[2].to_i(16)
 
-                when "PanPanoramaRange"
+                when "PanMovementRange"
                     # PanMovementRange=eac00,15400
                     parts = value.split(",")
                     pan_min = twos_complement parts[0].to_i(16)
@@ -75,7 +75,7 @@ class Sony::Camera::CGI
                     self[:pan_max] = pan_max    # Right
                     self[:pan_min] = pan_min     # Left
 
-                when "TiltPanoramaRange"
+                when "TiltMovementRange"
                     # TiltMovementRange=fc400,b400
                     parts = value.split(",")
                     tilt_min = twos_complement parts[0].to_i(16)
@@ -90,8 +90,8 @@ class Sony::Camera::CGI
                     #                    min, max, digital
                     # ZoomMovementRange=0000,4000,7ac0
                     parts = value.split(",")
-                    zoom_min = twos_complement parts[0].to_i(16)
-                    zoom_max = twos_complement parts[1].to_i(16)
+                    zoom_min = parts[0].to_i(16)
+                    zoom_max = parts[1].to_i(16)
                     @zoom_range = (zoom_min..zoom_max)
                     self[:zoom_range] = {min: zoom_min, max: zoom_max}
                     self[:zoom_min] = zoom_min
@@ -137,7 +137,7 @@ class Sony::Camera::CGI
         tilt = twos_complement in_range(tilt.to_i, @tilt_range.end, @tilt_range.begin)
 
         if zoom
-            zoom = twos_complement in_range(zoom.to_i, @zoom_range.end, @zoom_range.begin)
+            zoom = in_range(zoom.to_i, @zoom_range.end, @zoom_range.begin)
 
             action("/command/ptzf.cgi?AbsolutePTZF=#{pan.to_s(16)},#{tilt.to_s(16)},#{zoom.to_s(16)}",
               name: "position"
@@ -255,11 +255,11 @@ class Sony::Camera::CGI
 
     def save_position(name)
         name = name.to_s
-        logger.debug { "saving preset #{name} - pan: #{pan}, tilt: #{tilt}, zoom: #{zoom}" }
+        logger.debug { "saving preset #{name} - pan: #{@pan}, tilt: #{@tilt}, zoom: #{@zoom}" }
         @presets[name] = {
-            pan: pan,
-            tilt: tilt,
-            zoom: zoom
+            pan: @pan,
+            tilt: @tilt,
+            zoom: @zoom
         }
         self[:presets] = @presets.keys
         define_setting(:presets, @presets)
@@ -279,13 +279,13 @@ class Sony::Camera::CGI
     protected
 
 
-    # 16bit twos complement
+    # 24bit twos complement
     def twos_complement(value)
-      if value > 0
-        value > 0x8000 ? -(((~(value & 0xFFFF)) + 1) & 0xFFFF) : value
-      else
-        ((~(-value & 0xFFFF)) + 1) & 0xFFFF
-      end
+        if value > 0
+            value > 0x80000 ? -(((~(value & 0xFFFFF)) + 1) & 0xFFFFF) : value
+        else
+            ((~(-value & 0xFFFFF)) + 1) & 0xFFFFF
+        end
     end
 
     def query(path, **options)
