@@ -149,8 +149,7 @@ class Microsoft::Office2::Client
         STDERR.flush
     end
 
-    def check_response(response)
-        STDOUT.puts "GRAPH API Response:\n #{response}" if ENV['O365_LOG_RESPONSE']
+    def check_response(response
         case response.status
         when 200, 201, 204
             return
