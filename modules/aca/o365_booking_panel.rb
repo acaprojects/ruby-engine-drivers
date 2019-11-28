@@ -94,7 +94,7 @@ class Aca::O365BookingPanel
             client_id:                  office_client_id,
             client_secret:              office_secret,
             app_token_url:              office_token_url,
-            https_proxy:                office_proxy
+            https_proxy:                office_https_proxy
         })
 
         self[:last_meeting_started] = setting(:last_meeting_started)
