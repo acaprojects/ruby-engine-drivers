@@ -86,14 +86,15 @@ class Aca::O365BookingPanel
         office_token_path = setting(:office_token_path) || "/oauth2/v2.0/token"
         office_token_url  = setting(:office_token_url)  || ENV["OFFICE_TOKEN_URL"]  || "/" + setting(:office_tenant) + office_token_path
         @office_room = (setting(:office_room) || system.email)
-        #office_https_proxy = setting(:office_https_proxy)
+        office_https_proxy = setting(:office_https_proxy)
 
         logger.debug "RBP>#{@office_room}>INIT: Instantiating o365 Graph API client"
 
         @client = ::Microsoft::Office2::Client.new({
             client_id:                  office_client_id,
             client_secret:              office_secret,
-            app_token_url:              office_token_url
+            app_token_url:              office_token_url,
+            https_proxy:                office_proxy
         })
 
         self[:last_meeting_started] = setting(:last_meeting_started)
