@@ -244,6 +244,11 @@ class Aca::O365BookingPanel
     end
 
 
+    def refresh_endpoints(epoch)
+        # Relies on frontend recieving this status variable update and acting upon it. Should result in a full page reload.
+        # epoch is an integer, in seconds.
+        self[:reload] = epoch
+    end
     
     protected
 
