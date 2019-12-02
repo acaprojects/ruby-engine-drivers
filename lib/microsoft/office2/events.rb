@@ -374,7 +374,7 @@ module Microsoft::Office2::Events
                     endDate:   recurrence_end_date.strftime("%F")
                 }
             }
-        }
+        end
 
         event_json.reject!{|k,v| v.nil?} 
         event_json
