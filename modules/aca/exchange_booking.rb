@@ -40,8 +40,8 @@ class Aca::ExchangeBooking
         # If left as the default (false), the driver will attempt to use Impersonation access to read the room mailbox
         # https://docs.microsoft.com/en-us/exchange/client-developer/exchange-web-services/impersonation-and-ews-in-exchange
         # https://www.rubydoc.info/github/zenchild/Viewpoint/Viewpoint%2FEWS%2FFolderAccessors:get_folder
-        @ews_delegate_accesss = setting(:ews_delegate_accesss) || setting(:use_act_as)  
-        
+        @ews_delegate_accesss = setting(:ews_delegate_accesss) || setting(:use_act_as)
+
         self[:room_name] = setting(:room_name) || system.name
         self[:hide_all] = setting(:hide_all) || false
         self[:touch_enabled] = setting(:touch_enabled) || false
@@ -52,6 +52,7 @@ class Aca::ExchangeBooking
         self[:description] = setting(:description)
         self[:icon] = setting(:icon)
         self[:control_url] = setting(:booking_control_url) || system.config.support_url
+        self[:help_options] = setting(:help_options)
 
         self[:timeout] = setting(:timeout)
         self[:booking_cancel_timeout] = UV::Scheduler.parse_duration(setting(:booking_cancel_timeout)) / 1000 if setting(:booking_cancel_timeout)   # convert '1m2s' to '62'
@@ -222,6 +223,31 @@ class Aca::ExchangeBooking
 
             cli.send_message subject: title, body: body, to_recipients: to
         }
+    end
+
+    def request_help(issue)
+        now = Time.now.to_i
+        todays = self[:today]
+
+        current = nil
+        Time.zone = "UTC"
+        todays.each do |booking|
+            starting = Time.zone.parse(booking[:Start]).to_i
+            ending = Time.zone.parse(booking[:End]).to_i
+            if now >= starting && now < ending
+                current = booking
+                break;
+            end
+        end
+
+        if current
+            message = "Issue in #{self[:room_name]}\n#{current[:owner]} requires help with #{issue}"
+        else
+            message = "Issue in #{self[:room_name]}\nUser requires help with #{issue}"
+        end
+
+        # help_email: ["array.of@.email.addresses"]
+        send_email("Issue in #{self[:room_name]}", message, setting(:help_email))
     end
 
 
