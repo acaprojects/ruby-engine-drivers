@@ -328,13 +328,15 @@ module Microsoft::Office2::Events
             content: (body || "")
         }
 
+        start_date = Time.at(start_param).to_datetime.in_time_zone(timezone)
         event_json[:start] = {
-            dateTime: ActiveSupport::TimeZone.new(timezone).at(start_param).strftime('%FT%R'),
+            dateTime: start_date.strftime('%FT%R'),
             timeZone: timezone
         } if start_param
 
+        end_date   = Time.at(end_param).to_datetime.in_time_zone(timezone)
         event_json[:end] = {
-            dateTime: ActiveSupport::TimeZone.new(timezone).at(end_param).strftime('%FT%R'),
+            dateTime: end_date.strftime('%FT%R'),
             timeZone: timezone
         } if end_param
 
@@ -358,18 +360,21 @@ module Microsoft::Office2::Events
         end
         event_json[:extensions] = [ext]
 
-        event_json[:recurrence] = {
-            pattern: {
-                type: recurrence[:type],
-                interval: 1,
-                daysOfWeek: [epoch_in_timezone(start_param, timezone).strftime("%A")]
-            },
-            range: {
-                type: 'endDate',
-                startDate: epoch_in_timezone(start_param, timezone).strftime("%F"),
-                endDate: epoch_in_timezone(recurrence[:end], timezone).strftime("%F")
+        if recurrence
+            recurrence_end_date = Time.at(recurrence[:end]).to_datetime.in_time_zone(timezone)
+            event_json[:recurrence] = {
+                pattern: {
+                    type:       recurrence[:type],
+                    interval:   1,
+                    daysOfWeek: [start_date.strftime("%A")]
+                },
+                range: {
+                    type:      'endDate',
+                    startDate: start_date.strftime("%F"),
+                    endDate:   recurrence_end_date.strftime("%F")
+                }
             }
-        } if recurrence
+        }
 
         event_json.reject!{|k,v| v.nil?} 
         event_json
