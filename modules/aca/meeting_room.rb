@@ -322,7 +322,16 @@ class Aca::MeetingRoom < Aca::Joiner
                 found = false
                 @join_modes.each_value do |jm|
                     if jm[:rooms] == rms
-                        perform_action(mod: :System, func: :switch_mode, args: [jm[:mode], true])
+                        perform_action(mod: :System, func: :switch_mode, args: [jm[:mode], true]).then do
+                            schedule.in(1500) do
+                                self[:outputs].each do |key, value|
+                                    details = self[key]
+                                    next if details[:source] == :none)
+
+                                    perform_action(mod: :System, func: :present_actual, args: [details[:source], key]).value
+                                end
+                            end
+                        end
                         found = true
                         break
                     end
@@ -759,7 +768,7 @@ class Aca::MeetingRoom < Aca::Joiner
 
     def shutdown(all = false, scheduled_shutdown = false)
         if all
-            perform_action(mod: :System, func: :shutdown_actual).then do
+            perform_action(mod: :System, func: :shutdown_actual, args: [scheduled_shutdown, "2s"]).then do
                 unjoin
             end
         else
@@ -771,7 +780,14 @@ class Aca::MeetingRoom < Aca::Joiner
         end
     end
 
-    def shutdown_actual(scheduled_shutdown = false)
+    def shutdown_actual(scheduled_shutdown = false, delay = nil)
+        if delay
+            schedule.in(delay) do
+                shutdown_actual(scheduled_shutdown)
+            end
+            return
+        end
+
         # Shudown action on Lights
         if scheduled_shutdown && @light_scheduled_shutdown
             lights_to_actual(@light_scheduled_shutdown)
