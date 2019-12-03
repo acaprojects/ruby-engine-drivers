@@ -14,6 +14,7 @@ class ::Pressac::BookingCanceller
 
     default_settings({
         bookings_device: "Bookings_1",
+        desk_management_system_id: "sys-xxxxxxxx",
         desk_management_device: "DeskManagement_1",
         sensor_zone_id: "zone-xxxxxxxx",
         sensor_name: "Pressac_PIR_sensor_name",
@@ -31,7 +32,8 @@ class ::Pressac::BookingCanceller
         @subscriptions.clear
 
         @bookings     = setting('bookings_device')
-        @desk_management = setting('desk_management_device')
+        @desk_management_system = setting('desk_management_system_id')
+        @desk_management_device = setting('desk_management_device')
         @zone         = setting('sensor_zone_id')
         @sensor       = setting('sensor_name')
         @scan_cycle   = setting('check_every')
@@ -46,8 +48,9 @@ class ::Pressac::BookingCanceller
         bookings = system[@bookings][:today]
         bookings&.each do |booking|
             next unless booking[:start_epoch] > now + @cancel_delay
-            next unless = system[@desk_management][@zone + ':desk_ids'].include? @sensor  # don't cancel if the sensor has not registered yet
-            motion_detected = system[@desk_management][@zone].include? @sensor
+            all_sensors     = systems(@desk_management_system)[@desk_management_device]
+            next unless all_sensors[@zone + ':desk_ids'].include? @sensor  # don't cancel if the sensor has not registered yet
+            motion_detected = all_sensors[@zone].include? @sensor
             cancel(booking) unless motion_detected
         end
     end
