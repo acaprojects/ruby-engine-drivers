@@ -5,7 +5,7 @@ module Pressac; end
 class ::Pressac::BookingCanceller
     include ::Orchestrator::Constants
 
-    descriptive_name 'Cancel Bookings if no Presence detected in room'
+    descriptive_name 'Pressac Logic: Cancel Bookings if no Presence detected in room'
     generic_name :BookingCanceller
     implements :logic
 
@@ -47,15 +47,18 @@ class ::Pressac::BookingCanceller
         now = Time.now.to_i
         bookings = system[@bookings][:today]
         bookings&.each do |booking|
+            logger.debug "Canceller: checking booking #{booking[:Subject]} with start #{booking[:start_epoch]} and current time #{now}"
             next unless booking[:start_epoch] > now + @cancel_delay
             all_sensors     = systems(@desk_management_system)[@desk_management_device]
             next unless all_sensors[@zone + ':desk_ids'].include? @sensor  # don't cancel if the sensor has not registered yet
             motion_detected = all_sensors[@zone].include? @sensor
+            logger.debug "Canceller: #{@sensor} presence: #{motion_detected}"
             cancel(booking) unless motion_detected
         end
     end
 
     def cancel(booking)
+        logger.debug "Canceller: CANCELLING booking #{booking[:Subject]}"
         system[@bookings].cancel_meeting(booking[:start_epoch], "pending timeout").then do |response|
             logger.info "Cancelled #{booking[:Subject]} with response #{response}"
         end
