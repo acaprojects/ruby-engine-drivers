@@ -160,6 +160,24 @@ class Pressac::Sensors::WsProtocol
             }
             self[gateway] = @gateways[gateway][sensor_name].dup
             self[:gateways] = @gateways.deep_dup
+        when 'Occupancy-PIR'
+            sensor_name = sensor[:deviceName].to_sym
+            gateway     = sensor[:gatewayName].to_sym || 'unknown_gateway'.to_sym
+            occupancy   = sensor[:motionDetected] == true
+            @gateways[gateway] ||= {}
+            @gateways[gateway][sensor_name] = {
+                id:        sensor[:deviceId]
+                name:      sensor_name,
+                motion:    occupancy,
+                voltage:   sensor[:supplyVoltage][:value] || sensor[:supplyVoltage],
+                location:  sensor[:location],
+                timestamp: sensor[:timestamp],
+                last_update: Time.now.in_time_zone($TZ).to_s,
+                last_update_epoch: Time.now.to_i,
+                gateway:   gateway
+            }
+            self[gateway] = @gateways[gateway][sensor_name].dup
+            self[:gateways] = @gateways.deep_dup
         when 'CO2-Temperature-and-Humidity'
             @environment[sensor[:devicename]] = {
                 temp:           sensor[:temperature],
