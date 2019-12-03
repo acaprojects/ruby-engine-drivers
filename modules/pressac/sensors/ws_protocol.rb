@@ -138,7 +138,7 @@ class Pressac::Sensors::WsProtocol
         sensor = JSON.parse(raw_string, symbolize_names: true)
 
         case (sensor[:deviceType] || sensor[:devicetype])
-        when 'Under-Desk-Sensor'
+        when 'Under-Desk-Sensor', 'Occupancy-PIR'
             # Variations in captialisation of sensor's key names exist amongst different firmware versions
             sensor_name = sensor[:deviceName].to_sym  || sensor[:devicename].to_sym
             gateway     = sensor[:gatewayName].to_sym || 'unknown_gateway'.to_sym
@@ -149,24 +149,6 @@ class Pressac::Sensors::WsProtocol
             @gateways[gateway] ||= {}
             @gateways[gateway][sensor_name] = {
                 id:        sensor[:deviceId] || sensor[:deviceid],
-                name:      sensor_name,
-                motion:    occupancy,
-                voltage:   sensor[:supplyVoltage][:value] || sensor[:supplyVoltage],
-                location:  sensor[:location],
-                timestamp: sensor[:timestamp],
-                last_update: Time.now.in_time_zone($TZ).to_s,
-                last_update_epoch: Time.now.to_i,
-                gateway:   gateway
-            }
-            self[gateway] = @gateways[gateway][sensor_name].dup
-            self[:gateways] = @gateways.deep_dup
-        when 'Occupancy-PIR'
-            sensor_name = sensor[:deviceName].to_sym
-            gateway     = sensor[:gatewayName].to_sym || 'unknown_gateway'.to_sym
-            occupancy   = sensor[:motionDetected] == true
-            @gateways[gateway] ||= {}
-            @gateways[gateway][sensor_name] = {
-                id:        sensor[:deviceId]
                 name:      sensor_name,
                 motion:    occupancy,
                 voltage:   sensor[:supplyVoltage][:value] || sensor[:supplyVoltage],
