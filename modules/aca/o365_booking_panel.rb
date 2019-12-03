@@ -306,10 +306,11 @@ class Aca::O365BookingPanel
         results = []
         bookings.each{ |booking|
             tz = ActiveSupport::TimeZone.new(booking['start']['timeZone'])      # in tz database format: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-            start_utc   = tz.parse(booking['start']['dateTime']).utc            # output looks like: "2019-05-21 15:50:00 UTC"
-            end_utc     = tz.parse(booking['end']['dateTime']).utc                  
-            start_time  = start_utc.iso8601                                     # output looks like: "2019-05-21T15:50:00Z+08:00"
-            end_time    = end_utc.iso8601
+            start_time   = tz.parse(booking['start']['dateTime']).utc.iso8601    # output looks like: "2019-05-21 15:50:00 UTC"
+            end_time     = tz.parse(booking['end']['dateTime']).utc.iso8601
+            start_epoch = booking['start_epoch']
+            end_epoch = booking['end_epoch']
+
             attendees = booking['attendees']
             name =  booking.dig('organizer',:name)  || "Private"
             email = booking.dig('organizer',:email) || "Private"
