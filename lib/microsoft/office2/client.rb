@@ -122,8 +122,14 @@ class Microsoft::Office2::Client
         headers['Prefer'] = ENV['GRAPH_PREFER'] || "outlook.timezone=\"#{ENV['TZ']}\""
 
         log_graph_request(request_method, data, query, headers, graph_path, endpoints)
+        graph_api_options = { inactivity_timeout: 25000, keepalive: false }
 
-        graph_api = UV::HttpEndpoint.new(@graph_domain, { inactivity_timeout: 25000, keepalive: false })
+        if @https_proxy
+            proxy = URI.parse(@https_proxy)
+            graph_api_options[:proxy] = { host: proxy.host, port: proxy.port }
+        end
+
+        graph_api = UV::HttpEndpoint.new(@graph_domain, )
         response = graph_api.__send__(uv_request_method, path: graph_path, headers: headers, body: data.to_json, query: query)
 
         response.value
