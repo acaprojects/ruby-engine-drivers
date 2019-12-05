@@ -112,7 +112,7 @@ class Aca::O365BookingPanel
     end
 
     def create_meeting(params)
-        required_fields = ["start", "end"]
+        required_fields = [:start, :end]
         check = required_fields - params.keys
         if check != []
             logger.debug "Required fields missing: #{check}"
