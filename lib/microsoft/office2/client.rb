@@ -160,7 +160,7 @@ class Microsoft::Office2::Client
         when 200, 201, 204
             return
         when 400
-            if response['error']['code'] == 'ErrorInvalidIdMalformed'
+            if response.dig('error', 'code') == 'ErrorInvalidIdMalformed'
                 raise Microsoft::Error::ErrorInvalidIdMalformed.new(response.body)
             else
                 raise Microsoft::Error::BadRequest.new(response.body)
