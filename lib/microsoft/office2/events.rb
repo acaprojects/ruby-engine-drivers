@@ -136,25 +136,23 @@ module Microsoft::Office2::Events
         end 
     end
 
-    RECURRENCE_MAP = {daily: 1.days.to_i, weekly: 1.week.to_i, monthly: 1.month.to_i}
+    RECURRENCE_MAP = { daily: 1.days.to_i, weekly: 1.week.to_i, monthly: 1.month.to_i }
     def get_availability(rooms:, from:, to:, recurrence_pattern: 'none', recurrence_end: nil, ignore_icaluid: nil)
         interval = RECURRENCE_MAP[recurrence_pattern]
         start_epochs = unroll_recurrence(from, interval,  recurrence_end)
         event_length = to - from
-        graph_dates = start_epochs.map {|start| startDateTime: graph_date(start), endDateTime: graph_date(start + event_length), '$top': 1}
+        query_strings = start_epochs.map { |start| "?startDateTime=#{graph_date(start)}&endDateTime=#{graph_date(start + event_length)}&$top=1" }
 
         # create array of requests that will be sent as bulk to Graph API. Match the array index with 
         requests = []
         rooms.each do |room_email|
-            room_events =  "/users/#{room_email}/calendar/calendarView"
-            graph_dates.each_with_index do |date, i|
-                requests << { id: "#{room_email}:#{start_epochs[i]}", method: 'get', endpoint: room_events, query: date }
+            room_events_endpoint =  "/users/#{room_email}/calendar/calendarView"
+            query_strings.each_with_index do |query_string, i|
+                requests << { id: "#{room_email}:#{start_epochs[i]}", method: 'get', url: room_events_endpoint + query_string }
             end
         end
 
-        bulk_response = advanced_bulk_request(requests)
-        check_response(bulk_response)
-        responses = JSON.parse(bulk_response.body)['responses']
+        responses = raw_bulk_request(requests)
         # search for conflicts
         responses.each do |response|
             events = response&.dig('body', 'value')
@@ -172,7 +170,7 @@ module Microsoft::Office2::Events
         return { conflicts: conflicts, first_conflict: all_conflicts.min }
     end
 
-        # responses looks like:
+        # responses look like:
         # [
         #     {
         #         "id": "1",
