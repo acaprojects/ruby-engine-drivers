@@ -123,7 +123,111 @@ module Microsoft::Office2::Events
         check_response(response)
         JSON.parse(response.body)&.dig('value', 0)
     end
-    
+
+    MAX_RECURRENCE = UV::Scheduler.parse_duration(ENV['O365_MAX_BOOKING_WINDOW'] || '180d')
+    def unroll_recurrence(start:, interval: nil, recurrence_end: nil)
+        occurences = [current_occurence = start]
+        return occurences unless interval
+        end_date = recurrence_end || (start + MAX_RECURRENCE)
+        loop do
+            next_occurence = current_occurence + interval
+            return occurences if next_occurence > end_date
+            occurences << next_occurence
+        end 
+    end
+
+    RECURRENCE_MAP = {daily: 1.days.to_i, weekly: 1.week.to_i, monthly: 1.month.to_i}
+    def get_availability(rooms:, from:, to:, recurrence_pattern: 'none', recurrence_end: nil, ignore_icaluid: nil)
+        interval = RECURRENCE_MAP[recurrence_pattern]
+        start_epochs = unroll_recurrence(from, interval,  recurrence_end)
+        event_length = to - from
+        graph_dates = start_epochs.map {|start| startDateTime: graph_date(start), endDateTime: graph_date(start + event_length), '$top': 1}
+
+        # create array of requests that will be sent as bulk to Graph API. Match the array index with 
+        requests = []
+        rooms.each do |room_email|
+            room_events =  "/users/#{room_email}/calendar/calendarView"
+            graph_dates.each_with_index do |date, i|
+                requests << { id: "#{room_email}:#{start_epochs[i]}", method: 'get', endpoint: room_events, query: date }
+            end
+        end
+
+        bulk_response = advanced_bulk_request(requests)
+        check_response(bulk_response)
+        responses = JSON.parse(bulk_response.body)['responses']
+        # search for conflicts
+        responses.each do |response|
+            events = response&.dig('body', 'value')
+            next unless events.any?
+            # There is at least one conflict, but if it's the same booking currently being edited, then ignore it
+            room,start_epoch = response['id'].split(':')
+            events.each do |event|
+                unless event['iCalUId'] == ignore_icaluid
+                    conflicts[room] ||= []
+                    conflicts[room] << start_epoch
+                    all_conflicts << start_epoch
+                end
+            end
+        end
+        return { conflicts: conflicts, first_conflict: all_conflicts.min }
+    end
+
+        # responses looks like:
+        # [
+        #     {
+        #         "id": "1",
+        #         "status": 200,
+        #         "headers": {
+        #             "Cache-Control": "private",
+        #             "OData-Version": "4.0",
+        #             "Content-Type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8"
+        #         },
+        #         "body": {
+        #             "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('admin%40something.onmicrosoft.com')/calendar/calendarView",
+        #             "value": []
+        #         }
+        #     },
+        #     {
+        #         "id": "4",
+        #         "status": 200,
+        #         "headers": {
+        #             "Cache-Control": "private",
+        #             "OData-Version": "4.0",
+        #             "Content-Type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8"
+        #         },
+        #         "body": {
+        #             "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('name.ug7.com1%40something.onmicrosoft.com')/calendar/calendarView",
+        #             "value": []
+        #         }
+        #     },
+        #     {
+        #         "id": "3",
+        #         "status": 200,
+        #         "headers": {
+        #             "Cache-Control": "private",
+        #             "OData-Version": "4.0",
+        #             "Content-Type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8"
+        #         },
+        #         "body": {
+        #             "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('name.3B.Room1%40something.onmicrosoft.com')/calendar/calendarView",
+        #             "value": []
+        #         }
+        #     },
+        #     {
+        #         "id": "2",
+        #         "status": 200,
+        #         "headers": {
+        #             "Cache-Control": "private",
+        #             "OData-Version": "4.0",
+        #             "Content-Type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8"
+        #         },
+        #         "body": {
+        #             "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('name.3b.combine%40something.onmicrosoft.com')/calendar/calendarView",
+        #             "value": []
+        #         }
+        #     }
+        # ]
+
     ##
     # Create an Office365 event in the mailbox passed in. This may have rooms and other 
     # attendees associated with it and thus create events in other mailboxes also.
