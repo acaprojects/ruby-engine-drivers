@@ -54,7 +54,7 @@ class Aca::Joiner
     generic_name :Joiner
     implements :logic
 
-    
+
     def on_load
         @retry_load = nil
         @loaded = false
@@ -261,7 +261,7 @@ class Aca::Joiner
         @retry_load.cancel unless @retry_load.nil?
         @retry_load = nil
 
-        if on_update
+        if on_update != false
             # Wait 30 seconds and check room list is built
             @retry_load = schedule.in(30_000) do
                 @retry_load = nil
@@ -339,4 +339,3 @@ class Aca::Joiner
         thread.finally(*promises)
     end
 end
-
