@@ -65,7 +65,7 @@ class Atlona::OmniStream::WsProtocol
         :systeminfo, :alarms, :net,
 
         # encoders
-        :hdmi_input, :sessions,
+        :hdmi_input, :vc2, :sessions,
 
         # decoders
         :ip_input, :hdmi_output
@@ -282,7 +282,7 @@ class Atlona::OmniStream::WsProtocol
             id = resp[:id].to_sym
             self.__send__(id) if self.respond_to?(id)
             return
-        end 
+        end
 
         # get
         case resp[:id]
@@ -300,6 +300,7 @@ class Atlona::OmniStream::WsProtocol
                 hdmi_output
             else
                 hdmi_input
+                vc2
                 sessions
             end
 
@@ -309,6 +310,8 @@ class Atlona::OmniStream::WsProtocol
             self[:alarms] = data
         when 'hdmi_input'
             self[:inputs] = data
+        when 'vc2'
+            self[:encoders] = data
         when 'sessions'
             sessions = []
             num_sessions = 0

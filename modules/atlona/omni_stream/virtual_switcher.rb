@@ -37,9 +37,11 @@ class Atlona::OmniStream::VirtualSwitcher
                         next if input.nil?
 
                         sessions = input[:sessions]
-                        next unless sessions && sessions[session_index]
-                        session = sessions[session_index]
-                        video_input = session[:audio][:encoder]
+                        next unless sessions
+                        encoder_name = sessions.dig(session_index, :video, :encoder)
+                        next unless encoder_name
+                        video_input = (Array(input[:encoders]).select { |encoder| encoder[:name] == encoder_name }).dig(0, :input)
+                        next unless video_input
 
                         video_ins = Array(input[:inputs]).select { |vin| vin[:name] == video_input }
                         next unless video_ins.length > 0
