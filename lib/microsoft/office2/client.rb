@@ -144,15 +144,15 @@ class Microsoft::Office2::Client
     #    }
     #    ...
     # ]
-    BULK_CONCURRENT_REQUESTS = 20   # The maximum number of requests Graph API will allow in a single bulk request
+    BULK_CONCURRENT_REQUESTS = 15   # The maximum number of requests Graph API will allow in a single bulk request
     BULK_REQUEST_METHOD = :post
     UV_OPTIONS = { inactivity_timeout: 25000, keepalive: false }
     def raw_bulk_request(all_requests)
         bulk_request_endpoint    = "#{@graph_domain}/v1.0/$batch"
         headers = {
-            'Authorization': "Bearer #{graph_token}",
-            'Content-Type': "application/json",
-            'Prefer':       "outlook.timezone=\"#{ENV['TZ']}\""
+            'Authorization' => "Bearer #{graph_token}",
+            'Content-Type'  => "application/json",
+            'Prefer'        => "outlook.timezone=\"#{ENV['TZ']}\""
         }
 
         uv_options = UV_OPTIONS
@@ -163,15 +163,14 @@ class Microsoft::Office2::Client
         graph_api = UV::HttpEndpoint.new(@graph_domain, uv_options)
 
         sliced_requests = []
-        all_requests.each_slice(BULK_CONCURRENT_REQUESTS) do some_requests
+        all_requests.each_slice(BULK_CONCURRENT_REQUESTS) do |some_requests|
             request_body = { requests: some_requests }
-            # log_graph_request(request_method, request_body, {}, headers, graph_path, endpoints)
             sliced_requests << graph_api.__send__(BULK_REQUEST_METHOD, path: bulk_request_endpoint, headers: headers, body: request_body.to_json, query: {})
         end
 
         thread = Libuv::Reactor.current
         sliced_responses = thread.all(sliced_requests).value
-        all_responses = sliced_responses.map{ |bulk_body| JSON.parse(bulk_body)['responses'] }.flatten
+        all_responses = sliced_responses.map{ |single_bulk_response| JSON.parse(single_bulk_response.body)['responses'] }.flatten
         return all_responses
     end
 
