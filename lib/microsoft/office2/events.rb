@@ -83,7 +83,7 @@ module Microsoft::Office2::Events
             query[:startDateTime] = graph_date(options[:bookings_from]) if options[:bookings_from]
             query[:endDateTime] = graph_date(options[:bookings_to]) if options[:bookings_to]
             query[:'$filter'] = "createdDateTime gt #{created_from}" if options[:created_from]
-            query[:'$expand'] = "extensions($filter=id eq '#{options[:extension_name]}')" if options[:extension_name]
+            query[:'$expand'] = "extensions($filter=id eq '#{options[:extension_name]}')" if options[:extension_name] && ENV['O365_DISABLE_ODATA_EXTENSIONS']&.downcase != 'true'
 
             # Make the request, check the repsonse then parse it
             bulk_response = graph_request(request_method: 'get', endpoints: endpoints, query: query, bulk: true)
@@ -292,7 +292,7 @@ module Microsoft::Office2::Events
         )
 
         # If extensions exist we must make a separate request to add them
-        if options[:extensions].present?
+        if options[:extensions].present? && ENV['O365_DISABLE_ODATA_EXTENSIONS']&.downcase != 'true'
             options[:extensions] = options[:extensions].dup
             options[:extensions]["@odata.type"] = "microsoft.graph.openTypeExtension"
             options[:extensions]["extensionName"] = "Com.Acaprojects.Extensions"
@@ -400,15 +400,16 @@ module Microsoft::Office2::Events
             }
         } if organizer
 
-
-        ext = {
-            "@odata.type": "microsoft.graph.openTypeExtension",
-            "extensionName": "Com.Acaprojects.Extensions"
-        }
-        extensions.each do |ext_key, ext_value|
-            ext[ext_key] = ext_value
+        if ENV['O365_DISABLE_ODATA_EXTENSIONS']&.downcase != 'true'
+            ext = {
+                "@odata.type": "microsoft.graph.openTypeExtension",
+                "extensionName": "Com.Acaprojects.Extensions"
+            }
+            extensions.each do |ext_key, ext_value|
+                ext[ext_key] = ext_value
+            end
+            event_json[:extensions] = [ext]
         end
-        event_json[:extensions] = [ext]
 
         if recurrence
             recurrence_end_date = Time.at(recurrence[:end]).to_datetime.in_time_zone(timezone)
