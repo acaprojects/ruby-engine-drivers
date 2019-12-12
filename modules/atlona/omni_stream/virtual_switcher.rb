@@ -28,6 +28,37 @@ class Atlona::OmniStream::VirtualSwitcher
 
         map.each do |inp, outs|
             begin
+                # Select the first input where there is a video signal
+                if inp.is_a?(Array)
+                    selected = nil
+                    inp.each do |check_inp|
+                        check_inp = check_inp.to_s
+                        input, session_index = inputs[check_inp]
+                        next if input.nil?
+
+                        sessions = input[:sessions]
+                        next unless sessions && sessions[session_index]
+                        session = sessions[session_index]
+                        video_input = session[:audio][:encoder]
+
+                        video_ins = Array(input[:inputs]).select { |vin| vin[:name] == video_input }
+                        next unless video_ins.length > 0
+
+                        if video_ins[0][:cabledetect]
+                          selected = check_inp
+                          break
+                        end
+                    end
+
+                    if selected
+                      inp = selected
+                      logger.debug { "found active input on #{inp}" }
+                    else
+                      inp = inp.last
+                      logger.debug { "no active input found, switching to #{inp}" }
+                    end
+                end
+
                 inp = inp.to_s
                 if inp == '0'
                     enable = enable_override.nil? ? false : enable_override
@@ -83,6 +114,7 @@ class Atlona::OmniStream::VirtualSwitcher
                         next
                     end
 
+                    logger.debug { "switching #{inp} => #{out}" }
                     output.switch(output: index, video_ip: video_ip, video_port: video_port, audio_ip: audio_ip, audio_port: audio_port, enable: enable)
                 end
             rescue => e
@@ -153,11 +185,21 @@ class Atlona::OmniStream::VirtualSwitcher
             num_sessions = mod[:num_sessions]
             if mod[:type] == :encoder && num_sessions
                 (1..num_sessions).each do |num|
-                    encoder_mapping[input.to_s] = [mod, num - 1]
-                    info_mapping[input.to_s] = {
+                    mapping_details = [mod, num - 1]
+                    name = begin
+                      mod[:sessions][num - 1][:name]
+                    rescue
+                      nil
+                    end
+                    encoder_mapping[name] = mapping_details if name
+                    encoder_mapping[input.to_s] = mapping_details
+
+                    mapping_details = {
                         encoder: "#{@encoder_name}_#{index}",
                         session: num
                     }
+                    info_mapping[input.to_s] = mapping_details
+                    info_mapping[name] = mapping_details if name
 
                     input += 1
                 end
@@ -188,11 +230,22 @@ class Atlona::OmniStream::VirtualSwitcher
             num_outputs = mod[:num_outputs]
             if mod[:type] == :decoder && num_outputs
                 (1..num_outputs).each do |num|
-                    decoder_mapping[output.to_s] = [mod, num]
-                    info_mapping[output.to_s] = {
+                    mapping_details = [mod, num]
+                    name = begin
+                      mod[:outputs][num - 1][:name]
+                    rescue
+                      nil
+                    end
+
+                    decoder_mapping[name] = mapping_details if name
+                    decoder_mapping[output.to_s] = mapping_details
+
+                    mapping_details = {
                         encoder: "#{@decoder_name}_#{index}",
                         output: num
                     }
+                    info_mapping[output.to_s] = mapping_details
+                    info_mapping[name] = mapping_details if name
 
                     output += 1
                 end
