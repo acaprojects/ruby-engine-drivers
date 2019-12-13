@@ -25,12 +25,17 @@ class Atlona::OmniStream::AutoSwitcher
         auto_switch = setting(:auto_switch) || {}
         self[:enabled] = @enabled = setting(:auto_switch_enabled) || true
 
+        schedule.clear
+        poll_every = setting(:auto_switch_poll_every) || '3s'
+        schedule.every(poll_every) { poll_inputs }
+
         # Bind to all the encoders for presence detection
         if @virtual_switcher != switcher || @auto_switch != auto_switch
           if @auto_switch != auto_switch
               @auto_switch = auto_switch
               switch_all
           end
+
           @virtual_switcher = switcher
           subscribe_virtual_inputs
         end
@@ -46,6 +51,27 @@ class Atlona::OmniStream::AutoSwitcher
 
     protected
 
+
+    def poll_inputs
+        input_mappings = system[@virtual_switcher][:input_mappings]
+        encoders = []
+        @auto_switch.each do |output, inputs|
+            inputs.each do |input|
+                input = input.to_s
+                input_details = input_mappings[input]
+                next unless input_details
+
+                encoders << input_details[:encoder]
+            end
+        end
+
+        encoders.uniq!
+        encoders.each do |encoder|
+          system[encoder].hdmi_input
+        end
+
+        nil
+    end
 
     def switch_all
         return unless @enabled
