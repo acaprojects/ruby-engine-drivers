@@ -23,7 +23,10 @@ class PointGrab::CogniPoint
       "CogniPoint_floor_id" => "zone_id"
     },
     area_mappings: {
-      "CogniPoint_area_id" => "alternative_area_id"
+      "CogniPoint_area_id" => {
+        id: "alternative_area_id",
+        capacity: 4
+      }
     }
   })
 
@@ -155,7 +158,7 @@ class PointGrab::CogniPoint
   #  Traffic
   # end
 
-  def subscribe(handler_uri, auth_token = SecureRandom.uuid, events = "Counting")
+  def subscribe_telemetry(handler_uri, auth_token = SecureRandom.uuid, events = "Counting")
     # Ensure the handler is a valid URI
     URI.parse handler_uri
 
@@ -192,6 +195,8 @@ class PointGrab::CogniPoint
   end
 
   def delete_subscription(id)
+    # Stop subscription
+    update_subscription(id, false)
     token = get_token
     delete("/be/cp/v2/telemetry/subscriptions/#{id}",
       headers: {
@@ -203,7 +208,8 @@ class PointGrab::CogniPoint
 
   def update_subscription(id, started = true)
     token = get_token
-    patch(
+    request(
+      :patch,
       "/be/cp/v2/telemetry/subscriptions/#{id}",
       body: {started: started}.to_json,
       headers: {
@@ -292,13 +298,14 @@ class PointGrab::CogniPoint
       # Grab the details
       floor_id = area_details[:floor_id]
       floor_mapping = @floor_mappings[floor_id] || floor_id
-      area_mapping = @area_mappings[area_id] || area_id
+      area_mapping = @area_mappings[area_id] || {}
+      area_id = area_mapping[:id] || area_id
 
       # update the details
       floor_areas = @floor_details[floor_mapping] || {}
-      floor_areas[area_mapping] = {
+      floor_areas[area_id] = {
         people_count: people_count
-      }
+      }.merge(area_mapping)
       @floor_details[floor_mapping] = floor_areas
 
       self[floor_mapping] = floor_areas.dup
