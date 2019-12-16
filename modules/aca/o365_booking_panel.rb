@@ -328,6 +328,8 @@ class Aca::O365BookingPanel
             results.push({
                 :Start => start_time,
                 :End => end_time,
+                :start_epoch => start_epoch,
+                :end_epoch => end_epoch,
                 :Subject => subject,
                 :id => booking['id'],
                 :icaluid => booking['icaluid'],
