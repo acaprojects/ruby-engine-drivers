@@ -10,7 +10,7 @@ class OfficeRnd::API
 
   # Discovery Information
   implements :service
-  generic_name :Bookings
+  generic_name :OfficeRnD
   descriptive_name "OfficeRnD REST API"
 
   keepalive false
@@ -36,6 +36,10 @@ class OfficeRnd::API
 
     @auth_token ||= ""
     @auth_expiry ||= 1.minute.ago
+
+    # cache
+    @timezone_cache ||= [3.days.ago, []]
+    @member_cache ||= {}
   end
 
   def expire_token!
@@ -117,13 +121,33 @@ class OfficeRnd::API
   # Get bookings for a resource for a given time span
   #
   def resource_bookings(
-    resource_id,
-    range_start = Time.now - 5.minutes.to_i,
-    range_end = Time.now + 24.hours.to_i,
+    resource_id = nil,
+    range_start = nil,
+    range_end = nil,
     office_id = nil,
     member_id = nil,
-    team_id = nil
+    team_id = nil,
+    rebuild_cache: false
   )
+    # Use the cache
+    if range_start.nil? && range_end.nil? && office_id.nil? && member_id.nil? && team_id.nil?
+      cached_time, data = @timezone_cache
+
+      if !rebuild_cache && cached_time >= 23.minutes.ago
+        return data unless resource_id
+        return data.select do |booking|
+          booking[:resourceId] == resource_id
+        end
+      else
+        rebuild_cache = true
+      end
+
+      range_start = 20.minutes.ago.utc
+      range_end = Time.now.utc.tomorrow.tomorrow.midnight
+    else
+      rebuild_cache = false
+    end
+
     params = {}
     params["office"] = office_id if office_id
     params["member"] = member_id if member_id
@@ -137,7 +161,10 @@ class OfficeRnd::API
     params["end"] = Time.at(range_end).iso8601 if range_end.is_a?(Integer)
 
     params = nil if params.empty?
-    get_request("/bookings/occurrences", params).select do |booking|
+    all_bookings = get_request("/bookings/occurrences", params)
+    @timezone_cache = [range_start, all_bookings]
+    return all_bookings unless resource_id
+    all_bookings.select do |booking|
       booking[:resourceId] == resource_id
     end
   end
@@ -223,6 +250,18 @@ class OfficeRnd::API
       tentative: tentative,
       free: free
     }]
+  end
+
+  # Retrieve member details
+  #
+  def staff_details(member_id, fresh: false)
+    member_id = member_id.to_s
+    cached = @member_cache[member_id]
+    return cached if cached && !fresh
+
+    path = "/members/#{member_id}"
+    result = get_request(path)
+    @member_cache[member_id] = result
   end
 
   # Organisation
