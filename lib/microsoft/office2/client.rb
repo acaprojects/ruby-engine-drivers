@@ -195,9 +195,9 @@ class Microsoft::Office2::Client
     end
 
     def check_response(response)
+        return if response.status.between?(200,204)
+        STDOUT.puts "GRAPH API ERROR Response:\n #{response}"
         case response.status
-        when 200, 201, 204
-            return
         when 400
             if response.dig('error', 'code') == 'ErrorInvalidIdMalformed'
                 raise Microsoft::Error::ErrorInvalidIdMalformed.new(response.body)
