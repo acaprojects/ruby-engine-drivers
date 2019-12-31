@@ -167,7 +167,6 @@ module Microsoft::Office2::Events
                     conflicts[room] ||= []
                     start = event['start']
                     clashing_start_epoch = ActiveSupport::TimeZone.new(start['timeZone']).parse(start['dateTime']).to_i
-                    puts "\n\nclashing_start_epoch: #{clashing_start_epoch}\n\n"
                     conflicts[room] << clashing_start_epoch
                     all_conflicts << clashing_start_epoch
                 end
@@ -403,7 +402,6 @@ module Microsoft::Office2::Events
         } if organizer
 
         if ENV['O365_DISABLE_ODATA_EXTENSIONS']&.downcase != 'true'
-            puts "\n\n ODATA EXTENSIONS DISABLED \n\n"
             ext = {
                 "@odata.type": "microsoft.graph.openTypeExtension",
                 "extensionName": "Com.Acaprojects.Extensions"
