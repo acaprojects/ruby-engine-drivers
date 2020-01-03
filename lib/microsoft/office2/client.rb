@@ -212,6 +212,8 @@ class Microsoft::Office2::Client
             raise Microsoft::Error::ResourceNotFound.new(response.body)
         when 409
             raise Microsoft::Error::Conflict.new(response.body)
+        when 412
+            raise Microsoft::Error::PreconditionFailed.new(response.body)
         end
     end
 
