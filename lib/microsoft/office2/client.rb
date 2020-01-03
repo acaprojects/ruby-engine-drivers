@@ -213,7 +213,7 @@ class Microsoft::Office2::Client
         when 409
             raise Microsoft::Error::Conflict.new(response.body)
         when 412
-            raise Microsoft::Error::PreconditionFailed.new(response.body)
+            raise Microsoft::Error::Conflict.new(response.body)
         end
     end
 

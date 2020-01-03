@@ -232,7 +232,7 @@ module Microsoft::Office2::Events
             retries ||= 0
             request = graph_request(request_method: 'post', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"], data: event_json)
             check_response(request)
-        rescue Microsoft::Error::Conflict, Microsoft::Error::PreconditionFailed => e
+        rescue Microsoft::Error::Conflict => e
             return {}
         end
         Microsoft::Office2::Event.new(client: self, event: JSON.parse(request.body)).event
@@ -303,7 +303,7 @@ module Microsoft::Office2::Events
         begin
             request = graph_request(request_method: 'patch', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events/#{booking_id}"], data: event_json)
             check_response(request)
-        rescue Microsoft::Error::Conflict, Microsoft::Error::PreconditionFailed => e
+        rescue Microsoft::Error::Conflict => e
             return {}
         end
         Microsoft::Office2::Event.new(client: self, event: JSON.parse(request.body).merge({'extensions' => [ext_data]})).event
@@ -319,7 +319,7 @@ module Microsoft::Office2::Events
         begin
             request = graph_request(request_method: 'delete', endpoints: [endpoint])
             check_response(request)
-        rescue Microsoft::Error::Conflict, Microsoft::Error::PreconditionFailed => e
+        rescue Microsoft::Error::Conflict => e
             return 200
         end
         200
