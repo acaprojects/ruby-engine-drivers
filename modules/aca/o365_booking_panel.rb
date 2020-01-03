@@ -112,11 +112,12 @@ class Aca::O365BookingPanel
     end
 
     def create_meeting(params)
-        required_fields = [:start, :end]
-        check = required_fields - params.keys
-        if check != []
-            logger.debug "Required fields missing: #{check}"
-            raise "Required fields missing: #{check}"
+        start_param = params[:start] || params['start']
+        end_param   = params[:end]   || params['end']
+        
+        unless start_param && end_param
+            logger.debug "Error: start/end param is required and missing"
+            raise "Error: start/end param is required and missing"
         end
 
         logger.debug "RBP>#{@office_room}>CREATE>INPUT:\n #{params}"
@@ -150,8 +151,8 @@ class Aca::O365BookingPanel
                         mailbox:        mailbox,
                         calendargroup_id: calendargroup_id,
                         calendar_id:    calendar_id,
-                        start_param:    epoch(params[:start]), 
-                        end_param:      epoch(params[:end]),
+                        start_param:    epoch(start_param), 
+                        end_param:      epoch(end_param),
                         options: booking_options )
         rescue Exception => e
             logger.error "RBP>#{@office_room}>CREATE>ERROR: #{e.message}\n#{e.backtrace.join("\n")}"
