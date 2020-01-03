@@ -13,7 +13,7 @@ class ::Pressac::DeskManagement
         iot_hub_device: "Websocket_1",
         delay_until_shown_as_busy: "0m",
         delay_until_shown_as_free: "0m",
-        stale_shown_as: "blank"
+        stale_shown_as: "blank",
         zone_to_gateway_mappings: {
             "zone-xxx" => ["pressac_gateway_name_1"],
             "zone-zzz" => ["pressac_gateway_name_2", "pressac_gateway_name_3"]
