@@ -314,17 +314,20 @@ class Aca::O365BookingPanel
             end_epoch = booking['end_epoch']
 
             attendees = booking['attendees']
-            name =  booking.dig('organizer',:name)  || "Private"
-            email = booking.dig('organizer',:email) || "Private"
             if ENV['O365_PROXY_USER_CALENDARS']
                 name =  booking.dig('attendees',1,:name)  || "Private"
                 email = booking.dig('attendees',1,:email) || "Private"
+            else
+                email = booking.dig('organizer',:email)   || "Private"
+                name =  booking.dig('organizer',:name)    || "Private"
             end
 
             subject = booking['subject']
+            body    = booking['body']
             if ['private','confidential'].include?(booking['sensitivity'])
-                name = "Private"
+                name    = "Private"
                 subject = "Private"
+                body    = "Private"
             end
 
             results.push({
@@ -333,6 +336,7 @@ class Aca::O365BookingPanel
                 :start_epoch => start_epoch,
                 :end_epoch => end_epoch,
                 :Subject => subject,
+                :body => body,
                 :id => booking['id'],
                 :icaluid => booking['icaluid'],
                 :owner => name,
