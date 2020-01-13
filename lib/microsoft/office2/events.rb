@@ -204,7 +204,7 @@ module Microsoft::Office2::Events
             attendees: [],
             recurrence: nil,
             is_private: false,
-            timezone: 'UTC',
+            timezone: ENV['TZ'],
             extensions: {},
             location: nil
         }
@@ -266,8 +266,7 @@ module Microsoft::Office2::Events
             description: nil,
             attendees: [],
             recurrence: nil,
-            is_private: false,
-            timezone: 'UTC',
+            timezone: ENV['TZ'],
             extensions: {},
             location: nil
         }
