@@ -184,6 +184,7 @@ class Aca::O365BookingPanel
         now = Time.now
         new_details = {}
         new_details[:end_param] = now.to_i
+        raise "Error (400): Events that have not started yet cannot be ended." if existing['start_epoch'] > new_details[:end_param]
         new_details[:body] = existing['body'] + "\n\n========\n\n This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}"
         
         @client.update_booking(booking_id: id, mailbox: @office_room, options: new_details)
