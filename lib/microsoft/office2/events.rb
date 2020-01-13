@@ -128,7 +128,7 @@ module Microsoft::Office2::Events
     def unroll_recurrence(start:, interval: nil, recurrence_end: nil)
         occurences = [current_occurence = start]
         return occurences unless interval
-        end_date = recurrence_end || (start + MAX_RECURRENCE)
+	end_date = Time.at(recurrence_end || start + MAX_RECURRENCE).midnight.tomorrow.to_i # whole day intervals for  recurrence end date
         loop do
             next_occurence = current_occurence + interval
             return occurences if next_occurence > end_date
