@@ -185,8 +185,8 @@ class Aca::O365BookingPanel
         new_details = {}
         new_details[:end_param] = now.to_i
         raise "Error (400): Events that have not started yet cannot be ended." if existing['start_epoch'] > new_details[:end_param]
-        
-        if existing['body'] && existing['body'][0..20].downcase.include? '<html>'
+
+        if existing['body'] && existing['body'][0..9].downcase.include? '<html>'
             new_details[:body] = existing['body']&.gsub(/<\/html>/i, "\n\n========\n\n This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}</html>")
         else
             new_details[:body] = existing['body'] + "\n\n========\n\n This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}"
