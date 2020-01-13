@@ -179,7 +179,7 @@ class Aca::O365BookingPanel
     # This new method replaces the frontend app cancelling the booking, which has had many issues. Automated cancellations should be handled by backend modules for frontend apps
     def end_meeting(id)
         existing = @todays_bookings&.find {|b| b['id'] == id}
-        return "Booking not found with id: #{id}" unless existing
+        raise "Error (400): Booking not found with id: #{id}" unless existing
 
         now = Time.now
         new_details = {}
