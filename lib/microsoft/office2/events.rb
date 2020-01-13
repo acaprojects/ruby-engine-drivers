@@ -391,7 +391,7 @@ module Microsoft::Office2::Events
         } if organizer
 
         # If we have rooms then use that, otherwise use the location string
-        if rooms?
+        if rooms
             event_json[:locations] = rooms.map { |r| { displayName: r[:name] } }
         elsif location
             event_json[:locations] = [{displayName: location}]
