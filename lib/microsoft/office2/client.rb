@@ -179,24 +179,19 @@ class Microsoft::Office2::Client
     end
 
     def log_graph_request(request_method, data, query, headers, graph_path, endpoints=nil)
-        return unless ENV['O365_LOG_REQUESTS']
-        STDERR.puts "--------------NEW GRAPH REQUEST------------"
-        STDERR.puts "#{request_method} to #{graph_path}"
-        STDERR.puts "Data:"
-        STDERR.puts data.to_json if data
-        STDERR.puts "Query:"
-        STDERR.puts query if query
-        STDERR.puts "Headers:"
-        STDERR.puts headers if headers
-        STDERR.puts "Endpoints:"
-        STDERR.puts endpoints if endpoints
-        STDERR.puts '--------------------------------------------'
-        STDERR.flush
+        #Store the request so that it can be output later IF an error was detected
+        @request_info =  "#{request_method} to #{graph_path}"
+        @request_info << "Data:\n #{data.to_json}" if data
+        @request_info << "Query:\n #{data.to_json}" if query
+        @request_info << "Headers:\n #{data.to_json}" if headers
+        @request_info << "Endpoints:\n #{data.to_json}" if data
     end
 
     def check_response(response)
-        return if response.status.between?(200,204)
-        STDOUT.puts "GRAPH API ERROR Response:\n #{response}"
+        return if response.status >= 400
+        STDERR.puts "GRAPH API ERROR Request:\n #{@request_info}"
+        STDERR.puts "\n--------------------------------------------""
+        STDERR.puts "GRAPH API ERROR Response:\n #{response}"
         case response.status
         when 400
             if response.dig('error', 'code') == 'ErrorInvalidIdMalformed'
