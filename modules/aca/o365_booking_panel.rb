@@ -178,13 +178,13 @@ class Aca::O365BookingPanel
     # Does not cancel or decline meetings - just shortens them to now.
     # This new method replaces the frontend app cancelling the booking, which has had many issues. Automated cancellations should be handled by backend modules for frontend apps
     def end_meeting(id)
-        existing = @todays_bookings&.select {|b| b['id'] == id}
+        existing = @todays_bookings&.find {|b| b['id'] == id}
         return "Booking not found with id: #{id}" unless existing
 
         now = Time.now
         new_details = {}
         new_details[:end_param] = now.to_i
-        new_details[:body] = existing[:body] << "\n\n========\n\n This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}"
+        new_details[:body] = existing['body'] + "\n\n========\n\n This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}"
         
         @client.update_booking(booking_id: id, mailbox: @office_room, options: new_details)
     end
