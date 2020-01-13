@@ -348,10 +348,10 @@ module Microsoft::Office2::Events
         result
     end
 
-    def create_event_json(subject: nil, body: nil, start_param: nil, end_param: nil, timezone: nil, rooms: nil, location: nil, attendees: nil, organizer_name: nil, organizer:nil, recurrence: nil, extensions: {}, is_private: false)
+    def create_event_json(subject: nil, body: nil, start_param: nil, end_param: nil, timezone: nil, rooms: nil, location: nil, attendees: nil, organizer_name: nil, organizer:nil, recurrence: nil, extensions: {}, is_private: nil)
         event_json = {}
         event_json[:subject] = subject if subject
-        event_json[:sensitivity] = ( is_private ? "private" : "normal" ) if sensitivity
+        event_json[:sensitivity] = ( is_private ? "private" : "normal" ) if is_private
 
         event_json[:body] = {
             contentType: "HTML",
