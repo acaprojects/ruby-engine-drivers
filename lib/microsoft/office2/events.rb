@@ -258,13 +258,14 @@ module Microsoft::Office2::Events
     # @option options [Hash] :extensions A hash holding a list of extensions to be added to the booking
     # @option options [String] :location The location field to set. This will not be used if a room is passed in
     def update_booking(booking_id:, mailbox:, calendargroup_id: nil, calendar_id: nil, options: {})
+    # No defaults for editing, because undefined fields should simply retain the existing value (from the original booking)
         default_options = {
             start_param: nil,
             end_param: nil,
-            rooms: [],
-            subject: "Meeting",
+            rooms: nil,
+            subject: nil,
             description: nil,
-            attendees: [],
+            attendees: nil,
             recurrence: nil,
             is_private: nil,
             timezone: ENV['TZ'],
@@ -277,7 +278,7 @@ module Microsoft::Office2::Events
         # Create the JSON body for our event
         event_json = create_event_json(
             subject: options[:subject],
-            body: options[:description],
+            body: (options[:body] || options[:description]),
             rooms: options[:rooms],
             start_param: options[:start_param],
             end_param: options[:end_param],
@@ -347,22 +348,9 @@ module Microsoft::Office2::Events
         result
     end
 
-    def create_event_json(subject: nil, body: nil, start_param: nil, end_param: nil, timezone: nil, rooms: [], location: nil, attendees: nil, organizer_name: nil, organizer:nil, recurrence: nil, extensions: {}, is_private: false)
-        # Put the attendees into the MS Graph expeceted format
-        attendees.map! do |a|
-            attendee_type = ( a[:optional] ? "optional" : "required" )
-            { emailAddress: { address: a[:email], name: a[:name] }, type: attendee_type }
-        end
-
-        # Add each room to the attendees array
-        rooms.each do |room|
-            attendees.push({ type: "resource", emailAddress: { address: room[:email], name: room[:name] } })
-        end
-
-
+    def create_event_json(subject: nil, body: nil, start_param: nil, end_param: nil, timezone: nil, rooms: nil, location: nil, attendees: nil, organizer_name: nil, organizer:nil, recurrence: nil, extensions: {}, is_private: false)
         event_json = {}
         event_json[:subject] = subject
-        event_json[:attendees] = attendees
         event_json[:sensitivity] = ( is_private ? "private" : "normal" )
 
         event_json[:body] = {
@@ -382,8 +370,18 @@ module Microsoft::Office2::Events
             timeZone: timezone
         } if end_param
 
-        # If we have rooms then use that, otherwise use the location string. Fall back is [].
-        event_json[:locations] = rooms.present? ? rooms.map { |r| { displayName: r[:name] } } : location ? [{displayName: location}] : []
+        # Put the attendees into the MS Graph expected format
+        attendees&.map! do |a|
+            attendee_type = ( a[:optional] ? "optional" : "required" )
+            { emailAddress: { address: a[:email], name: a[:name] }, type: attendee_type }
+        end
+
+        # Add each room to the attendees array
+        rooms&.each do |room|
+            attendees.push({ type: "resource", emailAddress: { address: room[:email], name: room[:name] } })
+        end
+
+        event_json[:attendees] = attendees if attendees
 
         event_json[:organizer] = {
             emailAddress: {
@@ -392,15 +390,11 @@ module Microsoft::Office2::Events
             }
         } if organizer
 
-        if ENV['O365_DISABLE_ODATA_EXTENSIONS']&.downcase != 'true'
-            ext = {
-                "@odata.type": "microsoft.graph.openTypeExtension",
-                "extensionName": "Com.Acaprojects.Extensions"
-            }
-            extensions.each do |ext_key, ext_value|
-                ext[ext_key] = ext_value
-            end
-            event_json[:extensions] = [ext]
+        # If we have rooms then use that, otherwise use the location string
+        if rooms?
+            event_json[:locations] = rooms.map { |r| { displayName: r[:name] } }
+        elsif location
+            event_json[:locations] = [{displayName: location}]
         end
 
         if recurrence
@@ -417,6 +411,17 @@ module Microsoft::Office2::Events
                     endDate:   recurrence_end_date.strftime("%F")
                 }
             }
+        end
+
+        if ENV['O365_DISABLE_ODATA_EXTENSIONS']&.downcase != 'true'
+            ext = {
+                "@odata.type": "microsoft.graph.openTypeExtension",
+                "extensionName": "Com.Acaprojects.Extensions"
+            }
+            extensions.each do |ext_key, ext_value|
+                ext[ext_key] = ext_value
+            end
+            event_json[:extensions] = [ext]
         end
 
         event_json.reject!{|k,v| v.nil?} 
