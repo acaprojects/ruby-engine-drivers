@@ -358,17 +358,21 @@ module Microsoft::Office2::Events
             content: (body || "")
         }
 
-        start_date = Time.at(start_param).to_datetime.in_time_zone(timezone)
-        event_json[:start] = {
-            dateTime: start_date.strftime('%FT%R'),
-            timeZone: timezone
-        } if start_param
+        if start_param
+            start_date = Time.at(start_param).to_datetime.in_time_zone(timezone)
+            event_json[:start] = {
+                dateTime: start_date.strftime('%FT%R'),
+                timeZone: timezone
+            }
+        end
 
-        end_date   = Time.at(end_param).to_datetime.in_time_zone(timezone)
-        event_json[:end] = {
-            dateTime: end_date.strftime('%FT%R'),
-            timeZone: timezone
-        } if end_param
+        if end_param
+            end_date   = Time.at(end_param).to_datetime.in_time_zone(timezone)
+            event_json[:end] = {
+                dateTime: end_date.strftime('%FT%R'),
+                timeZone: timezone
+            }
+        end
 
         # Put the attendees into the MS Graph expected format
         attendees&.map! do |a|
