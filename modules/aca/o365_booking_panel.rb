@@ -107,8 +107,8 @@ class Aca::O365BookingPanel
     end
 
     def fetch_bookings(*args)
-        response = @client.get_bookings(mailboxes: [@office_room], options: {bookings_from: Time.now.midnight.to_i, bookings_to: Time.now.tomorrow.midnight.to_i}).dig(@office_room, :bookings)
-        self[:today] = expose_bookings(response)
+        @todays_bookings = @client.get_bookings(mailboxes: [@office_room], options: {bookings_from: Time.now.midnight.to_i, bookings_to: Time.now.tomorrow.midnight.to_i}).dig(@office_room, :bookings)
+        self[:today] = expose_bookings(@todays_bookings)
     end
 
     def create_meeting(params)
@@ -174,6 +174,34 @@ class Aca::O365BookingPanel
         define_setting(:last_meeting_started, meeting_ref)
     end
 
+    # New function for this or other engine modules to end meetings early based on sensors or other input.
+    # Does not cancel or decline meetings - just shortens them to now.
+    # This new method replaces the frontend app cancelling the booking, which has had many issues. Automated cancellations should be handled by backend modules for frontend apps
+    def end_meeting(id)
+        existing = @todays_bookings&.select {|b| b['id'] == id}
+        return "Booking not found with id: #{id}" unless existing
+
+        now = Time.now
+        new_details = {}
+        new_details[:end_param] = now.to_i
+        new_details[:body] = existing[:body] << "\n\n========\n\n This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}"
+        
+        @client.update_booking(booking_id: id, mailbox: @office_room, options: new_details)
+    end
+
+    # Legacy function for current/old ngx-booking frontends
+    # - start_time is a string
+    # This function will either:
+    # - DELETE the booking from the room calendar (if the host if the room)
+    # OR
+    # - DECLINE the booking from the room calendar (if the host if a person, so that the person recieves a delcline message)
+    #
+    # The function is replaced by end_meeting(id) which has improvements and drawbacks:
+    # + identify meeting by icaluid instead of start time, avoiding ambiguity
+    # + The meeting will be edited in the room calendar: shortened to the current time. So that external retrospective analytics will still detect and count the meeting in the exchange mailbox.
+    # + The body will be appended with "This meeting was ended at [time] because no presence was detected in the room"
+    # - However currently  with end_meeting(), the user will not recieve an automated email notifications (these only get sent when the room declines-)
+    # 
     def cancel_meeting(start_time, reason = "unknown reason")
         now = Time.now.to_i
         start_epoch = Time.parse(start_time).to_i
