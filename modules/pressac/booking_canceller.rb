@@ -48,8 +48,8 @@ class ::Pressac::BookingCanceller
         bookings = system[@bookings][:today]
         bookings&.each do |booking|
             logger.debug "Canceller: checking booking #{booking[:Subject]} with start #{booking[:start_epoch]} and current time #{now}"
-            next unless booking[:start_epoch] > now + @cancel_delay
-            all_sensors     = systems(@desk_management_system)[@desk_management_device]
+            next unless now + @cancel_delay > booking[:start_epoch]
+            all_sensors  = systems(@desk_management_system)[@desk_management_device]
             next unless all_sensors[@zone + ':desk_ids'].include? @sensor  # don't cancel if the sensor has not registered yet
             motion_detected = all_sensors[@zone].include? @sensor
             logger.debug "Canceller: #{@sensor} presence: #{motion_detected}"
