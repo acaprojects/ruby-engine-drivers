@@ -190,7 +190,7 @@ class Microsoft::Office2::Client
     def check_response(response)
         return if response.status >= 400
         STDERR.puts "GRAPH API ERROR Request:\n #{@request_info}"
-        STDERR.puts "\n--------------------------------------------""
+        STDERR.puts "\n--------------------------------------------"
         STDERR.puts "GRAPH API ERROR Response:\n #{response}"
         case response.status
         when 400
