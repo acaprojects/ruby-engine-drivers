@@ -181,16 +181,17 @@ class Microsoft::Office2::Client
     def log_graph_request(request_method, data, query, headers, graph_path, endpoints=nil)
         #Store the request so that it can be output later IF an error was detected
         @request_info =  "#{request_method} to #{graph_path}"
-        @request_info << "Data:\n #{data.to_json}" if data
-        @request_info << "Query:\n #{data.to_json}" if query
-        @request_info << "Headers:\n #{data.to_json}" if headers
-        @request_info << "Endpoints:\n #{data.to_json}" if data
+        @request_info << "QUERY: #{query}" if query
+        @request_info << "DATA: #{data.to_json}" if data
+        @request_info << "ENDPOINTS: #{endpoints}" if endpoints
+        @request_info << "HEADERS: #{headers}" if headers
     end
 
     def check_response(response)
         return if response.status < 300
         STDERR.puts ">>>>>>>>>>>>"
         STDERR.puts "GRAPH API ERROR Request:\n #{@request_info}"
+        STDERR.puts "============"
         STDERR.puts "GRAPH API ERROR Response:\n #{response}"
         STDERR.puts "<<<<<<<<<<<<"
         case response.status
