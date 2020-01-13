@@ -266,6 +266,7 @@ module Microsoft::Office2::Events
             description: nil,
             attendees: [],
             recurrence: nil,
+            is_private: nil,
             timezone: ENV['TZ'],
             extensions: {},
             location: nil
