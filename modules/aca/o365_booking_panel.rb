@@ -192,6 +192,9 @@ class Aca::O365BookingPanel
             new_details[:body] = existing['body'] + "\n\n========\n\n This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}"
         end
         @client.update_booking(booking_id: id, mailbox: @office_room, options: new_details)
+	schedule.in('3s') do
+	    fetch_bookings
+	end
     end
 
     # Legacy function for current/old ngx-booking frontends
