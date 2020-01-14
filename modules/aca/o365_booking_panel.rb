@@ -187,14 +187,14 @@ class Aca::O365BookingPanel
         raise "Error (400): Events that have not started yet cannot be ended." if existing['start_epoch'] > new_details[:end_param]
 
         if existing['body'] && existing['body'][0..9].downcase.include?('<html>')
-            new_details[:body] = existing['body']&.gsub(/<\/html>/i, "\n\n========\n\n This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}</html>")
+            new_details[:body] = existing['body']&.gsub(/<\/html>/i, "<p>========</p><p>This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}</p></html>")
         else
             new_details[:body] = existing['body'] + "\n\n========\n\n This meeting was ended at #{now.to_s} because no presence was detected in #{self[:room_name]}"
         end
         @client.update_booking(booking_id: id, mailbox: @office_room, options: new_details)
-	schedule.in('3s') do
-	    fetch_bookings
-	end
+        schedule.in('3s') do
+            fetch_bookings
+        end
     end
 
     # Legacy function for current/old ngx-booking frontends
