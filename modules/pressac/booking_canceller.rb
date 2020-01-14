@@ -53,14 +53,14 @@ class ::Pressac::BookingCanceller
             next unless all_sensors[@zone + ':desk_ids'].include? @sensor  # don't cancel if the sensor has not registered yet
             motion_detected = all_sensors[@zone].include? @sensor
             logger.debug "Canceller: #{@sensor} presence: #{motion_detected}"
-            cancel(booking) unless motion_detected
+            truncate(booking) unless motion_detected
         end
     end
 
-    def cancel(booking)
-        logger.debug "Canceller: CANCELLING booking #{booking[:Subject]}"
-        system[@bookings].cancel_meeting(booking[:start_epoch], "pending timeout").then do |response|
-            logger.info "Cancelled #{booking[:Subject]} with response #{response}"
+    def truncate(booking)
+        logger.debug "Canceller: ENDING booking #{booking[:Subject]}"
+	system[@bookings].end_meeting(booking[:id]).then do |response|
+            logger.info "Ended #{booking[:Subject]} with response #{response}"
         end
     end
 end
