@@ -116,13 +116,16 @@ module Cisco::TelePresence::SxCameraCommon
     end
 
     def zoom(position)
+        # Cisco has 0 == most zoomed in and 11800 == most zoomed out (unlike all other cameras)
+        # So we need to invert the values being sent as HTML range slider can't support larger minimum ranges
+        val = self[:zoom_max] - position
         val = in_range(position.to_i, self[:zoom_max], self[:zoom_min])
 
         command('Camera PositionSet', params({
             :CameraId => @index,
             :Zoom => val
         }), name: :zoom).then do
-            self[:zoom] = val
+            self[:zoom] = self[:zoom_max] - val
             autofocus
         end
     end
