@@ -188,8 +188,8 @@ class ::Pressac::DeskManagement
 	    new_status&.each do |z,desks|
 	    zone = z.to_sym
 	    self[zone] ||= []
-	    self[zone]                = self[zone]          - desks[:free] | desks[:busy]
-        self[z+':desk_ids']       = self[z+':desk_ids'] | desks[:free] | desks[:busy]
+	    self[zone]                = self[zone]          - self[zone][:free] | self[zone][:busy]
+        self[z+':desk_ids']       = self[z+':desk_ids'] | self[zone][:free] | self[zone][:busy]
         self[z+':desk_count']     = self[z+':desk_ids'].count
 	    self[z+':occupied_count'] = self[zone].count
         end
