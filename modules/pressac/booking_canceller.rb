@@ -66,7 +66,7 @@ class ::Pressac::BookingCanceller
 
     def truncate(booking)
         logger.debug "Canceller: ENDING booking #{booking[:Subject]}"
-	system[@bookings].end_meeting(booking[:id]).then do |response|
+    	system[@bookings].end_meeting(booking[:id]).then do |response|
             logger.info "Ended #{booking[:Subject]} with response #{response}"
         end
     end
