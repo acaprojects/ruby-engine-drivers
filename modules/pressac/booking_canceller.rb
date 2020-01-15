@@ -53,6 +53,7 @@ class ::Pressac::BookingCanceller
         now = Time.now.to_i
         bookings = system[@bookings][:today]
         bookings&.each do |booking|
+            next unless now < booking[:end_epoch]      
             next unless now + @cancel_delay > booking[:start_epoch]
             logger.debug "Pressac Booking Canceller: \"#{booking[:Subject]}\" started at #{Time.at(booking[:start_epoch]).to_s} with #{sensor} presence: #{self[:presence]}"
             if self[:presence]
