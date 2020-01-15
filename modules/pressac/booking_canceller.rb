@@ -44,17 +44,23 @@ class ::Pressac::BookingCanceller
     end
 
     def determine_booking_presence
+        # Expose presence status
+        all_sensors = systems(@desk_management_system)[@desk_management_device]
+        return "Pressac Booking Canceller: Sensor \"#{@sensor}\" NOT FOUND in \"#{@zone}\"" unless all_sensors[@zone + ':desk_ids'].include? @sensor  # don't continue if the sensor does not exist
+        self[:presence] = all_sensors[@zone].include? @sensor
+
+        # Check each booking
         now = Time.now.to_i
         bookings = system[@bookings][:today]
         bookings&.each do |booking|
-            
-            logger.debug "Canceller: checking booking #{booking[:Subject]} with start #{booking[:start_epoch]} and current time #{now}"
             next unless now + @cancel_delay > booking[:start_epoch]
-            all_sensors  = systems(@desk_management_system)[@desk_management_device]
-            next unless all_sensors[@zone + ':desk_ids'].include? @sensor  # don't cancel if the sensor has not registered yet
-            motion_detected = all_sensors[@zone].include? @sensor
-            logger.debug "Canceller: #{@sensor} presence: #{motion_detected}"
-            truncate(booking) unless motion_detected
+            logger.debug "Pressac Booking Canceller: \"#{booking[:Subject]}\" started at #{Time.at(booking[:start_epoch]).to_s} with #{sensor} presence: #{self[:presence]}"
+            if self[:presence]
+                logger.debug "Pressac Booking Canceller: ENDING  \"#{booking[:Subject]}\" now"
+                truncate(booking) 
+            else
+                logger.debug "Pressac Booking Canceller: No action for \"#{booking[:Subject]}\""
+            end
         end
     end
 
