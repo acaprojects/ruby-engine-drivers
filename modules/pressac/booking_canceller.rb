@@ -35,7 +35,7 @@ class ::Pressac::BookingCanceller
         @desk_management_system = setting('desk_management_system_id')
         @desk_management_device = setting('desk_management_device')
         @zone         = setting('sensor_zone_id')
-        @sensor       = setting('sensor_name')
+        @sensor       = setting('sensor_name') || setting('map_id')
         @scan_cycle   = setting('check_every')
         @cancel_delay = UV::Scheduler.parse_duration(setting('delay_until_cancel')) / 1000
         
@@ -47,6 +47,7 @@ class ::Pressac::BookingCanceller
         now = Time.now.to_i
         bookings = system[@bookings][:today]
         bookings&.each do |booking|
+            
             logger.debug "Canceller: checking booking #{booking[:Subject]} with start #{booking[:start_epoch]} and current time #{now}"
             next unless now + @cancel_delay > booking[:start_epoch]
             all_sensors  = systems(@desk_management_system)[@desk_management_device]
