@@ -9,6 +9,7 @@ require 'microsoft/office2/contacts'
 require 'microsoft/office2/event'
 require 'microsoft/office2/events'
 require 'microsoft/office2/calendars'
+require 'microsoft/office2/groups'
 module Microsoft
     class Error < StandardError
         class ResourceNotFound < Error; end
@@ -31,6 +32,7 @@ class Microsoft::Office2::Client
     include Microsoft::Office2::Users
     include Microsoft::Office2::Contacts
     include Microsoft::Office2::Calendars
+    include Microsoft::Office2::Groups
 
     ##
     # Initialize the client for making requests to the Office365 API.
