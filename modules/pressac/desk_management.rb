@@ -217,6 +217,7 @@ class ::Pressac::DeskManagement
     end
 
     def unexpose_unresponsive_desks(notification)
+	return
         stale_sensors = notification.value
 	    stale_ids = id(stale_sensors.map {|s| s.keys.first})
 
