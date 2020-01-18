@@ -62,14 +62,19 @@ class ::Pressac::BookingCanceller
         bookings&.each do |booking|
             next unless now < booking[:end_epoch]      
             next unless now + @cancel_delay > booking[:start_epoch]
-            logger.debug "Pressac Booking Canceller: \"#{booking[:Subject]}\" started at #{Time.at(booking[:start_epoch]).to_s} with #{@sensor} presence: #{self[:presence]}"
-            if !self[:presence]
-                logger.debug "Pressac Booking Canceller: ENDING  \"#{booking[:Subject]}\" now"
-                truncate(booking) 
+	    logger.debug "Pressac Booking Canceller: \"#{booking[:Subject]}\" started at #{Time.at(booking[:start_epoch]).to_s} with #{@sensor} presence: #{self[:presence]}"
+	    if !self[:presence]
+                msg = "Pressac Booking Canceller: ENDING  \"#{booking[:Subject]}\" now"
+		logger.debug msg
+                truncate(booking)
+		return msg
             else
-                logger.debug "Pressac Booking Canceller: No action for \"#{booking[:Subject]}\""
+                msg = "Pressac Booking Canceller: No action for \"#{booking[:Subject]}\""
+		logger.debug msg
+		return msg
             end
         end
+	return 
     end
 
     def truncate(booking)
