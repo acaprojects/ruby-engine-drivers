@@ -213,11 +213,10 @@ class ::Pressac::DeskManagement
     # Transform an array of Sensor Names to SVG Map IDs, IF the user has specified a mapping in settings(sensor_name_to_desk_mappings)
     def id(array)
         return [] if array.nil?
-	array.map { |i| @desk_ids[i] || i&.to_s } 
+	    array.map { |i| @desk_ids[i] || i&.to_s } 
     end
 
     def unexpose_unresponsive_desks(notification)
-	return
         stale_sensors = notification.value
 	    stale_ids = id(stale_sensors.map {|s| s.keys.first})
 
@@ -234,16 +233,21 @@ class ::Pressac::DeskManagement
         when :free
             @zones.keys&.each do |zone_id|
                 self[zone_id]                   = self[zone_id] - stale_ids
-                self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] | stale_ids
                 self[zone_id+':occupied_count'] = self[zone_id].count
                 self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
             end
         when :busy
             @zones.keys&.each do |zone_id|
-                self[zone_id]                   = self[zone_id] | stale_ids
-                self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] | stale_ids
-                self[zone_id+':occupied_count'] = self[zone_id].count
-                self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
+                zone_updated = false
+                stale_ids.each do |stale_id|
+                    # Mark the stale id busy IF that id exists in this zone
+                    self[zone_id] = self[zone_id] | stale_ids if self[zone_id+':desk_ids'].include?(stale_id)
+                    zone_updated = true
+                end
+                if zone_updated
+                    self[zone_id+':occupied_count'] = self[zone_id].count
+                    self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
+                end
             end
         end
     end
