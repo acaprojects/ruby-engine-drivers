@@ -17,7 +17,6 @@ class ::Pressac::BookingCanceller
         desk_management_system_id: "sys-xxxxxxxx",
         desk_management_device: "DeskManagement_1",
         sensor_zone_id: "zone-xxxxxxxx",
-        sensor_name: false,
         check_every: "1m",
         delay_until_cancel: "15m"
     })
@@ -44,16 +43,13 @@ class ::Pressac::BookingCanceller
     end
 
     def determine_booking_presence
-
-	    logger.debug "@sensor: #{@sensor}"
-
         # Expose presence status
         all_sensors = systems(@desk_management_system)[@desk_management_device]
-	unless  all_sensors[@zone + ':desk_ids'].include? @sensor  # don't continue if the sensor does not exist
-	    message =  "Pressac Booking Canceller: Sensor #{@sensor} NOT FOUND in #{@zone}" unless all_sensors[@zone + ':desk_ids'].include? @sensor  # don't continue if the sensor does not exist
-	    logger.debug message
-            return message
-	end
+        unless  all_sensors[@zone + ':desk_ids'].include? @sensor  # don't continue if the sensor does not exist
+            msg =  "Pressac Booking Canceller: Sensor #{@sensor} NOT FOUND in #{@zone}" unless all_sensors[@zone + ':desk_ids'].include? @sensor  # don't continue if the sensor does not exist
+            logger.debug msg
+            return msg
+        end
         self[:presence] = all_sensors[@zone].include? @sensor
 
         # Check each booking
@@ -61,24 +57,23 @@ class ::Pressac::BookingCanceller
         bookings = system[@bookings][:today]
         bookings&.each do |booking|
             next unless now < booking[:end_epoch]      
-            next unless now + @cancel_delay > booking[:start_epoch]
-	    logger.debug "Pressac Booking Canceller: \"#{booking[:Subject]}\" started at #{Time.at(booking[:start_epoch]).to_s} with #{@sensor} presence: #{self[:presence]}"
-	    if !self[:presence]
+            next unless (now + @cancel_delay) > booking[:start_epoch]
+            logger.debug "Pressac Booking Canceller: \"#{booking[:Subject]}\" started at #{Time.at(booking[:start_epoch]).to_s} with #{@sensor} presence: #{self[:presence]}"
+            if !self[:presence]
                 msg = "Pressac Booking Canceller: ENDING  \"#{booking[:Subject]}\" now"
-		logger.debug msg
+                logger.debug msg
                 truncate(booking)
-		return msg
+                return msg
             else
                 msg = "Pressac Booking Canceller: No action for \"#{booking[:Subject]}\""
-		logger.debug msg
-		return msg
+                logger.debug msg
+                return msg
             end
         end
-	return 
+	    return 
     end
 
     def truncate(booking)
-        logger.debug "Canceller: ENDING booking #{booking[:Subject]}"
     	system[@bookings].end_meeting(booking[:id]).then do |response|
             logger.info "Ended #{booking[:Subject]} with response #{response}"
         end
