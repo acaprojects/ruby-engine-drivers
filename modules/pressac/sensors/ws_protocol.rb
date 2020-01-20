@@ -90,7 +90,7 @@ class Pressac::Sensors::WsProtocol
         @gateways.each do |g, sensors|
             sensors.each do |name, sensor|
                 if now - (sensor[:last_update_epoch] || 0 ) > @stale_sensor_threshold
-                    @stale << {name => (sensor[:last_update] || "Unknown")}
+                    @stale << { name => sensor.slice(:last_update, :gateway, :voltage) }    # only keep useful values
                 end
             end
         end

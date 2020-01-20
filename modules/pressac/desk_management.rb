@@ -218,36 +218,34 @@ class ::Pressac::DeskManagement
 
     def unexpose_unresponsive_desks(notification)
         stale_sensors = notification.value
-	    stale_ids = id(stale_sensors.map {|s| s.keys.first})
+        # Sort into Zones, keeping SVG map ID only
+        zoned_stale_sensors = Hash.new(Array.new)
+        stale_sensors&.each { |s| zoned_stale_sensors[@which_zone[s[:gateway]] << id(s.keys) ] }
 
-        logger.debug "PRESSAC > DESK > LOGIC: Displaying stale sensors as #{@stale_status}: #{stale_ids}"
+        logger.debug "PRESSAC > DESK > LOGIC: Displaying stale sensors as #{@stale_status}: #{zoned_stale_sensors}"
         
         case @stale_status
         when :blank
-            @zones.keys&.each do |zone_id|
+            zoned_stale_sensors&.each do |zone_id, stale_ids|
                 self[zone_id]                   = self[zone_id] - stale_ids
                 self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] - stale_ids
                 self[zone_id+':occupied_count'] = self[zone_id].count
                 self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
             end
         when :free
-            @zones.keys&.each do |zone_id|
+            zoned_stale_sensors&.each do |zone_id, stale_ids|
                 self[zone_id]                   = self[zone_id] - stale_ids
+                self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] | stale_ids
                 self[zone_id+':occupied_count'] = self[zone_id].count
                 self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
             end
         when :busy
-            @zones.keys&.each do |zone_id|
-                zone_updated = false
-                stale_ids.each do |stale_id|
-                    # Mark the stale id busy IF that id exists in this zone
-                    self[zone_id] = self[zone_id] | stale_ids if self[zone_id+':desk_ids'].include?(stale_id)
-                    zone_updated = true
-                end
-                if zone_updated
-                    self[zone_id+':occupied_count'] = self[zone_id].count
-                    self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
-                end
+            zoned_stale_sensors&.each do |zone_id, stale_ids|
+                self[zone_id]                   = self[zone_id] | stale_ids
+                self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] | stale_ids
+                self[zone_id+':occupied_count'] = self[zone_id].count
+                self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
+            end
             end
         end
     end
