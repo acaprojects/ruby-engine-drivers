@@ -48,7 +48,7 @@ class Pressac::Sensors::WsProtocol
         self[:gateways] = @gateways.dup
         @last_update = status[:last_update] || "Never"
         self[:last_update] = @last_update.dup
-	self[:stale] = []
+	    self[:stale] = []
 
         @ws_path  = setting('websocket_path')
         @stale_sensor_threshold = UV::Scheduler.parse_duration(setting('stale_sensor_threshold') || '1h') / 1000
@@ -86,18 +86,15 @@ class Pressac::Sensors::WsProtocol
     end
 
     def list_stale_sensors
-        stale = []
         now = Time.now.to_i
         @gateways.each do |g, sensors|
             sensors.each do |name, sensor|
                 if now - (sensor[:last_update_epoch] || 0 ) > @stale_sensor_threshold
-                    stale << {name => (sensor[:last_update] || "Unknown")}
-                    @gateways[g].delete(name)
+                    @stale << {name => (sensor[:last_update] || "Unknown")}
                 end
             end
         end
-        self[:stale] = stale
-        self[:gateways] = @gateways.deep_dup
+        self[:stale] = @stale
         # Save the current status to database, so that it can retrieved when engine restarts
         status = {
             last_update: self[:last_update],
@@ -158,8 +155,12 @@ class Pressac::Sensors::WsProtocol
                 last_update_epoch: Time.now.to_i,
                 gateway:   gateway
             }
-            self[gateway] = @gateways[gateway][sensor_name].dup
+            self[gateway]   = @gateways[gateway][sensor_name].dup
             self[:gateways] = @gateways.deep_dup
+            if @stale[sensor_name]
+                @stale.except!(sensor_name)
+                self[:stale] = @stale.deep_dup
+            end
         when 'CO2-Temperature-and-Humidity'
             @environment[sensor[:devicename]] = {
                 temp:           sensor[:temperature],
