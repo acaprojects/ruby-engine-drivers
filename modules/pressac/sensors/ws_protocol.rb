@@ -29,7 +29,7 @@ class Pressac::Sensors::WsProtocol
     wait_response false
     default_settings({
         websocket_path: '/ws/pressac/',
-        stale_sensor_threshold: '20m'
+        stale_sensor_threshold: '1h'
     })
 
     def on_load
@@ -51,7 +51,7 @@ class Pressac::Sensors::WsProtocol
 	self[:stale] = []
 
         @ws_path  = setting('websocket_path')
-        @stale_sensor_threshold = UV::Scheduler.parse_duration(setting('stale_sensor_threshold') || '20m') / 1000
+        @stale_sensor_threshold = UV::Scheduler.parse_duration(setting('stale_sensor_threshold') || '1h') / 1000
 
         schedule.clear
         schedule.every(setting('stale_sensor_threshold')) { list_stale_sensors }
