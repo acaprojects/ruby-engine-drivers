@@ -246,7 +246,6 @@ class ::Pressac::DeskManagement
                 self[zone_id+':occupied_count'] = self[zone_id].count
                 self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
             end
-            end
         end
     end
 end
