@@ -46,9 +46,12 @@ class Pressac::Sensors::WsProtocol
 
         @gateways = status[:gateways] || {}
         self[:gateways] = @gateways.dup
+        
         @last_update = status[:last_update] || "Never"
         self[:last_update] = @last_update.dup
-	    self[:stale] = []
+
+        @stale = status[:stale] || {}
+	    self[:stale] = @stale.deep_dup
 
         @ws_path  = setting('websocket_path')
         @stale_sensor_threshold = UV::Scheduler.parse_duration(setting('stale_sensor_threshold') || '1h') / 1000
