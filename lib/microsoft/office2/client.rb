@@ -50,8 +50,8 @@ class Microsoft::Office2::Client
             app_scope: "https://graph.microsoft.com/.default",
             graph_domain: "https://graph.microsoft.com",
             https_proxy: nil,
-            save_token: Proc.new{ |token| User.bucket.set("office-token", token) },
-            get_token: Proc.new{ User.bucket.get("office-token", quiet: true) }
+            save_token: Proc.new{ |token| User.bucket.set("office-token-#{client_id}", token) },
+            get_token: Proc.new{ User.bucket.get("office-token-#{client_id}", quiet: true) }
         )
         @client_id = client_id
         @client_secret = client_secret
