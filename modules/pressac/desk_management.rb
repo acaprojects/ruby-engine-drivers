@@ -71,8 +71,9 @@ class ::Pressac::DeskManagement
         @zones.keys&.each do |zone_id|
             self[zone_id]                   ||= saved_status[zone_id] || []
             self[zone_id+':desk_ids']       ||= saved_status[zone_id+':desk_ids'] || []
-            self[zone_id+':occupied_count'] = self[zone_id]&.count || 0
             self[zone_id+':desk_count']     = self[zone_id+'desk_ids']&.count || 0
+            self[zone_id+':occupied_count'] = self[zone_id]&.count || 0
+            self[zone_id+':free_count']     = self[zone_id+':desk_count'] - self[zone_id+':occupied_count']
         end
 
         # Create a reverse lookup (gateway => zone)
@@ -192,6 +193,7 @@ class ::Pressac::DeskManagement
         self[z+':desk_ids']       = self[z+':desk_ids'] | desks[:free] | desks[:busy]
         self[z+':desk_count']     = self[z+':desk_ids'].count
 	    self[z+':occupied_count'] = self[zone].count
+        self[z+':free_count']     = self[z+':desk_count'] - self[z+':occupied_count']
         end
     end
 
@@ -206,6 +208,7 @@ class ::Pressac::DeskManagement
             status[zone+':desk_ids']       = self[zone+':desk_ids']
             status[zone+':desk_count']     = self[zone+':desk_count']
             status[zone+':occupied_count'] = self[zone+':occupied_count']
+            status[zone+':free_count']     = self[zone+':desk_count'] - self[zone+':occupied_count']
         end
         define_setting(:zzz_status, status)
     end
@@ -231,6 +234,7 @@ class ::Pressac::DeskManagement
                 self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] - stale_ids
                 self[zone_id+':occupied_count'] = self[zone_id].count
                 self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
+                self[zone_id+':free_count']     = self[zone_id+':desk_count'] - self[zone_id+':occupied_count']
             end
         when :free
             zoned_stale_sensors&.each do |zone_id, stale_ids|
@@ -238,6 +242,7 @@ class ::Pressac::DeskManagement
                 self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] | stale_ids
                 self[zone_id+':occupied_count'] = self[zone_id].count
                 self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
+                self[zone_id+':free_count']     = self[zone_id+':desk_count'] - self[zone_id+':occupied_count']
             end
         when :busy
             zoned_stale_sensors&.each do |zone_id, stale_ids|
@@ -245,6 +250,7 @@ class ::Pressac::DeskManagement
                 self[zone_id+':desk_ids']       = self[zone_id+':desk_ids'] | stale_ids
                 self[zone_id+':occupied_count'] = self[zone_id].count
                 self[zone_id+':desk_count']     = self[zone_id+':desk_ids'].count
+                self[zone_id+':free_count']     = self[zone_id+':desk_count'] - self[zone_id+':occupied_count']
             end
         end
     end
