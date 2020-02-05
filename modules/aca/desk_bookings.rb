@@ -10,7 +10,7 @@ class ::Aca::DeskBookings
 
     default_settings({
         cancel_bookings_after: "1h",
-        check_autocancel_every: "5m"
+        check_autocancel_every: "5m",
         zone_to_desk_ids: {
             "zone-xxx" => ["desk-01.001", "desk-01.002"],
             "zone-yyy" => ["desk-02.001", "desk-02.002"]
@@ -31,24 +31,27 @@ class ::Aca::DeskBookings
     def on_update
         # convert '1m2s' to '62'
         @autocancel_delay = UV::Scheduler.parse_duration(setting('cancel_bookings_after')  || '0s') / 1000
-        
+        @autocancel_scan_interval = setting('cancel_bookings_after')
+
         # local timezone of all the desks served by this logic (usually, all the desks in this building)
         @tz = setting('timezone') || ENV['TZ']
 
-        # load and expose previously saved status if there is no current status.
-        # AND create a reverse lookup (desk => zone)
         @zone_of = {}
         saved_status    = setting('status') || {}
         @zones_to_desks = setting('zone_to_desk_ids') || {}
         @zones_to_desks.each do |zone, desks|
+            # create reverse lookup: desk => zone
             desks.each { |desk| @zone_of[desk] = zone + ':bookings' }
+
+            # expose all known desk ids
+            self[zone] = @status[zone] = @zones_to_desks[zone]
+
+            # load and expose previously saved status if there is no current status.
             self[zone+':bookings'] = @status[zone+':bookings'] ||= saved_status[zone+':bookings'] || []
-            # self[zone+':free']     = @status[zone+':free']     ||= saved_status[zone+':free']     || []
-            # self[zone+':busy']     = @status[zone+':busy']     ||= saved_status[zone+':busy']     || []
         end
         
         schedule.clear
-        schedule.every(check_autocancel_every) { autocancel_bookings } if @autocancel_delay
+        schedule.every(@autocancel_scan_interval) { autocancel_bookings } if @autocancel_delay
     end
 
     # @param desk_id [String] the unique id that represents a desk
