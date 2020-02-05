@@ -47,7 +47,7 @@ class ::Aca::DeskBookings
             self[zone] = @status[zone] = @zones_to_desks[zone]
 
             # load and expose previously saved status if there is no current status.
-            self[zone+':bookings'] = @status[zone+':bookings'] ||= saved_status[zone+':bookings'] || []
+            self[zone+':bookings'] = @status[zone+':bookings'] ||= saved_status[zone+':bookings'] || {}
         end
         
         schedule.clear
@@ -57,20 +57,23 @@ class ::Aca::DeskBookings
     # @param desk_id [String] the unique id that represents a desk
     def desk_details(*desk_ids)
         todays_date  = Time.now.in_time_zone(@tz).strftime('%F')    #e.g. 2020-12-31 in local time of the desk
-        desk_ids.map { |desk| @status&.dig(zone_of(desk), desk, todays_date)&.first }
+        desk_ids.map { |desk| @status&.dig(@zone_of[desk], desk, todays_date)&.first }
     end
 
     def book(desk_id, start_epoch)
         todays_date  = Time.now.in_time_zone(@tz).strftime('%F')    #e.g. 2020-12-31 in local time of the desk
-        booking_date = Time.at(start_epoch).in_time_zone(@tz).strftime('%F')
-        end_epoch    = Time.at(start_epoch).in_time_zone(@tz).midnight.tomorrow
-        zone = zone_of[desk_id]
+        start_time   = Time.at(start_epoch).in_time_zone(@tz)
+        booking_date = start_time.strftime('%F')
+        end_epoch    = start_time.midnight.tomorrow.to_i
+        zone = @zone_of[desk_id]
 
         new_booking = {    
             start: start_epoch, 
             end: end_epoch, 
             checked_in: (booking_date == todays_date) 
         }
+        @status[zone][desk_id] ||= {} 
+        @status[zone][desk_id][booking_date] ||= {} 
         @status[zone][desk_id][booking_date][current_user.email] = new_booking    
         expose_status(zone)
 
@@ -84,7 +87,7 @@ class ::Aca::DeskBookings
 
     def cancel(desk_id, start_epoch)
         booking_date = Time.at(start_epoch).in_time_zone(@tz).strftime('%F')
-        zone = zone_of[desk_id]
+        zone = @zone_of[desk_id]
         raise "400 Error: No booking on #{booking_date} for #{current.email} at #{desk_id}" unless @status.dig(zone,desk_id,booking_date,user,start)
 
         @status[zone][desk_id][booking_date].delete(user)
@@ -97,7 +100,7 @@ class ::Aca::DeskBookings
 
     # param checking_in is a bool: true = checkin, false = checkout
     def check_in(desk_id, checking_in)
-        zone = zone_of[desk_id]
+        zone = @zone_of[desk_id]
         todays_date  = Time.now.in_time_zone(@tz).strftime('%F')
         user = current_user.email
         raise "400 Error: No booking on #{todays_date} for #{current.email} at #{desk_id}" unless @status.dig(zone,desk_id,todays_date,user,start)
@@ -116,7 +119,8 @@ class ::Aca::DeskBookings
     protected
 
     def expose_status(zone)
-        self[zone+':bookings'] = @status[zone+':bookings']
+        self[zone] = @status[zone].deep_dup
+        signal_status(zone)
         define_setting(:status, @status)    # Also persist new status to DB
     end
 
