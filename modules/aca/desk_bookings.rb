@@ -103,13 +103,15 @@ class ::Aca::DeskBookings
         zone = @zone_of[desk_id]
         todays_date  = Time.now.in_time_zone(@tz).strftime('%F')
         user = current_user.email
-        raise "400 Error: No booking on #{todays_date} for #{current.email} at #{desk_id}" unless @status.dig(zone,desk_id,todays_date,user,start)
+        raise "400 Error: No booking on #{todays_date} for #{user} at #{desk_id}" unless @status.dig(zone,desk_id,todays_date,user,:start)
         if checking_in
-            @status[zone][desk_id][todays_date][user][checked_in] = true
-            current_user.desk_bookings[booking_date][desk_id][checked_in] = true
+            @status[zone][desk_id][todays_date][user][:checked_in] = true
+            current_user.desk_bookings[todays_date] ||= {} 
+            current_user.desk_bookings[todays_date][desk_id] ||= {}
+            current_user.desk_bookings[todays_date][desk_id][:checked_in] = true
         else
             @status[zone][desk_id][todays_date].delete(user)
-            current_user.desk_bookings[booking_date]&.delete(desk_id)
+            current_user.desk_bookings[todays_date]&.delete(desk_id)
         end
         expose_status(zone)
         current_user.save
