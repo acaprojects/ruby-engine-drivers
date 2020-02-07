@@ -40,14 +40,13 @@ class ::Aca::DeskBookings
         saved_status    = setting('status') || {}
         @zones_to_desks = setting('zone_to_desk_ids') || {}
         @zones_to_desks.each do |zone, desks|
-            # create reverse lookup: desk => zone
-            desks.each { |desk| @zone_of[desk] = zone + ':bookings' }
-
-            # expose all known desk ids
-            self[zone] = @status[zone] = @zones_to_desks[zone]
-
             # load and expose previously saved status if there is no current status.
-            self[zone+':bookings'] = @status[zone+':bookings'] ||= saved_status[zone+':bookings'] || {}
+            @status[zone+':bookings'] ||= saved_status[zone+':bookings'] || {}
+            desks.each do |desk|
+                @zone_of[desk] = zone + ':bookings'     # create reverse lookup: desk => zone
+                @status[zone+':bookings'][desk] ||= {}  # expose all known desk ids without overwriting existing bookings
+            end
+            expose_status(zone+':bookings')
         end
         
         schedule.clear
@@ -88,7 +87,7 @@ class ::Aca::DeskBookings
     def cancel(desk_id, start_epoch)
         booking_date = Time.at(start_epoch).in_time_zone(@tz).strftime('%F')
         zone = @zone_of[desk_id]
-        raise "400 Error: No booking on #{booking_date} for #{current.email} at #{desk_id}" unless @status.dig(zone,desk_id,booking_date,user,start)
+        raise "400 Error: No booking on #{booking_date} for #{current.email} at #{desk_id}" unless @status.dig(zone,desk_id,booking_date,user,:start)
 
         @status[zone][desk_id][booking_date].delete(user)
         expose_status(zone)
@@ -120,10 +119,10 @@ class ::Aca::DeskBookings
 
     protected
 
-    def expose_status(zone)
+    def expose_status(zone, save_status = true)
         self[zone] = @status[zone].deep_dup
         signal_status(zone)
-        define_setting(:status, @status)    # Also persist new status to DB
+        define_setting(:status, @status) if save_status   # Also persist new status to DB
     end
 
     def autocancel_bookings
