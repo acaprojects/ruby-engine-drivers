@@ -50,7 +50,7 @@ class ::Aca::DeskBookings
         end
         
         schedule.clear
-        schedule.every(@autocancel_scan_interval) { autocancel_bookings } if @autocancel_delay
+        schedule.every(@autocancel_scan_interval) { autocancel_bookings } if @autocancel_delay && @autocancel_scan_interval
     end
 
     # @param desk_id [String] the unique id that represents a desk
