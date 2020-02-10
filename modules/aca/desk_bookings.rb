@@ -59,21 +59,31 @@ class ::Aca::DeskBookings
         desk_ids.map { |desk| @status&.dig(@zone_of[desk], desk, todays_date)&.first }
     end
 
-    def book(desk_id, start_epoch)
+    def book(desk_id, start_epoch, end_epoch = nil)
         todays_date  = Time.now.in_time_zone(@tz).strftime('%F')    #e.g. 2020-12-31 in local time of the desk
         start_time   = Time.at(start_epoch).in_time_zone(@tz)
         booking_date = start_time.strftime('%F')
-        end_epoch    = start_time.midnight.tomorrow.to_i
+        end_epoch  ||= start_time.midnight.tomorrow.to_i
         zone = @zone_of[desk_id]
 
         new_booking = {    
-            start: start_epoch, 
-            end: end_epoch, 
+            start:      start_epoch, 
+            end:        end_epoch - 1,
             checked_in: (booking_date == todays_date) 
         }
         @status[zone][desk_id] ||= {} 
         @status[zone][desk_id][booking_date] ||= {} 
+        if @status[zone][desk_id][booking_date].present?
+            existing_bookings = @status[zone][desk_id][booking_date]
+            existing_bookings.each do |existing_booking_owner, existing_booking|
+                # check for clash
+                if new_booking[:end] >= existing_booking[:start] && new_booking[:start] <= existing_booking[:end]
+                    raise "400 Error: Clashing booking at #{Time.at(existing_booking[:start]).strftime('%T%:z')} - #{Time.at(existing_booking[:end]).strftime('%T%:z')}"
+                end
+            end
+        else
         @status[zone][desk_id][booking_date][current_user.email] = new_booking    
+        end
         expose_status(zone)
 
         # Also store booking in user profile
