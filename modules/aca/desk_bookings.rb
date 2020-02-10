@@ -79,7 +79,7 @@ class ::Aca::DeskBookings
         # Also store booking in user profile
         current_user.desk_bookings[booking_date] ||= {}
         current_user.desk_bookings[booking_date][desk_id] = new_booking
-        current_user.save
+        current_user.save!
 
         # STUB: Notify user of desk booking via email here
     end
@@ -87,14 +87,15 @@ class ::Aca::DeskBookings
     def cancel(desk_id, start_epoch)
         booking_date = Time.at(start_epoch).in_time_zone(@tz).strftime('%F')
         zone = @zone_of[desk_id]
-        raise "400 Error: No booking on #{booking_date} for #{current.email} at #{desk_id}" unless @status.dig(zone,desk_id,booking_date,user,:start)
+        user = current_user.email
+        raise "400 Error: No booking on #{booking_date} for #{user} at #{desk_id}" unless @status.dig(zone, desk_id, booking_date, user, :start)
 
         @status[zone][desk_id][booking_date].delete(user)
         expose_status(zone)
         
         # Also delete booking from user profile
         current_user.desk_bookings[booking_date]&.delete(desk_id)
-        current_user.save
+        current_user.save!
     end
 
     # param checking_in is a bool: true = checkin, false = checkout
@@ -113,7 +114,7 @@ class ::Aca::DeskBookings
             current_user.desk_bookings[todays_date]&.delete(desk_id)
         end
         expose_status(zone)
-        current_user.save
+        current_user.save!
     end
 
 
@@ -140,7 +141,7 @@ class ::Aca::DeskBookings
                     next unless ENV['ENGINE_DEFAULT_AUTHORITY_ID']
                     user = User.find_by_email(ENV['ENGINE_DEFAULT_AUTHORITY_ID'], user_email)
                     user.desk_bookings[booking_date]&.delete(desk_id)
-                    user.save
+                    user.save!
                     
                     # STUB: Notify user of cancellation by email here
                 end
