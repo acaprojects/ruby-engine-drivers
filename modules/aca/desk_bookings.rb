@@ -72,7 +72,7 @@ class ::Aca::DeskBookings
             checked_in: (booking_date == todays_date) 
         }
         @status[zone][desk_id] ||= {} 
-        @status[zone][desk_id][booking_date] ||= {} 
+        @status[zone][desk_id][booking_date] ||= {}
         if @status[zone][desk_id][booking_date].present?
             existing_bookings = @status[zone][desk_id][booking_date]
             existing_bookings.each do |existing_booking_owner, existing_booking|
@@ -82,7 +82,7 @@ class ::Aca::DeskBookings
                 end
             end
         else
-        @status[zone][desk_id][booking_date][current_user.email] = new_booking    
+            @status[zone][desk_id][booking_date][current_user.email] = new_booking    
         end
         expose_status(zone)
 
