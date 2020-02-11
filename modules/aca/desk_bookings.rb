@@ -85,10 +85,11 @@ class ::Aca::DeskBookings
         @status[zone][desk_id][booking_date][current_user.email] = new_booking    
 
         expose_status(zone)
-
-        # Also store booking in user profile
-        current_user.desk_bookings[booking_date] ||= {}
-        current_user.desk_bookings[booking_date][desk_id] = new_booking
+        
+        # Also store booking in user object, in a slightly different format
+        new_booking[:desk_id] = desk_id
+        new_booking[:zone]    = zone
+        current_user.desk_bookings << new_booking
         current_user.save!
 
         # STUB: Notify user of desk booking via email here
@@ -104,31 +105,42 @@ class ::Aca::DeskBookings
         expose_status(zone)
         
         # Also delete booking from user profile
-        current_user.desk_bookings[booking_date]&.delete(desk_id)
-        current_user.save!
+        delete_booking_from_user(desk_id, start_epoch)
     end
 
     # param checking_in is a bool: true = checkin, false = checkout
-    def check_in(desk_id, checking_in)
+    def check_in(desk_id, start_epoch, checking_in)
         zone = @zone_of[desk_id]
-        todays_date  = Time.now.in_time_zone(@tz).strftime('%F')
         user = current_user.email
-        raise "400 Error: No booking on #{todays_date} for #{user} at #{desk_id}" unless @status.dig(zone,desk_id,todays_date,user,:start)
+        todays_date  = Time.now.in_time_zone(@tz).strftime('%F')
+        booking = @status.dig(zone,desk_id,todays_date,user)
+        raise "400 Error: No booking on #{todays_date} for #{user} at #{desk_id}" unless booking.present?
         if checking_in
+            # Mark as checked_in on this logic
             @status[zone][desk_id][todays_date][user][:checked_in] = true
-            current_user.desk_bookings[todays_date] ||= {} 
-            current_user.desk_bookings[todays_date][desk_id] ||= {}
-            current_user.desk_bookings[todays_date][desk_id][:checked_in] = true
+            # Mark as checked_in on the user profile
+            current_user.desk_bookings.each_with_index do |b, i|
+                    next unless b[:start] == start_epoch && b[:desk_id] == desk_id
+                    current_user.desk_bookings[i][:checked_in] = true
+            end
+            current_user.save!
         else
             @status[zone][desk_id][todays_date].delete(user)
-            current_user.desk_bookings[todays_date]&.delete(desk_id)
+            delete_booking_from_user(desk_id, start_epoch)
         end
         expose_status(zone)
-        current_user.save!
     end
 
 
     protected
+
+    def delete_booking_from_user(desk_id, start_epoch)
+        current_user.desk_bookings&.each_with_index do |b, i|
+            next unless b[:start] == start_epoch && b[:desk_id] == desk_id
+            current_user.desk_bookings&.delete_at(i)
+        end
+        current_user.save!
+    end
 
     def expose_status(zone, save_status = true)
         self[zone] = @status[zone].deep_dup
