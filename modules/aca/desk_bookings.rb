@@ -81,9 +81,9 @@ class ::Aca::DeskBookings
                     raise "400 Error: Clashing booking at #{Time.at(existing_booking[:start]).strftime('%T%:z')} - #{Time.at(existing_booking[:end]).strftime('%T%:z')}"
                 end
             end
-        else
-            @status[zone][desk_id][booking_date][current_user.email] = new_booking    
         end
+        @status[zone][desk_id][booking_date][current_user.email] = new_booking    
+
         expose_status(zone)
 
         # Also store booking in user profile
