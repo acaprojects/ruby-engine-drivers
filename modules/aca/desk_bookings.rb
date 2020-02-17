@@ -89,8 +89,7 @@ class ::Aca::DeskBookings
         # Also store booking in user object, in a slightly different format
         new_booking[:desk_id] = desk_id
         new_booking[:zone]    = zone
-        current_user.desk_bookings << new_booking
-        current_user.save!
+        add_to_schedule(current_user.email, new_booking)
 
         # STUB: Notify user of desk booking via email here
     end
@@ -105,7 +104,7 @@ class ::Aca::DeskBookings
         expose_status(zone)
         
         # Also delete booking from user profile
-        delete_booking_from_user(desk_id, start_epoch)
+        delete_from_schedule(current_user.email, desk_id, start_epoch)
     end
 
     # param checking_in is a bool: true = checkin, false = checkout
@@ -119,28 +118,22 @@ class ::Aca::DeskBookings
             # Mark as checked_in on this logic
             @status[zone][desk_id][todays_date][user][:checked_in] = true
             # Mark as checked_in on the user profile
-            current_user.desk_bookings.each_with_index do |b, i|
+            user = get_user(current_user.email)
+            user.desk_bookings.each_with_index do |b, i|
                     next unless b[:start] == start_epoch && b[:desk_id] == desk_id
-                    current_user.desk_bookings[i][:checked_in] = true
+                    user.desk_bookings[i][:checked_in] = true
             end
-            current_user.save!
+            user.desk_bookings_will_change!
+            user.save!
         else
+            delete_from_schedule(current_user.email, desk_id, start_epoch)
             @status[zone][desk_id][todays_date].delete(user)
-            delete_booking_from_user(desk_id, start_epoch)
         end
         expose_status(zone)
     end
 
 
     protected
-
-    def delete_booking_from_user(desk_id, start_epoch)
-        current_user.desk_bookings&.each_with_index do |b, i|
-            next unless b[:start] == start_epoch && b[:desk_id] == desk_id
-            current_user.desk_bookings&.delete_at(i)
-        end
-        current_user.save!
-    end
 
     def expose_status(zone, save_status = true)
         self[zone] = @status[zone].deep_dup
@@ -161,9 +154,7 @@ class ::Aca::DeskBookings
                     expose_status(zone)
 
                     next unless ENV['ENGINE_DEFAULT_AUTHORITY_ID']
-                    user = User.find_by_email(ENV['ENGINE_DEFAULT_AUTHORITY_ID'], user_email)
-                    user.desk_bookings[booking_date]&.delete(desk_id)
-                    user.save!
+                    delete_from_schedule(user_email, desk_id, start_epoch)
                     
                     # STUB: Notify user of cancellation by email here
                 end
@@ -171,4 +162,26 @@ class ::Aca::DeskBookings
         end
     end
 
+    def add_to_schedule(email, booking)
+        user = get_user(email)
+        user.desk_bookings << booking
+        user.desk_bookings_will_change!
+        user.save!
+    end
+    
+    def delete_from_schedule(email, desk_id, start_epoch)
+        user = get_user(email)
+        user.desk_bookings&.each_with_index do |b, i|
+            next unless b[:start] == start_epoch && b[:desk_id] == desk_id
+            user.desk_bookings.delete_at(i)
+            logger.debug "DELETING DESK BOOKING: #{desk_id} #{start_epoch}"
+        end
+        user.desk_bookings_will_change!
+        user.save!
+    end
+    
+    def get_user(email)
+        raise "Environment Variable 'ENGINE_DEFAULT_AUTHORITY_ID' not set " unless ENV['ENGINE_DEFAULT_AUTHORITY_ID']
+        user = User.find_by_email(ENV['ENGINE_DEFAULT_AUTHORITY_ID'], email)
+    end
 end
