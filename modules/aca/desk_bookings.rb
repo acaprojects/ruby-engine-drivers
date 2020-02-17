@@ -41,12 +41,12 @@ class ::Aca::DeskBookings
         @zones_to_desks = setting('zone_to_desk_ids') || {}
         @zones_to_desks.each do |zone, desks|
             # load and expose previously saved status if there is no current status.
-            @status[zone+':bookings'] ||= saved_status[zone+':bookings'] || {}
+            @status[zone] ||= saved_status[zone] || {}
             desks.each do |desk|
-                @zone_of[desk] = zone + ':bookings'     # create reverse lookup: desk => zone
-                @status[zone+':bookings'][desk] ||= {}  # expose all known desk ids without overwriting existing bookings
+                @zone_of[desk] = zone       # create reverse lookup: desk => zone
+                @status[zone][desk] ||= {}  # init all known desk ids without overwriting existing bookings
             end
-            expose_status(zone+':bookings')
+            expose_status(zone)
         end
         
         schedule.clear
