@@ -144,7 +144,7 @@ module Microsoft::Office2::Events
         event_length = to - from
         query_strings = start_epochs.map { |start| "?startDateTime=#{graph_date(start)}&endDateTime=#{graph_date(start + event_length)}&$top=99" }
 
-        # create array of requests that will be sent as bulk to Graph API. Match the array index with 
+        # create array of requests that will be sent as bulk to Graph API. Match the array index with the request ID, for simple response parsing
         requests = []
         rooms.each do |room_email|
             room_events_endpoint =  "/users/#{room_email}/calendar/calendarView"
