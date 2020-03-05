@@ -201,7 +201,9 @@ module Microsoft::Office2::Events
             recurrence: nil,
             is_private: false,
             timezone: ENV['TZ'],
-            location: nil
+            location: nil,
+            showAs: 'busy',
+            responseRequested: true
         }
         # Merge in our default options with those passed in
         options = options.reverse_merge(default_options)
@@ -218,7 +220,9 @@ module Microsoft::Office2::Events
             attendees: options[:attendees].dup,
             organizer: options[:organizer],
             recurrence: options[:recurrence],
-            is_private: options[:is_private]
+            is_private: options[:is_private],
+            showAs: options[:showAs],
+            responseRequested: options[:responseRequested]
         )
         
         # Make the request and check the response
@@ -329,9 +333,13 @@ module Microsoft::Office2::Events
         result
     end
 
-    def create_event_json(subject: nil, body: nil, start_param: nil, end_param: nil, timezone: nil, rooms: nil, location: nil, attendees: nil, organizer_name: nil, organizer:nil, recurrence: nil, is_private: nil)
+    def create_event_json(subject: nil, body: nil, start_param: nil, end_param: nil, timezone: nil, rooms: nil, location: nil, attendees: nil, organizer_name: nil, organizer:nil, recurrence: nil, is_private: nil, showAs: 'busy', responseRequested: true)
         event_json = {}
+        event_json[:showAs] = showAs
+        event_json[:responseRequested] = responseRequested
         event_json[:subject] = subject if subject
+        event_json[:attendees] = attendees if attendees
+        
         event_json[:sensitivity] = ( is_private ? "private" : "normal" ) if is_private
 
         event_json[:body] = {
@@ -366,7 +374,6 @@ module Microsoft::Office2::Events
             attendees.push({ type: "resource", emailAddress: { address: room[:email], name: room[:name] } })
         end
 
-        event_json[:attendees] = attendees if attendees
 
         event_json[:organizer] = {
             emailAddress: {
