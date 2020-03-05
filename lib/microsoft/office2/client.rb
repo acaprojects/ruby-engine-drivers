@@ -190,7 +190,7 @@ class Microsoft::Office2::Client
     end
 
     def check_response(response)
-        return if response.status < 300
+        return unless ENV['LOG_GRAPH_API'] || response.status > 300
         STDERR.puts ">>>>>>>>>>>>"
         STDERR.puts "GRAPH API ERROR Request:\n #{@request_info}"
         STDERR.puts "============"
