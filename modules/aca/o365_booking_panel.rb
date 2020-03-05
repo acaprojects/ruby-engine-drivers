@@ -42,10 +42,10 @@ class Aca::O365BookingPanel
         self[:description] = setting(:description)
         self[:icon] = setting(:icon)
         self[:control_url] = setting(:booking_control_url) || system.config.support_url
-
-        self[:timeout] = setting(:timeout)
         self[:disabled] = setting(:booking_disabled)
-        self[:cancel_timeout] = UV::Scheduler.parse_duration(setting(:booking_cancel_timeout)) / 1000 if setting(:booking_cancel_timeout)   # convert '1m2s' to '62'
+
+        self[:timeout] = UV::Scheduler.parse_duration(setting(:timeout)) / 1000 if setting(:timeout)   # convert '1m2s' to '62'
+        self[:cancel_timeout] = UV::Scheduler.parse_duration(setting(:booking_cancel_timeout)) / 1000 if setting(:booking_cancel_timeout)
         self[:cancel_email_message] = setting(:booking_cancel_email_message)
         self[:timeout_email_message] = setting(:booking_timeout_email_message)
 
