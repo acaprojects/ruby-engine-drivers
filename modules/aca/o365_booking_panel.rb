@@ -21,9 +21,9 @@ class Aca::O365BookingPanel
         update_every: '2m',
         booking_cancel_email_message: 'The Stop button was presseed on the room booking panel',
         booking_timeout_email_message: 'The Start button was not pressed on the room booking panel',
-        office_client_id: "enter client ID",
-        office_secret: "enter client secret",
-        office_tenant: "tenant_name_or_ID.onMicrosoft.com"
+        msgraph_client_id: "enter MS Graph Application ID",
+        msgraph_secret: "enter MS Graph Client secret",
+        msgraph_tenant: "tenant_name_or_ID.onMicrosoft.com"
     })
 
     def on_load
@@ -81,20 +81,20 @@ class Aca::O365BookingPanel
         self[:select_free] = setting(:booking_select_free)
         self[:hide_all] = setting(:booking_hide_all) || false
 
-        office_client_id  = setting(:office_client_id)  || ENV['OFFICE_CLIENT_ID']
-        office_secret     = setting(:office_secret)     || ENV["OFFICE_CLIENT_SECRET"]
-        office_token_path = setting(:office_token_path) || "/oauth2/v2.0/token"
-        office_token_url  = setting(:office_token_url)  || ENV["OFFICE_TOKEN_URL"]  || "/" + setting(:office_tenant) + office_token_path
-        @office_room = (setting(:office_room) || system.email)
-        office_https_proxy = setting(:office_https_proxy)
+        msgraph_client_id  = setting(:msgraph_client_id)  || setting(:office_client_id)  || ENV['MSGRAPH_CLIENT_ID']
+        msgraph_secret     = setting(:msgraph_secret)     || setting(:office_secret)     || ENV["MSGRAPH_CLIENT_SECRET"]
+        msgraph_token_path = setting(:msgraph_token_path) || setting(:office_token_path) || "/oauth2/v2.0/token"
+        msgraph_token_url  = setting(:msgraph_token_url)  || setting(:office_token_url)  || ENV["MSGRAPH_TOKEN_URL"]  || "/" + setting(:msgraph_tenant) + msgraph_token_path
+        @room_mailbox = (setting(:msgraph_room) || system.email)
+        msgraph_https_proxy = setting(:msgraph_https_proxy)
 
-        logger.debug "RBP>#{@office_room}>INIT: Instantiating o365 Graph API client"
+        logger.debug "RBP>#{@room_mailbox}>INIT: Instantiating o365 Graph API client"
 
         @client = ::Microsoft::Office2::Client.new({
-            client_id:                  office_client_id,
-            client_secret:              office_secret,
-            app_token_url:              office_token_url,
-            https_proxy:                office_https_proxy
+            client_id:                  msgraph_client_id,
+            client_secret:              msgraph_secret,
+            app_token_url:              msgraph_token_url,
+            https_proxy:                msgraph_https_proxy
         })
 
         self[:last_meeting_started] = setting(:last_meeting_started)
@@ -107,7 +107,7 @@ class Aca::O365BookingPanel
     end
 
     def fetch_bookings(*args)
-        @todays_bookings = @client.get_bookings(mailboxes: [@office_room], options: {bookings_from: Time.now.midnight.to_i, bookings_to: Time.now.tomorrow.midnight.to_i}).dig(@office_room, :bookings)
+        @todays_bookings = @client.get_bookings(mailboxes: [@room_mailbox], options: {bookings_from: Time.now.midnight.to_i, bookings_to: Time.now.tomorrow.midnight.to_i}).dig(@room_mailbox, :bookings)
         self[:today] = expose_bookings(@todays_bookings)
     end
 
@@ -120,22 +120,22 @@ class Aca::O365BookingPanel
             raise "Error: start/end param is required and missing"
         end
 
-        logger.debug "RBP>#{@office_room}>CREATE>INPUT:\n #{params}"
+        logger.debug "RBP>#{@room_mailbox}>CREATE>INPUT:\n #{params}"
 
         host_email = params.dig(:host, :email)
-        mailbox = host_email || @office_room
+        mailbox = host_email || @room_mailbox
         calendargroup_id = nil
         calendar_id = nil
 
         booking_options = {
             subject:    params[:title] || setting(:booking_default_title),
             #location: {}
-            attendees:  [ {email: @office_room, type: "resource"} ],
+            attendees:  [ {email: @room_mailbox, type: "resource"} ],
             timezone:   ENV['TZ'],
             extensions: { aca_booking: true }
         }
         if ENV['O365_PROXY_USER_CALENDARS']
-            room_domain = @office_room.split('@').last
+            room_domain = @room_mailbox.split('@').last
             user_domain = current_user.email.split('@').last
             
             calendar_proxy = host_email ? User.find_by_email(current_user.authority_id, host_email)&.calendar_proxy : nil
@@ -155,10 +155,10 @@ class Aca::O365BookingPanel
                         end_param:      epoch(end_param),
                         options: booking_options )
         rescue Exception => e
-            logger.error "RBP>#{@office_room}>CREATE>ERROR: #{e.message}\n#{e.backtrace.join("\n")}"
+            logger.error "RBP>#{@room_mailbox}>CREATE>ERROR: #{e.message}\n#{e.backtrace.join("\n")}"
             raise e
         else
-            logger.debug { "RBP>#{@office_room}>CREATE>SUCCESS:\n #{result}" }
+            logger.debug { "RBP>#{@room_mailbox}>CREATE>SUCCESS:\n #{result}" }
             schedule.in('2s') do
                 fetch_bookings
             end
@@ -193,7 +193,7 @@ class Aca::O365BookingPanel
         end
         new_details[:subject] = 'ENDED: ' + existing['subject']
         
-        @client.update_booking(booking_id: id, mailbox: @office_room, options: new_details)
+        @client.update_booking(booking_id: id, mailbox: @room_mailbox, options: new_details)
         schedule.in('3s') do
             fetch_bookings
         end
@@ -221,11 +221,11 @@ class Aca::O365BookingPanel
         bookings_to_cancel = bookings_with_start_time(start_epoch)
 
         if bookings_to_cancel > 1
-            logger.warn { "RBP>#{@office_room}>CANCEL>CLASH: No bookings cancelled as Multiple bookings (#{bookings_to_cancel}) were found with same start time #{start_time}" } 
+            logger.warn { "RBP>#{@room_mailbox}>CANCEL>CLASH: No bookings cancelled as Multiple bookings (#{bookings_to_cancel}) were found with same start time #{start_time}" } 
             return
         end
         if bookings_to_cancel == 0
-            logger.warn { "RBP>#{@office_room}>CANCEL>NOT_FOUND: Could not find booking to cancel with start time #{start_time}" }
+            logger.warn { "RBP>#{@room_mailbox}>CANCEL>NOT_FOUND: Could not find booking to cancel with start time #{start_time}" }
             return
         end
 
@@ -236,11 +236,11 @@ class Aca::O365BookingPanel
             if !too_early_to_cancel && !too_late_to_cancel
                 delete_o365_booking(start_epoch, reason)
             else
-                logger.warn { "RBP>#{@office_room}>CANCEL>TOO_EARLY: Booking NOT cancelled with start time #{start_time}" } if too_early_to_cancel
-                logger.warn { "RBP>#{@office_room}>CANCEL>TOO_LATE: Booking NOT cancelled with start time #{start_time}" } if too_late_to_cancel
+                logger.warn { "RBP>#{@room_mailbox}>CANCEL>TOO_EARLY: Booking NOT cancelled with start time #{start_time}" } if too_early_to_cancel
+                logger.warn { "RBP>#{@room_mailbox}>CANCEL>TOO_LATE: Booking NOT cancelled with start time #{start_time}" } if too_late_to_cancel
             end
         else    # an unsupported reason, just cancel the booking and add support to this driver.
-            logger.error { "RBP>#{@office_room}>CANCEL>UNKNOWN_REASON: Cancelled booking with unknown reason, with start time #{start_time}" }
+            logger.error { "RBP>#{@room_mailbox}>CANCEL>UNKNOWN_REASON: Cancelled booking with unknown reason, with start time #{start_time}" }
             delete_o365_booking(start_epoch, reason)
         end
     
@@ -305,11 +305,11 @@ class Aca::O365BookingPanel
     end
 
     def delete_or_decline(booking, comment = nil)
-        if booking[:email] == @office_room
-            logger.warn { "RBP>#{@office_room}>CANCEL>ROOM_OWNED: Deleting booking owned by the room, with start time #{booking[:Start]}" }
+        if booking[:email] == @room_mailbox
+            logger.warn { "RBP>#{@room_mailbox}>CANCEL>ROOM_OWNED: Deleting booking owned by the room, with start time #{booking[:Start]}" }
             response = @client.delete_booking(booking_id: booking[:id], mailbox: system.email)  # Bookings owned by the room need to be deleted, instead of declined
         else
-            logger.warn { "RBP>#{@office_room}>CANCEL>SUCCESS: Declining booking, with start time #{booking[:Start]}" }
+            logger.warn { "RBP>#{@room_mailbox}>CANCEL>SUCCESS: Declining booking, with start time #{booking[:Start]}" }
             response = @client.decline_meeting(booking_id: booking[:id], mailbox: system.email, comment: comment)
         end
     end
@@ -323,7 +323,7 @@ class Aca::O365BookingPanel
             booking_start_epoch = Time.parse(booking[:Start]).to_i 
             next if booking_start_epoch != delete_start_epoch
             if booking[:isAllDay]
-                logger.warn { "RBP>#{@office_room}>CANCEL>ALL_DAY: An All Day booking was NOT deleted, with start time #{delete_start_epoch}" }
+                logger.warn { "RBP>#{@room_mailbox}>CANCEL>ALL_DAY: An All Day booking was NOT deleted, with start time #{delete_start_epoch}" }
                 next
             end
 
