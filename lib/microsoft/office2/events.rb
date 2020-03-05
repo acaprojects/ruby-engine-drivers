@@ -11,7 +11,6 @@ module Microsoft::Office2::Events
     # @option options [Integer] :available_from If bookings exist between this seconds epoch and available_to then the room is market as not available
     # @option options [Integer] :available_to If bookings exist between this seconds epoch and available_from then the room is market as not available
     # @option options [Array] :ignore_bookings An array of icaluids for bookings which are ignored if they fall within the available_from and to time range
-    # @option options [String] :extension_name The name of the extension list to retreive in O365. This probably doesn't need to change
     # @return [Hash] A hash of room emails to availability and bookings fields, eg:
     # @example
     # An example response:
@@ -46,8 +45,7 @@ module Microsoft::Office2::Events
             bookings_to: nil,
             available_from: nil,
             available_to: nil,
-            ignore_bookings: [],
-            extension_name: "Com.Acaprojects.Extensions"
+            ignore_bookings: []
         }
         # Merge in our default options with those passed in
         options = options.reverse_merge(default_options)
@@ -83,7 +81,6 @@ module Microsoft::Office2::Events
             query[:startDateTime] = graph_date(options[:bookings_from]) if options[:bookings_from]
             query[:endDateTime] = graph_date(options[:bookings_to]) if options[:bookings_to]
             query[:'$filter'] = "createdDateTime gt #{created_from}" if options[:created_from]
-            query[:'$expand'] = "extensions($filter=id eq '#{options[:extension_name]}')" if options[:extension_name] && ENV['O365_DISABLE_ODATA_EXTENSIONS']&.downcase != 'true'
 
             # Make the request, check the repsonse then parse it
             bulk_response = graph_request(request_method: 'get', endpoints: endpoints, query: query, bulk: true)
@@ -193,7 +190,6 @@ module Microsoft::Office2::Events
     # @option options [Integer] :recurrence_end A seconds epoch denoting the final day of recurrence
     # @option options [Boolean] :is_private Whether to mark the booking as private or just normal
     # @option options [String] :timezone The timezone of the booking. This will be overridden by a timezone in the room's settings
-    # @option options [Hash] :extensions A hash holding a list of extensions to be added to the booking
     # @option options [String] :location The location field to set. This will not be used if a room is passed in
     def create_booking(mailbox:, start_param:, end_param:, calendargroup_id: nil, calendar_id: nil, options: {})
         default_options = {
@@ -205,7 +201,6 @@ module Microsoft::Office2::Events
             recurrence: nil,
             is_private: false,
             timezone: ENV['TZ'],
-            extensions: {},
             location: nil
         }
         # Merge in our default options with those passed in
@@ -223,7 +218,6 @@ module Microsoft::Office2::Events
             attendees: options[:attendees].dup,
             organizer: options[:organizer],
             recurrence: options[:recurrence],
-            extensions: options[:extensions],
             is_private: options[:is_private]
         )
         
@@ -255,7 +249,6 @@ module Microsoft::Office2::Events
     # @option options [Integer] :recurrence_end A seconds epoch denoting the final day of recurrence
     # @option options [Boolean] :is_private Whether to mark the booking as private or just normal
     # @option options [String] :timezone The timezone of the booking. This will be overridden by a timezone in the room's settings
-    # @option options [Hash] :extensions A hash holding a list of extensions to be added to the booking
     # @option options [String] :location The location field to set. This will not be used if a room is passed in
     def update_booking(booking_id:, mailbox:, calendargroup_id: nil, calendar_id: nil, options: {})
     # No defaults for editing, because undefined fields should simply retain the existing value (from the original booking)
@@ -269,7 +262,6 @@ module Microsoft::Office2::Events
             recurrence: nil,
             is_private: nil,
             timezone: ENV['TZ'],
-            extensions: {},
             location: nil
         }
         # Merge in our default options with those passed in
@@ -286,19 +278,8 @@ module Microsoft::Office2::Events
             location: options[:location],
             attendees: options[:attendees].dup,
             recurrence: options[:recurrence],
-            extensions: options[:extensions],
             is_private: options[:is_private]
         )
-
-        # If extensions exist we must make a separate request to add them
-        if options[:extensions].present? && ENV['O365_DISABLE_ODATA_EXTENSIONS']&.downcase != 'true'
-            options[:extensions] = options[:extensions].dup
-            options[:extensions]["@odata.type"] = "microsoft.graph.openTypeExtension"
-            options[:extensions]["extensionName"] = "Com.Acaprojects.Extensions"
-            request = graph_request(request_method: 'put', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events/#{booking_id}/extensions/Microsoft.OutlookServices.OpenTypeExtension.Com.Acaprojects.Extensions"], data: options[:extensions])
-            check_response(request)
-            ext_data = JSON.parse(request.body)
-        end
 
         # Make the request and check the response
         begin
@@ -307,7 +288,7 @@ module Microsoft::Office2::Events
         rescue Microsoft::Error::Conflict => e
             return {}
         end
-        Microsoft::Office2::Event.new(client: self, event: JSON.parse(request.body).merge({'extensions' => [ext_data]})).event
+        Microsoft::Office2::Event.new(client: self, event: JSON.parse(request.body)).event
     end
 
     ##
@@ -348,7 +329,7 @@ module Microsoft::Office2::Events
         result
     end
 
-    def create_event_json(subject: nil, body: nil, start_param: nil, end_param: nil, timezone: nil, rooms: nil, location: nil, attendees: nil, organizer_name: nil, organizer:nil, recurrence: nil, extensions: {}, is_private: nil)
+    def create_event_json(subject: nil, body: nil, start_param: nil, end_param: nil, timezone: nil, rooms: nil, location: nil, attendees: nil, organizer_name: nil, organizer:nil, recurrence: nil, is_private: nil)
         event_json = {}
         event_json[:subject] = subject if subject
         event_json[:sensitivity] = ( is_private ? "private" : "normal" ) if is_private
@@ -415,17 +396,6 @@ module Microsoft::Office2::Events
                     endDate:   recurrence_end_date.strftime("%F")
                 }
             }
-        end
-
-        if ENV['O365_DISABLE_ODATA_EXTENSIONS']&.downcase != 'true'
-            ext = {
-                "@odata.type": "microsoft.graph.openTypeExtension",
-                "extensionName": "Com.Acaprojects.Extensions"
-            }
-            extensions.each do |ext_key, ext_value|
-                ext[ext_key] = ext_value
-            end
-            event_json[:extensions] = [ext]
         end
 
         event_json.reject!{|k,v| v.nil?} 

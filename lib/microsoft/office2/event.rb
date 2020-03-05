@@ -46,7 +46,7 @@ class Microsoft::Office2::Event < Microsoft::Office2::Model
         @client = client
         @available_to = available_to
         @available_from = available_from
-        @event = get_extensions(create_aliases(event, ALIAS_FIELDS, NEW_FIELDS, self), event)
+        @event = create_aliases(event, ALIAS_FIELDS, NEW_FIELDS, self)
     end
 
     attr_accessor :event, :available_to, :available_from
@@ -55,19 +55,6 @@ class Microsoft::Office2::Event < Microsoft::Office2::Model
 
     def datestring_to_epoch(date_object)
         ActiveSupport::TimeZone.new(date_object['timeZone']).parse(date_object['dateTime']).to_i
-    end
-
-    def get_extensions(new_event, old_event)
-        if old_event.key?('extensions')
-            old_event['extensions'].each do |ext|
-                if ext&.dig('id') == "Microsoft.OutlookServices.OpenTypeExtension.Com.Acaprojects.Extensions"
-                    ext.each do |ext_key, ext_val|
-                        new_event[ext_key] = ext_val if !['@odata.type', '@odata.context', 'id','extensionName'].include?(ext_key)
-                    end
-                end
-            end
-        end
-        new_event
     end
 
     def set_room_id(attendees)
