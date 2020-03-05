@@ -11,6 +11,7 @@ class ::Aca::DeskBookings
     default_settings({
         cancel_bookings_after: "1h",
         check_autocancel_every: "5m",
+        send_email_invites: false,
         zone_to_desk_ids: {
             "zone-xxx" => ["desk-01.001", "desk-01.002"],
             "zone-yyy" => ["desk-02.001", "desk-02.002"]
@@ -48,7 +49,24 @@ class ::Aca::DeskBookings
             end
             expose_status(zone)
         end
-        
+
+        @email_enabled = setting('send_email_invites')
+        if @email_enabled
+            msgraph_client_id  = setting(:msgraph_client_id)  || setting(:office_client_id)
+            msgraph_secret     = setting(:msgraph_secret)     || setting(:office_secret)
+            msgraph_token_path = setting(:msgraph_token_path) || setting(:office_token_path) || "/oauth2/v2.0/token"
+            msgraph_token_url  = setting(:msgraph_token_url)  || setting(:office_token_url)  || "/" + setting(:msgraph_tenant) + msgraph_token_path
+            msgraph_https_proxy = setting(:msgraph_https_proxy)
+            @desks_mailbox = (setting(:msgraph_mailbox) || system.email)
+
+            @msgraph = ::Microsoft::Office2::Client.new({
+                client_id:                  msgraph_client_id,
+                client_secret:              msgraph_secret,
+                app_token_url:              msgraph_token_url,
+                https_proxy:                msgraph_https_proxy
+            })
+        end
+
         schedule.clear
         schedule.every(@autocancel_scan_interval) { autocancel_bookings } if @autocancel_delay && @autocancel_scan_interval
     end
@@ -69,7 +87,8 @@ class ::Aca::DeskBookings
         new_booking = {    
             start:      start_epoch, 
             end:        end_epoch - 1,
-            checked_in: (booking_date == todays_date) 
+            checked_in: (booking_date == todays_date),
+            name:       current_user.name
         }
         @status[zone][desk_id] ||= {} 
         @status[zone][desk_id][booking_date] ||= {}
@@ -82,19 +101,21 @@ class ::Aca::DeskBookings
                 end
             end
         end
-        @status[zone][desk_id][booking_date][current_user.email] = new_booking    
 
+        # Email a meeting invite to the booker, so they can see the booked desk in their calendar
+        # Store the event ID in our records, so that it can be targetted for deletion later
+        new_booking[:event_id] = send_email_invite(desk_id, start_epoch, end_epoch, current_user) if @email_enabled
+
+        @status[zone][desk_id][booking_date][current_user.email] = new_booking    
         expose_status(zone)
         
-        # Also store booking in user object, in a slightly different format
+        # Also store booking in the user object, with additional info
         new_booking[:desk_id] = desk_id
         new_booking[:zone]    = zone
         add_to_schedule(current_user.email, new_booking)
-
-        # STUB: Notify user of desk booking via email here
     end
 
-    def cancel(desk_id, start_epoch)
+    def cancel(desk_id, start_epoch, event_id = nil)
         booking_date = Time.at(start_epoch).in_time_zone(@tz).strftime('%F')
         zone = @zone_of[desk_id]
         user = current_user.email
@@ -103,8 +124,10 @@ class ::Aca::DeskBookings
         @status[zone][desk_id][booking_date].delete(user)
         expose_status(zone)
         
-        # Also delete booking from user profile
+        # Also delete booking from user profile (schedule page of Staff App)
         delete_from_schedule(current_user.email, desk_id, start_epoch)
+
+        cancel_email_invite(event_id) if @email_enabled && event_id
     end
 
     # param checking_in is a bool: true = checkin, false = checkout
@@ -139,6 +162,31 @@ class ::Aca::DeskBookings
         self[zone] = @status[zone].deep_dup
         signal_status(zone)
         define_setting(:status, @status) if save_status   # Also persist new status to DB
+    end
+
+    def send_email_invite(desk_id, start_epoch, end_epoch, recipient)
+        pretty_time = Time.at(start_epoch).in_time_zone(@tz).strftime('%D%l:%M%P') # e.g. "03/05/20 4:18pm"
+        event_request = {
+            start_param: start_epoch,
+            end_param: end_epoch,
+            mailbox: @desks_mailbox,
+            options: {
+                subject: "Desk Booking confirmation: #{desk_id} on #{pretty_time}",
+                description: "Please arrive on time and scan the QR code with your mobile device to check in.",
+                attendees: [recipient],
+                location: desk_id,
+                timezone: @tz,
+                showAs: 'free',
+                responseRequested: false
+            }
+        }
+        event = @msgraph.create_booking(event_request)
+        logger.debug event.inspect
+        return event['id']
+    end
+
+    def cancel_email_invite(event_id)
+        @msgraph.delete_booking(mailbox: @desks_mailbox, booking_id: event_id)
     end
 
     def autocancel_bookings
