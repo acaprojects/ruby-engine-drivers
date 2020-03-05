@@ -10,7 +10,7 @@ class Microsoft::Office2::Event < Microsoft::Office2::Model
         'body' => {'content' => 'body'},
         'attendees' => 'old_attendees',
         'iCalUId' => 'icaluid',
-        'showAs' => 'show_as',
+        'showAs' => 'showAs',
         'isCancelled' => 'isCancelled',
         'isAllDay' => 'isAllDay',
         'sensitivity' => 'sensitivity',
