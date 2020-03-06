@@ -113,9 +113,19 @@ module Microsoft::Office2::Events
     end
     
     # Return a booking with a matching icaluid
-    def get_booking_by_icaluid(icaluid:, mailbox:, calendargroup_id: nil, calendar_id: nil)
-        query_params =  {'$filter': "iCalUId eq '#{icaluid}'" }
-        endpoint = "/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"
+    def get_booking_by_icaluid(icaluid:, mailbox:, calendargroup_id: nil, calendar_id: nil, start_epoch: nil)
+        if start_epoch
+            # if a start epoch is given, search a 48hr window around it using /calendarView
+            # /calendarView returns all events, including recurrences
+            start = Time.at(start_epoch.to_i)
+            endpoint = "/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/calendarView"
+            query_params =  {'$filter': "iCalUId eq '#{icaluid}'", 'startDateTime': start.yesterday.strftime('%FT%T%:z'), 'endDateTime': start.tomorrow.strftime('%FT%T%:z')}
+        else
+            # if a start epoch is not given, use /events
+            # /events does not return event recurrences
+            endpoint = "/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"
+            query_params =  {'$filter': "iCalUId eq '#{icaluid}'" }
+        end
         response = graph_request(request_method: 'get', endpoints: [endpoint], query: query_params)
         check_response(response)
         JSON.parse(response.body)&.dig('value', 0)
