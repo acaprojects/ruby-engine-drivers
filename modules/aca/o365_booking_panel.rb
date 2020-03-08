@@ -381,7 +381,8 @@ class Aca::O365BookingPanel
                 :email => email,
                 :organizer => {:name => name, :email => email},
                 :attendees => attendees,
-                :isAllDay => booking['isAllDay']
+                :isAllDay => booking['isAllDay'],
+                :showAs => booking['showAs']
             })
         }
         results
