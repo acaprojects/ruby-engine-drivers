@@ -84,7 +84,7 @@ class Aca::O365BookingPanel
         msgraph_client_id  = setting(:msgraph_client_id)  || setting(:office_client_id)
         msgraph_secret     = setting(:msgraph_secret)     || setting(:office_secret)
         msgraph_token_path = setting(:msgraph_token_path) || setting(:office_token_path) || "/oauth2/v2.0/token"
-        msgraph_token_url  = setting(:msgraph_token_url)  || setting(:office_token_url)  || "/" + setting(:msgraph_tenant) + msgraph_token_path
+        msgraph_token_url  = setting(:msgraph_token_url)  || setting(:office_token_url)  || "/" + (setting(:msgraph_tenant) || setting(:office_tenant)) + msgraph_token_path
         @room_mailbox = (setting(:msgraph_room) || system.email)
         msgraph_https_proxy = setting(:msgraph_https_proxy)
 
