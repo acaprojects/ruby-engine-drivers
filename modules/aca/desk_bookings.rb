@@ -171,8 +171,8 @@ class ::Aca::DeskBookings
             end_param: end_epoch,
             mailbox: @desks_mailbox,
             options: {
-                subject: "Desk Booking confirmation: #{desk_id} on #{pretty_time}",
-                description: "Please arrive on time and scan the QR code with your mobile device to check in.",
+                subject: "Desk #{desk_id} Booked",
+                description: "#{desk_id} booked from #{pretty_time}\nPlease arrive on time and scan the QR code with your mobile device to check in.",
                 attendees: [recipient],
                 location: desk_id,
                 timezone: @tz,
