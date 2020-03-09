@@ -9,7 +9,8 @@ class ::Aca::DeskBookings
     implements :logic
 
     default_settings({
-        cancel_bookings_after: "1h",
+        autocheckin_window: "1h",
+        cancel_bookings_after: "0s",
         check_autocancel_every: "5m",
         send_email_invites: false,
         zone_to_desk_ids: {
@@ -30,9 +31,9 @@ class ::Aca::DeskBookings
     end
 
     def on_update
-        # convert '1m2s' to '62'
-        @autocancel_delay = UV::Scheduler.parse_duration(setting('cancel_bookings_after')  || '0s') / 1000
-        @autocancel_scan_interval = setting('cancel_bookings_after')
+        @autocheckin_window = UV::Scheduler.parse_duration(setting('autocheckin_period')    || '0s') / 1000  # convert '1m2s' to '62'
+        @autocancel_delay   = UV::Scheduler.parse_duration(setting('cancel_bookings_after') || '0s') / 1000
+        @autocancel_scan_interval = setting('check_autocancel_every')
 
         # local timezone of all the desks served by this logic (usually, all the desks in this building)
         @tz = setting('timezone') || ENV['TZ']
@@ -87,7 +88,7 @@ class ::Aca::DeskBookings
         new_booking = {    
             start:      start_epoch, 
             end:        end_epoch - 1,
-            checked_in: (booking_date == todays_date),
+            checked_in: (start_epoch - Time.now.to_i) < @autocheckin_window,  # No need to check in to bookings that start very soon
             name:       current_user.name
         }
         @status[zone][desk_id] ||= {} 
