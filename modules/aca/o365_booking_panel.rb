@@ -192,6 +192,7 @@ class Aca::O365BookingPanel
         @client.update_booking(booking_id: id, mailbox: @room_mailbox, options: new_details)
         schedule.in('3s') do
             fetch_bookings
+	        signal_status(:today)    
         end
     end
 
