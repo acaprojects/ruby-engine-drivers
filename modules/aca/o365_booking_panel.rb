@@ -135,24 +135,20 @@ class Aca::O365BookingPanel
             extensions: { aca_booking: true }
         }
         if ENV['O365_PROXY_USER_CALENDARS']
-            room_domain = @room_mailbox.split('@').last
-            user_domain = current_user.email.split('@').last
-            
-            calendar_proxy = host_email ? User.find_by_email(current_user.authority_id, host_email)&.calendar_proxy : nil
-            mailbox = calendar_proxy&.dig(:account) if calendar_proxy&.dig(:account)
-            calendargroup_id = calendar_proxy&.dig(:calendargroup_id)
-            calendar_id = calendar_proxy&.dig(:calendar_id)
-
+            # Fetch or create the host's proxy calendar
+            calendar_proxy   = proxy_calendar(host_email)
+            mailbox          = calendar_proxy&.dig(:email) if calendar_proxy&.dig(:email)
+            calendargroup_id = calendar_proxy&.dig(:group)
+            calendar_id      = calendar_proxy&.dig(:id)
             booking_options[:attendees] << params[:host] if params[:host]
-            booking_options[:extensions].merge!( { aca_proxied_organizer: [params.dig(:host, :name), host_email] })
         end
         begin
             result = @client.create_booking(
-                        mailbox:        mailbox,
+                        mailbox:          mailbox,
                         calendargroup_id: calendargroup_id,
-                        calendar_id:    calendar_id,
-                        start_param:    epoch(start_param), 
-                        end_param:      epoch(end_param),
+                        calendar_id:      calendar_id,
+                        start_param:      epoch(start_param), 
+                        end_param:        epoch(end_param),
                         options: booking_options )
         rescue Exception => e
             logger.error "RBP>#{@room_mailbox}>CREATE>ERROR: #{e.message}\n#{e.backtrace.join("\n")}"
@@ -386,5 +382,39 @@ class Aca::O365BookingPanel
             })
         }
         results
+    end
+
+    
+    # takes in a user email address and returns a hash of the proxy calendar account, calendargroup_id, calendar_id
+    def proxy_calendar(user_email)
+        # Check for an existing calendar proxy stored in the user object
+        default_domain = ENV['ENGINE_DEFAULT_DOMAIN']
+        authority      = ::Authority.find_by_domain(default_domain)
+        user           = User.find_by_email(authority.id, user_email)
+        user_proxy     = user&.calendar_proxy
+        if !user_proxy&.dig(:calendar_id)
+            # The proxy calendar and/or user does not exist, create the proxy calendar (and save to the user, if the user exists)
+            proxy = authority&.config&.dig(:o365_calendar_proxy)
+            begin
+                logger.warn "CREATING CALENDAR: #{proxy[:account]}, #{proxy[:calendargroup_id]}, #{user_email}"
+                calendar = @client.create_calendar(mailbox: proxy[:account], name: user_email, calendargroup_id: proxy[:calendargroup_id])
+                logger.warn  "o365 calendar proxy: New o365 calendar created:\n#{calendar.inspect}"
+            rescue
+                logger.warn "o365 calendar proxy: Error creating proxy calendar. It may already exist for #{user_email}"
+                results = @client.list_calendars(mailbox: proxy[:account], calendargroup_id: proxy[:calendargroup_id], match: user_email)
+                logger.warn "LIST CALENDARS: #{calendar}"
+                calendar = results.first
+            end
+            user_proxy = {
+                account:          proxy[:account],
+                calendargroup_id: proxy[:calendargroup_id],
+                calendar_id:      calendar['id']
+            }
+            if user     # if the user exists in engine
+                user.calendar_proxy = user_proxy
+                user.save!
+            end
+        end
+        { email: user_proxy[:account], group: user_proxy[:calendargroup_id], id: user_proxy[:calendar_id] }
     end
 end
