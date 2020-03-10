@@ -13,7 +13,7 @@ class Aca::O365BookingPanel
     implements :logic
 
     # Constants that the Room Booking Panel UI (ngx-bookings) will use
-    RBP_AUTOCANCEL_TRIGGERED  = 'pending timeout'
+    RBP_AUTOCANCEL_TRIGGERED  = 'timeout'
     RBP_STOP_PRESSED        = 'user cancelled'
 
     # The room we are interested in
@@ -212,11 +212,11 @@ class Aca::O365BookingPanel
     # + The body will be appended with "This meeting was ended at [time] because no presence was detected in the room"
     # - However currently  with end_meeting(), the user will not recieve an automated email notifications (these only get sent when the room declines-)
     # 
-    def cancel_meeting(start_time, reason = "unknown reason")
+    def cancel_meeting(start_ms_epoch, reason = "unknown reason")
         now = Time.now.to_i
-        start_epoch = Time.parse(start_time).to_i
-        ms_epoch = start_epoch * 1000
+        start_epoch = start_ms_epoch / 1000
         too_early_to_cancel = now < start_epoch
+        start_time = Time.at(start_epoch).in_time_zone(ENV['TZ'])
         too_late_to_cancel = self[:cancel_timeout] ?  (now > (start_epoch + self[:cancel_timeout] + 180)) : false   # "180": allow up to 3mins of slippage, in case endpoint is not NTP synced
         bookings_to_cancel = bookings_with_start_time(start_epoch)
 
@@ -244,8 +244,8 @@ class Aca::O365BookingPanel
             delete_o365_booking(start_epoch, reason)
         end
     
-        self[:last_meeting_started] = ms_epoch
-        self[:meeting_pending]      = ms_epoch
+        self[:last_meeting_started] = start_ms_epoch
+        self[:meeting_pending]      = start_ms_epoch
         self[:meeting_ending]       = false
         self[:meeting_pending_notice] = false
         true
