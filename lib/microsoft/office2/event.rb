@@ -92,7 +92,7 @@ class Microsoft::Office2::Event < Microsoft::Office2::Model
                 name: attendee['emailAddress']['name'],
                 visitor: is_visitor,
                 external: is_visitor,
-		organisation: attendee_email&.split('@')&.dig(1)
+		        organisation: attendee_email&.split('@')&.dig(1)
             }
             new_attendees.push(attendee_object) if attendee['type'] != 'resource'
         end

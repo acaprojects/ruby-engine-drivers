@@ -4,7 +4,7 @@ module Microsoft::Office2::Groups
     # result_fields: comma seperated string of which group properties should be included in the result. e.g. 'id,displayName'. Defaults to just 'displayName'
     # transitive: if false then only list groups that the user is a DIRECT member of (i.e. don't list subgroups)
     # https://docs.microsoft.com/en-us/graph/api/user-list-memberof
-    def list_user_member_of(id, result_fields = 'displayName', transitive = true)
+    def list_user_member_of(id, result_fields = 'id,displayName', transitive = true)
         return {'error': "400: No group \'id\' supplied" } if id.nil?
         endpoint = "/v1.0/users/#{id}/" + (transitive ? 'transitiveMemberOf' : 'memberOf')
         response = graph_request(request_method: 'get', endpoints: [endpoint], query: { '$select': result_fields, '$top': 999 } )
