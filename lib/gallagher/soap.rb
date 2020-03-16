@@ -1,27 +1,9 @@
 require 'savon'
 require 'active_support/time'
 
-# gallagher = Gallagher.new(
-#     username: 'system',
-#     password: 'system',
-#     endpoint: 'https://DESKTOP-ABH46ML:8082/Cardholder/',
-#     namespace: 'http://www.gallagher.co/security/commandcentre/webservice',
-#     namespaces: {"xmlns:wsdl" => "http://www.gallagher.co/security/commandcentre/cifws", "xmlns:web" => 'http://www.gallagher.co/security/commandcentre/webservice'},
-#     wsdl: 'https://DESKTOP-ABH46ML:8082/Cardholder/?WSDL',
-#     cert_path: './client_cert.pem',
-#     ca_cert_path: './ca_cert.pem',
-#     key_path: './key.pem',
-#     log: false,
-#     log_level: nil
-#     )
+module Gallagher; end
 
-
-# gallagher.has_cardholder("435")
-
-# gallagher.get_cards("435")
-# gallagher.set_access('435', 'T2 Shared', Time.now.utc.iso8601, (Time.now + 3.hours).utc.iso8601)
-
-class Gallagher
+class Gallagher::Soap
     def initialize(
             username:,
             password:,
