@@ -11,4 +11,23 @@ module Microsoft::Office2::Groups
         check_response(response)
         JSON.parse(response.body)['value']
     end
+    
+    
+    # Return all the groups that the user is a member of. The check is transitive, unlike reading the memberOf navigation property, 
+    # which returns only the groups that the user is a direct member of.
+    # This function supports Office 365 and other types of groups provisioned in Azure AD. 
+    # The maximum number of groups each request can return is 2046. Note that Office 365 Groups cannot contain groups. 
+    # So membership in an Office 365 Group is always direct.
+    # id: user id or userPrincipalName
+    # result_fields: array of strings of group names to which user belongs 
+    # https://docs.microsoft.com/en-us/graph/api/user-getmembergroups
+    def get_member_groups(id, result_fields = '', transitive = true)
+        return {'error': "400: No user \'id\' supplied" } if id.nil?
+        endpoint = "/v1.0/users/#{id}/getMemberGroups"
+        response = graph_request(request_method: 'get', endpoints: [endpoint], query: {  '$top': 999 } )
+        check_response(response)
+        JSON.parse(response.body)['value']
+    end
+
+
 end
