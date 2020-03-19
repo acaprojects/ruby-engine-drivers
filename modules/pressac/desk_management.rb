@@ -222,8 +222,11 @@ class ::Pressac::DeskManagement
     def unexpose_unresponsive_desks(notification)
         stale_sensors = notification.value
         # Sort into Zones, keeping SVG map ID only
-        zoned_stale_sensors = Hash.new(Array.new)
-        stale_sensors&.each { |s| zoned_stale_sensors[@which_zone[s[:gateway]] << id(s.keys) ] }
+        zoned_stale_sensors = {}
+        stale_sensors&.each do |sensor_name, sensor|
+            zoned_stale_sensors[@which_zone[sensor['gateway']]] ||= []
+            zoned_stale_sensors[@which_zone[sensor['gateway']]] | id([sensor_name])
+        end
 
         logger.debug "PRESSAC > DESK > LOGIC: Displaying stale sensors as #{@stale_status}: #{zoned_stale_sensors}"
         
