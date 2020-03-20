@@ -40,6 +40,7 @@ class ::Pressac::BookingCanceller
 
         schedule.clear
         schedule.every(@scan_cycle) { determine_booking_presence }
+        determine_booking_presence
     end
 
     def determine_booking_presence
@@ -55,20 +56,22 @@ class ::Pressac::BookingCanceller
         # Expose relevant sensor status
         now = Time.now.to_i
         self[:stale_sensor] = sensor_is_stale   = now - sensor[:last_update_epoch]  > @stale_timeout
-        self[:will_cancel]  = prolonged_vacancy = now - (sensor[:became_free] || 0) > @delay_until_cancel         # If the sensor has been "free" for longer than the past X mins
-        self[:presence] = sensor[:motion]
-        if self[:presence]
+        self[:motion] = sensor[:motion]
+        if self[:motion]
             self[:became_busy] = Time.at(sensor[:became_busy]).to_s
             self[:became_free] = nil
+            self[:vacant]      = prolonged_vacancy = false
             msg =  "Pressac Booking Canceller: Presence detected by #{@sensor_name}"
             logger.debug msg
             return msg
         else
             self[:became_busy] = nil
             self[:became_free] = Time.at(sensor[:became_free]).to_s
+            self[:vacant]      = prolonged_vacancy = now - (sensor[:became_free] || now) > @delay_until_cancel         # If the sensor has been "free" for longer than the past X mins
         end
 
         if prolonged_vacancy && !sensor_is_stale
+            self[:will_cancel] = true
             # Check each booking
             bookings = system[@bookings][:today]
             bookings&.each do |booking|
@@ -79,6 +82,8 @@ class ::Pressac::BookingCanceller
                 truncate(booking)
                 return msg
             end
+        else
+            self[:will_cancel] = false
         end
 	    return 
     end
