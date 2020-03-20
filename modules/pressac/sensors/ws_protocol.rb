@@ -49,6 +49,7 @@ class Pressac::Sensors::WsProtocol
         self[:gateways] = @gateways.dup
 
         # Flat hash of {sensor: {data}}
+        @sensors = status[:sensors] || {}
         self[:sensors] = status[:sensors].dup || {}
 
         @last_update = status[:last_update] || "Never"
@@ -73,17 +74,18 @@ class Pressac::Sensors::WsProtocol
 
     def mock(sensor, occupied)
         gateway = which_gateway(sensor)
-        mock_data = {
-            id:        'mock_data',
-            name:      sensor,
-            motion:    occupied,
-            voltage:   '3.0',
-            location:  nil,
-            timestamp: Time.now.to_s,
-            last_update: Time.now.in_time_zone($TZ).to_s,
-            last_update_epoch: Time.now.to_i,
-            gateway:   gateway
-        }
+        mock_data = self[:sensors][sensor]&.dup || 
+            {
+                id:        'mock_data',
+                name:      sensor,
+                voltage:   '3.0',
+                location:  nil,
+                gateway:   gateway
+            }
+        mock_data[:motion]            = occupied
+        mock_data[:timestamp]         = Time.now.to_s
+        mock_data[:last_update]       = Time.now.in_time_zone($TZ).to_s
+        mock_data[:last_update_epoch] = Time.now.to_i
         if occupied
             mock_data[:became_free] = nil
             mock_data[:became_busy] ||= Time.now.to_i
@@ -91,8 +93,9 @@ class Pressac::Sensors::WsProtocol
             mock_data[:became_free] ||= Time.now.to_i
             mock_data[:became_busy] = nil
         end
-        @gateways[gateway][sensor] = self[gateway] = self[:sensors][sensor] = mock_data
+        @gateways[gateway][sensor] = self[gateway] = @sensors[sensor] = mock_data
         self[:gateways] = @gateways.deep_dup
+        self[:sensors]  = @sensors.deep_dup
     end
 
     def which_gateway(sensor)
