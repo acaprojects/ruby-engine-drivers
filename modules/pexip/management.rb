@@ -155,7 +155,7 @@ class Pexip::Management
       end
 
       post('/api/admin/command/v1/participant/dial/',
-        body: body,
+        body: body.to_json,
         headers: {
           'Authorization' => [@username, @password],
           'Content-Type' => 'application/json',
