@@ -134,4 +134,45 @@ class Pexip::Management
       end
       nil
     end
+
+    def dial_phone(meeting_alias, phone_number)
+      phone_number = phone_number.gsub(/\s/, "")
+
+      body = if phone_number.start_with?("+")
+        {
+          conference_alias: meeting_alias,
+          destination: "#{phone_number}@conference.meet.health.nsw.gov.au",
+          protocol: 'sip',
+          system_location: 'UN_InternalWebRTC_SIPH323_Proxy'
+        }
+      else
+        {
+          conference_alias: meeting_alias,
+          destination: phone_number,
+          protocol: 'h323',
+          system_location: 'UN_InternalWebRTC_SIPH323_Proxy'
+        }
+      end
+
+      post('/api/admin/command/v1/participant/dial/',
+        body: body,
+        headers: {
+          'Authorization' => [@username, @password],
+          'Content-Type' => 'application/json',
+          'Accept' => 'application/json'
+        }
+      ) do |data|
+          if (200...300).include?(data.status)
+              response = JSON.parse(data.body, symbolize_names: true)
+              if response[:status] == "success"
+                # {participant_id: "5acac442-7a25-44fa-badf-4bc725a0f035", participant_ids: ["5acac442-7a25-44fa-badf-4bc725a0f035"]}
+                response[:data]
+              else
+                :abort
+              end
+          else
+              :abort
+          end
+      end
+    end
 end
