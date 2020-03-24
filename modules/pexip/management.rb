@@ -140,6 +140,9 @@ class Pexip::Management
 
       body = if phone_number.start_with?("+")
         {
+          call_type: 'audio',
+          role: 'guest',
+          routing: 'routing_rule',
           conference_alias: meeting_alias,
           destination: "#{phone_number}@conference.meet.health.nsw.gov.au",
           protocol: 'sip',
@@ -147,6 +150,9 @@ class Pexip::Management
         }
       else
         {
+          call_type: 'audio',
+          role: 'guest',
+          routing: 'routing_rule',
           conference_alias: meeting_alias,
           destination: phone_number,
           protocol: 'h323',
