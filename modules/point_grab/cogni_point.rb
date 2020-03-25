@@ -4,6 +4,9 @@ require "securerandom"
 module PointGrab; end
 
 # Documentation: https://aca.im/driver_docs/PointGrab/CogniPointAPI2-1.pdf
+# subscribe: "https://domain/control/api/webhooks/trig-y8i/router?secret=[secret]&mod=CogniPoint&func=update_count", "random_code", "COUNTING"
+# subscribe: "https://domain/control/api/webhooks/trig-y8i/router?secret=[secret]&mod=CogniPoint&func=update_traffic", "random_code", "TRAFFIC"
+# Start subscription: update_subscription(id, true)
 
 class PointGrab::CogniPoint
   include ::Orchestrator::Constants
@@ -48,7 +51,12 @@ class PointGrab::CogniPoint
     # "area_1": {
     #    "capacity": 100,
     #    "people_count": 90
-    # }}
+    # },
+    # "area_2": {
+    #    "count_in": 100,
+    #    "count_out": 90
+    # }
+    #}
     @floor_details ||= {}
   end
 
@@ -279,6 +287,34 @@ class PointGrab::CogniPoint
     @area_details[area_id]
   end
 
+  # {"areaId":"ThFEZHPrS7yBtNB-7EkffQ","countIn":0,"devices":["ghcSAW49Tj-ihD-CktweaQ"],"type":"TRAFFIC","countOut":0,"timestamp":1585104716677}
+  def update_traffic(raw_json)
+    traffic = JSON.parse(raw_json, symbolize_names: true)
+    area_id = traffic[:areaId]
+    count_in = traffic[:countIn]
+    count_out = traffic[:countOut]
+
+    area_details = get_area_details(area_id)
+    if area_details
+      floor_id = area_details[:floor_id]
+      floor_mapping = @floor_mappings[floor_id] || floor_id
+      area_mapping = @area_mappings[area_id] || {}
+      area_id = area_mapping[:id] || area_id
+
+      # update the details
+      floor_areas = @floor_details[floor_mapping] || {}
+      floor_areas[area_id] = {
+        count_in: count_in,
+        count_out: count_out
+      }.merge(area_mapping)
+      @floor_details[floor_mapping] = floor_areas
+
+      self[floor_mapping] = floor_areas.dup
+    end
+
+    true
+  end
+
   # this data is posted to the subscription endpoint
   # we need to implement webhooks for this to work properly
   # {areaId: "", devices: [""], type: "", timestamp: 0, count: 0}
@@ -310,5 +346,7 @@ class PointGrab::CogniPoint
 
       self[floor_mapping] = floor_areas.dup
     end
+
+    true
   end
 end
