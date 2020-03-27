@@ -85,8 +85,8 @@ class Aca::O365BookingPanel
         msgraph_secret     = setting(:msgraph_secret)     || setting(:office_secret)
         msgraph_token_path = setting(:msgraph_token_path) || setting(:office_token_path) || "/oauth2/v2.0/token"
         msgraph_token_url  = setting(:msgraph_token_url)  || setting(:office_token_url)  || "/" + (setting(:msgraph_tenant) || setting(:office_tenant)) + msgraph_token_path
-        @room_mailbox = (setting(:msgraph_room) || system.email)
-        msgraph_https_proxy = setting(:msgraph_https_proxy)
+        @room_mailbox       = (setting(:msgraph_room) || setting(:office_room) || system.email)
+        msgraph_https_proxy = setting(:msgraph_https_proxy) || setting(:office_https_proxy)
 
         logger.debug "RBP>#{@room_mailbox}>INIT: Instantiating o365 Graph API client"
 
