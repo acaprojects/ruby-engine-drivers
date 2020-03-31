@@ -16,7 +16,8 @@ module Microsoft::Office2::Users
     # 
     # @param q [String] The query param which filters all users without a name or email matching this string
     # @param limit [String] The maximum number of users to return
-    def get_users(q: nil, limit: nil)
+    # @param include_guests [Bool] Whether or not to include Guest (external) users in the results
+    def get_users(q: nil, limit: nil, include_guests: false)
 
         # If we have a query and the query has at least one space
         if q && q.include?(" ")
@@ -38,6 +39,9 @@ module Microsoft::Office2::Users
 
         # If we have no query then still only grab enabled accounts
         filter_param = "accountEnabled eq true" if q.nil?
+
+        # userType is either "Member" or "Guest"
+        filter_param << " and (userType eq 'Member')" if !include_guests
 
         # Put our params together and make the request
         query_params = {
