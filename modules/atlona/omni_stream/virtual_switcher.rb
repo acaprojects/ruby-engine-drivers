@@ -20,9 +20,20 @@ class Atlona::OmniStream::VirtualSwitcher
         @routes ||= {}
         @encoder_name = setting(:encoder_name) || :Encoder
         @decoder_name = setting(:decoder_name) || :Decoder
+
+        # Support auto-switching we remember the last switch for any grouping
+        # of outputs and then auto-switch based on changes to the outputs
+        # {"outputs_2_2": { switch: map, monitor: [inp1, inp2], switch_video: true, ... }}
+        @auto_switch = {}
+        monitor_encoders
     end
 
-    def switch(map, switch_video: true, switch_audio: true, enable_override: nil)
+    # For introspection from backoffice
+    def auto_switch
+        @auto_switch
+    end
+
+    def switch(map, switch_video: true, switch_audio: true, enable_override: nil, priority_auto_switch: true, **ignore)
         inputs = get_encoders
         outputs = get_decoders
 
@@ -31,11 +42,14 @@ class Atlona::OmniStream::VirtualSwitcher
                 # Select the first input where there is a video signal
                 if inp.is_a?(Array)
                     selected = nil
-                    inp.each do |check_inp|
+                    monitor = []
+                    inp.each_with_index do |check_inp|
+                        # Get input details
                         check_inp = check_inp.to_s
                         input, session_index = inputs[check_inp]
                         next if input.nil?
 
+                        # Grab the latest session details
                         sessions = input[:sessions]
                         next unless sessions
                         encoder_name = sessions.dig(session_index, :video, :encoder)
@@ -46,6 +60,15 @@ class Atlona::OmniStream::VirtualSwitcher
                         video_ins = Array(input[:inputs]).select { |vin| vin[:name] == video_input }
                         next unless video_ins.length > 0
 
+                        monitor.push({
+                          input_no: check_inp, # virtual input number
+                          # Encoder_index
+                          device: self[:input_mappings][check_inp][:encoder],
+                          # Video input name
+                          video_input: video_input
+                        }) if priority_auto_switch
+
+                        # Check if a device is detected
                         if video_ins[0][:cabledetect]
                           selected = check_inp
                           break
@@ -53,12 +76,25 @@ class Atlona::OmniStream::VirtualSwitcher
                     end
 
                     if selected
-                      inp = selected
-                      logger.debug { "found active input on #{inp}" }
+                      logger.debug { "found active input on #{selected}" }
                     else
-                      inp = inp.last
-                      logger.debug { "no active input found, switching to #{inp}" }
+                      selected = inp.last
+                      logger.debug { "no active input found, switching to #{selected}" }
                     end
+
+                    if priority_auto_switch
+                      auto_switch_key = outs.map(&:to_s).join("_")
+                      @auto_switch[auto_switch_key] = {
+                        switch: map,
+                        switch_video: switch_video,
+                        switch_audio: switch_audio,
+                        enable_override: enable_override,
+                        # We only need to switch if a change occurs to one of these inputs
+                        monitor: monitor
+                      }
+                    end
+
+                    inp = selected
                 end
 
                 inp = inp.to_s
@@ -169,6 +205,72 @@ class Atlona::OmniStream::VirtualSwitcher
     end
 
     protected
+
+    def monitor_encoders
+      logger.debug { "monitoring encoder inputs" }
+
+      @subscriptions ||= []
+      @subscriptions.each { |ref| unsubscribe(ref) }
+      @subscriptions.clear
+
+      @cached_state = {}
+
+      encoder_name = @encoder_name
+      (0...system.count(encoder_name)).each do |index|
+        index += 1
+        encoder_id = "#{encoder_name}_#{index}"
+        @subscriptions << system.subscribe(encoder_name, index, :inputs) do |notify|
+          check_auto_switch(encoder_id, notify.value)
+        end
+      end
+    end
+
+    def check_auto_switch(encoder_id, inputs)
+      return if inputs.nil?
+
+      logger.debug { "checking for autoswitch changes on #{encoder_id}" }
+
+      # Extract the cable detect state
+      state = {}
+      Array(inputs).each do |input|
+        state[input[:name]] = input[:cabledetect]
+      end
+
+      # Check for changes
+      changed = []
+      state.each do |name, detected|
+        if @cached_state[name] != detected
+          @cached_state[name] = detected
+          changed << name
+        end
+      end
+
+      return unless changed
+
+      logger.debug { "detected autoswitch changes on #{encoder_id}" }
+
+      # See if there are any routes we should be auto-switching
+      do_switch = []
+      @auto_switch.each do |outputs, details|
+        monitoring = details[:monitor]
+        monitoring.each do |input|
+          check_encoder_id = input[:device]
+          next unless encoder_id == check_encoder_id
+          video_input_name = input[:video_input]
+          next unless changed.include?(video_input_name)
+
+          do_switch << details
+          break
+        end
+      end
+
+      logger.debug { "found #{do_switch.length} autoswitch actions" }
+
+      # Perform the auto-switching
+      do_switch.each do |details|
+        switch(details[:switch], **details)
+      end
+    end
 
     # Enumerate the devices that make up this virtual switcher
     def get_encoders

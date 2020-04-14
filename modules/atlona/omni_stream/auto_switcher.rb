@@ -31,12 +31,13 @@ class Atlona::OmniStream::AutoSwitcher
 
         # Bind to all the encoders for presence detection
         if @virtual_switcher != switcher || @auto_switch != auto_switch
+          @virtual_switcher = switcher
+
           if @auto_switch != auto_switch
               @auto_switch = auto_switch
               switch_all
           end
 
-          @virtual_switcher = switcher
           subscribe_virtual_inputs
         end
     end
@@ -80,7 +81,7 @@ class Atlona::OmniStream::AutoSwitcher
         return unless @enabled
 
         @auto_switch.each do |output, inputs|
-            system[@virtual_switcher].switch({ inputs => output })
+            system[@virtual_switcher].switch({ inputs => output }, priority_auto_switch: false)
         end
     end
 
@@ -139,7 +140,7 @@ class Atlona::OmniStream::AutoSwitcher
         if current_value != new_value
             logger.debug { "Switching #{auto_inputs} => #{auto_output} as detected change on encoder input #{checking_input}" }
             @last_known_state[checking_input] = new_value
-            system[@virtual_switcher].switch({ auto_inputs => auto_output })
+            system[@virtual_switcher].switch({ auto_inputs => auto_output }, priority_auto_switch: false)
         end
     end
 end
