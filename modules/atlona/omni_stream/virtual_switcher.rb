@@ -345,7 +345,7 @@ class Atlona::OmniStream::VirtualSwitcher
                     decoder_mapping[output.to_s] = mapping_details
 
                     mapping_details = {
-                        encoder: "#{@decoder_name}_#{index}",
+                        decoder: "#{@decoder_name}_#{index}",
                         output: num
                     }
                     info_mapping[output.to_s] = mapping_details
