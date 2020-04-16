@@ -33,30 +33,35 @@ class Qsc::AtlonaMonitor
     return unless routes
     check_keys = @stream_mappings.keys.map(&:to_s) & routes.keys.map(&:to_s)
     return if check_keys.empty?
+    check_keys = check_keys.map { |output| [output, (routes[output] || routes[output.to_i]).to_s] }
 
     # Get the decoder details
-    mappings = system[:Switcher][:output_mappings]
+    mappings = system[:Switcher][:input_mappings]
 
     # Obtain the current list of multicast addresses
     output_streams = {}
-    check_keys.each do |output|
-      details = mappings[output]
-
-      decoder = system[details[:decoder]]
-      if decoder.nil?
-        logger.warn "unable to find decoder #{details[:decoder].inspect} in system"
+    check_keys.each do |(output, input)|
+      if input == "0"
+        output_streams[output] = ""
         next
       end
-      output_index = details[:output] - 1
 
-      input_name = decoder[:outputs].dig(output_index, :video, :input)
-      if input_name.nil?
-        logger.warn "unable to find name of output #{output_index.inspect} -> video -> input in \n#{decoder[:outputs]}"
+      details = mappings[input]
+      if details.nil?
+        logger.warn "details for input #{input.inspect} not found for output #{output.inspect} in\n#{mappings}"
         next
       end
-      mcast_address = decoder[:ip_inputs].dig(input_name, :multicast, :address)
+
+      encoder = system[details[:encoder]]
+      if encoder.nil?
+        logger.warn "unable to find encoder #{details[:encoder].inspect} in system"
+        next
+      end
+
+      session_index = details[:session] - 1
+      mcast_address = encoder[:sessions].dig(session_index, :audio, :stream, :destination_address)
       if mcast_address.nil?
-        logger.warn "unable to find mcast_address of decoder input #{input_name.inspect} -> multicast -> address in \n#{decoder[:ip_inputs]}"
+        logger.warn "unable to find mcast_address in session #{session_index} -> audio -> stream -> destination_address in \n#{encoder[:sessions]}"
         next
       end
 
