@@ -47,7 +47,11 @@ class Atlona::OmniStream::AutoSwitcher
         if state != @enabled
           self[:enabled] = @enabled = state
           define_setting(:auto_switch_enabled, @enabled)
-          switch_all
+
+          if state
+            system[@virtual_switcher].clear_auto_switching
+            switch_all
+          end
         end
         nil
     end

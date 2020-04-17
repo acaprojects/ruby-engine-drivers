@@ -21,6 +21,11 @@ class Atlona::OmniStream::VirtualSwitcher
         @encoder_name = setting(:encoder_name) || :Encoder
         @decoder_name = setting(:decoder_name) || :Decoder
 
+        # Poll the encoders we want to auto-switch
+        schedule.clear
+        poll_every = setting(:auto_switch_poll_every) || '3s'
+        schedule.every(poll_every) { poll_inputs }
+
         # Support auto-switching we remember the last switch for any grouping
         # of outputs and then auto-switch based on changes to the outputs
         # {"outputs_2_2": { switch: map, monitor: [inp1, inp2], switch_video: true, ... }}
@@ -33,11 +38,16 @@ class Atlona::OmniStream::VirtualSwitcher
         @auto_switch
     end
 
+    def clear_auto_switching
+      @auto_switch = {}
+    end
+
     def switch(map, switch_video: true, switch_audio: true, enable_override: nil, priority_auto_switch: true, **ignore)
         inputs = get_encoders
         outputs = get_decoders
 
         map.each do |inp, outs|
+            outs = Array(outs)
             begin
                 # Select the first input where there is a video signal
                 if inp.is_a?(Array)
@@ -82,8 +92,8 @@ class Atlona::OmniStream::VirtualSwitcher
                       logger.debug { "no active input found, switching to #{selected}" }
                     end
 
+                    auto_switch_key = outs.map(&:to_s).join("_")
                     if priority_auto_switch
-                      auto_switch_key = outs.map(&:to_s).join("_")
                       @auto_switch[auto_switch_key] = {
                         switch: map,
                         switch_video: switch_video,
@@ -92,6 +102,8 @@ class Atlona::OmniStream::VirtualSwitcher
                         # We only need to switch if a change occurs to one of these inputs
                         monitor: monitor
                       }
+                    else
+                      @auto_switch.delete(auto_switch_key)
                     end
 
                     inp = selected
@@ -256,8 +268,10 @@ class Atlona::OmniStream::VirtualSwitcher
         monitoring.each do |input|
           check_encoder_id = input[:device]
           next unless encoder_id == check_encoder_id
-          video_input_name = input[:video_input]
-          next unless changed.include?(video_input_name)
+
+          # TODO:: fix this check - not really required though
+          # video_input_name = input[:video_input]
+          # next unless changed.include?(video_input_name) || changed.include?(video_input_name.to_s)
 
           do_switch << details
           break
@@ -362,5 +376,22 @@ class Atlona::OmniStream::VirtualSwitcher
 
         self[:output_mappings] = info_mapping
         decoder_mapping
+    end
+
+    def poll_inputs
+        encoders = []
+
+        @auto_switch.each_value do |inputs|
+            inputs[:monitor].each do |input|
+                encoders << input[:device]
+            end
+        end
+
+        encoders.uniq!
+        encoders.each do |encoder|
+          system[encoder].hdmi_input
+        end
+
+        nil
     end
 end
