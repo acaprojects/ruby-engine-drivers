@@ -28,6 +28,17 @@ class Qsc::AtlonaMonitor
     check_changes(routes)
   end
 
+  def unroute_audio
+    qsc = system[:Mixer]
+    logger.debug { "unrouting all audio" }
+    @stream_mappings.each_value do |details|
+      qsc.component_set(details[:component], {
+        Name: details[:control],
+        Value: ""
+      })
+    end
+  end
+
   # Update QSC with any stream changes
   def check_changes(routes)
     return unless routes
