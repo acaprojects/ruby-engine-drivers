@@ -44,9 +44,14 @@ class Pressac::Sensors::WsProtocol
     def on_update
         status = setting(:status) || {}
 
+        # Human readable tree of { gateway: {sensor: {data}} } 
         @gateways = status[:gateways] || {}
         self[:gateways] = @gateways.dup
-        
+
+        # Flat hash of {sensor: {data}}
+        @sensors = status[:sensors] || {}
+        self[:sensors] = status[:sensors].dup || {}
+
         @last_update = status[:last_update] || "Never"
         self[:last_update] = @last_update.dup
 
@@ -69,17 +74,28 @@ class Pressac::Sensors::WsProtocol
 
     def mock(sensor, occupied)
         gateway = which_gateway(sensor)
-        @gateways[gateway][sensor] = self[gateway] = {
-            id:        'mock_data',
-            name:      sensor,
-            motion:    occupied,
-            voltage:   '3.0',
-            location:  nil,
-            timestamp: Time.now.to_s,
-            gateway:   gateway
-        }
-
+        mock_data = self[:sensors][sensor]&.dup || 
+            {
+                id:        'mock_data',
+                name:      sensor,
+                voltage:   '3.0',
+                location:  nil,
+                gateway:   gateway
+            }
+        mock_data[:motion]            = occupied
+        mock_data[:timestamp]         = Time.now.to_s
+        mock_data[:last_update]       = Time.now.in_time_zone($TZ).to_s
+        mock_data[:last_update_epoch] = Time.now.to_i
+        if occupied
+            mock_data[:became_free] = nil
+            mock_data[:became_busy] ||= Time.now.to_i
+        else
+            mock_data[:became_free] ||= Time.now.to_i
+            mock_data[:became_busy] = nil
+        end
+        @gateways[gateway][sensor] = self[gateway] = @sensors[sensor] = mock_data
         self[:gateways] = @gateways.deep_dup
+        self[:sensors]  = @sensors.deep_dup
     end
 
     def which_gateway(sensor)
@@ -98,10 +114,12 @@ class Pressac::Sensors::WsProtocol
             end
         end
         self[:stale] = @stale
+        signal_status(:stale)    
         # Save the current status to database, so that it can retrieved when engine restarts
         status = {
             last_update: self[:last_update],
             gateways:    @gateways,
+            sensors:     self[:sensors],
             stale:       @stale
         }
         define_setting(:status, status)
@@ -158,8 +176,18 @@ class Pressac::Sensors::WsProtocol
                 last_update_epoch: Time.now.to_i,
                 gateway:   gateway
             }
-            self[gateway]   = @gateways[gateway][sensor_name].dup
-            self[:gateways] = @gateways.deep_dup
+            # If the occupancy state CHANGED, store this time. So that downstream can calculate the LENGTH of time that the sensor has just been free/busy for
+            if occupancy
+                @gateways[gateway][sensor_name][:became_free] = nil
+                @gateways[gateway][sensor_name][:became_busy] ||= Time.now.to_i
+            else
+                @gateways[gateway][sensor_name][:became_free] ||= Time.now.to_i
+                @gateways[gateway][sensor_name][:became_busy] = nil
+            end
+
+            self[gateway]   = @gateways[gateway][sensor_name].dup               # this status var is used to stream notifications to the Pressac Desk Management driver, for map status updates
+            self[:sensors][sensor_name] = @gateways[gateway][sensor_name].dup   # this status var is used by Pressac booking canceller for quick sensor status lookup
+            self[:gateways] = @gateways.deep_dup                                # this status var is for humans to conveniently view a tree of sensors, grouped by their gateway
             if @stale[sensor_name]
                 @stale.except!(sensor_name)
                 self[:stale] = @stale.deep_dup
@@ -181,6 +209,7 @@ class Pressac::Sensors::WsProtocol
         status = {
             last_update: self[:last_update],
             gateways:    @gateways.deep_dup,
+            sensors:     self[:sensors],
             stale:       self[:stale]
         }
         define_setting(:status, status)
