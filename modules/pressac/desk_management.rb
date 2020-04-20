@@ -29,7 +29,13 @@ class ::Pressac::DeskManagement
                 "delay_until_shown_as_busy": "5m",
                 "delay_until_shown_as_free": "1h"
             }
- 	]
+ 	    ],
+        ignore_sensors: [
+            {
+                "name": "Example Meeting Rooms",
+                "regex_match": "^Example[0-9]$"
+            }
+        ]
     })
 
     def on_load
@@ -51,6 +57,7 @@ class ::Pressac::DeskManagement
         @zones    = setting('zone_to_gateway_mappings') || {}
         @desk_ids = setting('sensor_name_to_desk_mappings') || {}
         @stale_status  = setting('stale_shown_as')&.downcase&.to_sym || :blank
+        @ignore_sensors = setting('ignore_sensors')&.map { |d| d[:regex_match] } || []
         @custom_delays = setting('custom_delays')&.map {|d| 
                             {
                                 regex_match: d[:regex_match],
@@ -75,6 +82,7 @@ class ::Pressac::DeskManagement
             self[zone_id+':occupied_count'] = self[zone_id]&.count || 0
             self[zone_id+':free_count']     = self[zone_id+':desk_count'] - self[zone_id+':occupied_count']
         end
+        self[:ignored] = []
 
         # Create a reverse lookup (gateway => zone)
         @which_zone = {}
@@ -127,6 +135,11 @@ class ::Pressac::DeskManagement
         desk = notification.value
         desk_name = id([desk[:name].to_sym])&.first
 
+        if ignore_sensor?(desk_name)
+            self[:ignored] << desk_name
+            return
+        end
+
 	    zone = @which_zone[desk[:gateway].to_s]
         logger.debug "PRESSAC > DESK > LOGIC: Updating #{desk_name} in #{zone}"
         return unless zone
@@ -144,15 +157,19 @@ class ::Pressac::DeskManagement
         self[:pending_free] = @pending_free
     end
 
-    def delay_of(desk_id)
+    def delay_of(desk_name)
         @custom_delays.each do |setting|
             #regex = Regexp.new([:regex_match])
-            if desk_id.match?(setting[:regex_match])
-                logger.debug "PRESSAC > DESK > LOGIC: Regex MATCHED #{desk_id} to #{setting[:regex_match]}"
+            if desk_name.match?(setting[:regex_match])
+                logger.debug "PRESSAC > DESK > LOGIC: Regex MATCHED #{desk_name} to #{setting[:regex_match]}"
                 return {busy: setting[:busy_delay], free: setting[:free_delay]} 
             end
         end
         return {busy: @default_busy_delay, free: @default_free_delay}
+    end
+
+    def ignore_sensor?(desk_name)
+        @ignore_sensors.any? { |regex| desk_name.match?(regex) }
     end
 
     def determine_desk_status
