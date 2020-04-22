@@ -333,6 +333,29 @@ class Gallagher::Rest
         results.empty?
     end
 
+    ##
+    # Disable a card for a certain cardholder
+    def disable_card(cardholder_href:, card_href:)
+        patch_params = {
+            authorised: true,
+            cards: {
+                update: [{
+                    href: card_href,
+                    status: {
+                        value: @default_disabled_state || "Disabled (manually)"
+                    }
+                }]
+            }
+        }
+        req =  @endpoint.patch(path: cardholder_href, headers: @default_headers, body: patch_params.to_json)
+        response = req.value
+        if [200,201, 204].include?(response.status)
+            return 204
+        else
+            return response.body
+        end
+    end
+
 
     ##
     # Retrieves events from Gallagher
