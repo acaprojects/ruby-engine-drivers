@@ -40,6 +40,11 @@ class Atlona::OmniStream::VirtualSwitcher
 
     def clear_auto_switching
       @auto_switch = {}
+      self[:routes] = {}
+    end
+
+    def clear_routes
+      @routes = {}
     end
 
     def switch(map, switch_video: true, switch_audio: true, enable_override: nil, priority_auto_switch: true, **ignore)
@@ -155,9 +160,9 @@ class Atlona::OmniStream::VirtualSwitcher
                     end
                 end
 
-                Array(outs).each do |out|
+                Array(outs).map(&:to_s).each do |out|
                     @routes[out] = inp
-                    output, index = outputs[out.to_s]
+                    output, index = outputs[out]
 
                     if output.nil?
                         logger.warn "output #{out} not found switching #{inp} => #{outs}"

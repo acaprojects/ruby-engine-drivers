@@ -44,7 +44,7 @@ class Qsc::AtlonaMonitor
     return unless routes
     check_keys = @stream_mappings.keys.map(&:to_s) & routes.keys.map(&:to_s)
     return if check_keys.empty?
-    check_keys = check_keys.map { |output| [output, (routes[output] || routes[output.to_i]).to_s] }
+    check_keys = check_keys.map { |output| [output, routes[output]] }
 
     # Get the decoder details
     mappings = system[:Switcher][:input_mappings]
@@ -52,7 +52,7 @@ class Qsc::AtlonaMonitor
     # Obtain the current list of multicast addresses
     output_streams = {}
     check_keys.each do |(output, input)|
-      if input == "0"
+      if ["0", ""].include?(input)
         output_streams[output] = ""
         next
       end
