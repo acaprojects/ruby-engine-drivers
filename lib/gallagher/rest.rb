@@ -54,7 +54,7 @@ class Gallagher::Rest
             @pdfs_endpoint = response['features']['personalDataFields']['personalDataFields']['href']
             pdf_response = JSON.parse(@endpoint.get(path: @pdfs_endpoint, headers: @default_headers, query: { name: unique_pdf_name }).value.body)
         else
-            @pdfs_endpoint = response['features']['item']['item']['href']
+            @pdfs_endpoint = response['features']['items']['items']['href']
             pdf_response = JSON.parse(@endpoint.get(path: @pdfs_endpoint, headers: @default_headers, query: { name: unique_pdf_name, type: 33 }).value.body)
         end
         @fixed_pdf_id = pdf_response['results'][0]['id'] # There should only be one result
