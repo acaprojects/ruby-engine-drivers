@@ -43,14 +43,20 @@ class Gallagher::Rest
         # Get the main data endpoint to determine our new endpoints
         response = JSON.parse(@endpoint.get(path: data_endpoint, headers: @default_headers).value.body)
 
+        @api_version = response['version'].to_f
         @cardholders_endpoint = response['features']['cardholders']['cardholders']['href']
-        @pdfs_endpoint = response['features']['personalDataFields']['personalDataFields']['href']
         @access_groups_endpoint = response['features']['accessGroups']['accessGroups']['href']
         @card_types_endpoint = response['features']['cardTypes']['assign']['href']
         @events_endpoint = response['features']['events']['events']['href']
 
         # Now get our cardholder PDF ID so we don't have to make the request over and over
-        pdf_response = JSON.parse(@endpoint.get(path: @pdfs_endpoint, headers: @default_headers, query: { name: unique_pdf_name }).value.body)
+        if @api_version >= 8.10
+            @pdfs_endpoint = response['features']['personalDataFields']['personalDataFields']['href']
+            pdf_response = JSON.parse(@endpoint.get(path: @pdfs_endpoint, headers: @default_headers, query: { name: unique_pdf_name }).value.body)
+        else
+            @pdfs_endpoint = response['features']['item']['item']['href']
+            pdf_response = JSON.parse(@endpoint.get(path: @pdfs_endpoint, headers: @default_headers, query: { name: unique_pdf_name, type: 33 }).value.body)
+        end
         @fixed_pdf_id = pdf_response['results'][0]['id'] # There should only be one result
     end
 
