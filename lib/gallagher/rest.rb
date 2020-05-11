@@ -46,14 +46,15 @@ class Gallagher::Rest
         @api_version = Gem::Version.new(response['version'])
         @cardholders_endpoint = response['features']['cardholders']['cardholders']['href']
         @access_groups_endpoint = response['features']['accessGroups']['accessGroups']['href']
-        @card_types_endpoint = response['features']['cardTypes']['assign']['href']
         @events_endpoint = response['features']['events']['events']['href']
 
         # Now get our cardholder PDF ID so we don't have to make the request over and over
         if @api_version >= Gem::Version.new('8.10')
+            @card_types_endpoint = response['features']['cardTypes']['assign']['href']
             @pdfs_endpoint = response['features']['personalDataFields']['personalDataFields']['href']
             pdf_response = JSON.parse(@endpoint.get(path: @pdfs_endpoint, headers: @default_headers, query: { name: unique_pdf_name }).value.body)
         else
+            @card_types_endpoint = response['features']['cardTypes']['cardTypes']['href']
             @pdfs_endpoint = response['features']['items']['items']['href']
             pdf_response = JSON.parse(@endpoint.get(path: @pdfs_endpoint, headers: @default_headers, query: { name: unique_pdf_name, type: 33 }).value.body)
         end
