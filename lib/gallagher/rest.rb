@@ -43,14 +43,14 @@ class Gallagher::Rest
         # Get the main data endpoint to determine our new endpoints
         response = JSON.parse(@endpoint.get(path: data_endpoint, headers: @default_headers).value.body)
 
-        @api_version = response['version'].to_f
+        @api_version = Gem::Version.new(response['version'])
         @cardholders_endpoint = response['features']['cardholders']['cardholders']['href']
         @access_groups_endpoint = response['features']['accessGroups']['accessGroups']['href']
         @card_types_endpoint = response['features']['cardTypes']['assign']['href']
         @events_endpoint = response['features']['events']['events']['href']
 
         # Now get our cardholder PDF ID so we don't have to make the request over and over
-        if @api_version >= 8.10
+        if @api_version >= Gem::Version.new('8.10')
             @pdfs_endpoint = response['features']['personalDataFields']['personalDataFields']['href']
             pdf_response = JSON.parse(@endpoint.get(path: @pdfs_endpoint, headers: @default_headers, query: { name: unique_pdf_name }).value.body)
         else
