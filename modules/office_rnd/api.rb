@@ -349,7 +349,15 @@ class OfficeRnd::API
     resources("MeetingRoom", office_id, available_from, available_to)
   end
 
-  def desks(
+  def day_desks(
+    available_from = nil, # Time
+    available_to = nil,
+    office_id: nil
+  )
+    resources("DedicatedDesks", office_id, available_from, available_to)
+  end
+
+  def hot_desks(
     available_from = nil, # Time
     available_to = nil,
     office_id: nil

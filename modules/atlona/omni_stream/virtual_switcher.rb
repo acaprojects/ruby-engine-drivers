@@ -161,7 +161,7 @@ class Atlona::OmniStream::VirtualSwitcher
                 end
 
                 Array(outs).map(&:to_s).each do |out|
-                    @routes[out] = inp
+                    @routes[out] = inp.to_s
                     output, index = outputs[out]
 
                     if output.nil?

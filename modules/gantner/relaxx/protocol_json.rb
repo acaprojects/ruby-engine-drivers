@@ -24,6 +24,9 @@ class Gantner::Relaxx::ProtocolJSON
     @password = "GAT"
     @locker_ids = Set.new
     @lockers_in_use = Set.new
+
+    config(size_limit: 10.megabytes)
+
     on_update
   end
 
@@ -182,12 +185,13 @@ class Gantner::Relaxx::ProtocolJSON
     decipher.iv = "#{password}#{"\x00" * (16 - password.bytesize)}"
 
     plain = decipher.update(Base64.decode64(authentication_string)) + decipher.final
-    decrypted = plain.force_encoding(Encoding::UTF_16LE)
+    decrypted = plain.force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8)
 
     send_frame({
       Caption: "AuthenticationRequestB",
       Id: new_request_id,
-      AuthenticationString: decrypted
+      # lol now you're just taking the piss
+      AuthenticationString: decrypted.to_i
     }, priority: 9999)
   end
 

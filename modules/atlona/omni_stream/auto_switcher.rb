@@ -71,7 +71,8 @@ class Atlona::OmniStream::AutoSwitcher
                 input_details = input_mappings[input]
                 next unless input_details
 
-                encoders << input_details[:encoder]
+                encoder = input_details[:encoder]
+                encoders << encoder if encoder
             end
         end
 

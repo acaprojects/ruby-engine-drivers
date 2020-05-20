@@ -73,13 +73,23 @@ class OfficeRnd::Bookings
     officernd = system[:OfficeRnD]
     officernd.resource_bookings(@resource_id).then do |bookings|
       self[:today] = bookings.map do |booking|
-        staff_details = officernd.staff_details(booking[:member]).value
+
+        staff_details = if booking[:member]
+          officernd.staff_details(booking[:member]).value
+        else
+          {
+            name: "Unknown",
+            email: "unknown@admin.com"
+          }
+        end
+
         {
           id: booking[:bookingId],
           Start: booking[:start][:dateTime],
           End: booking[:end][:dateTime],
           Subject: booking[:summary],
           owner: staff_details[:name],
+          owner_email: staff_details[:email],
           setup: 0,
           breakdown: 0,
           start_epoch: Time.parse(booking[:start][:dateTime]).to_i,
@@ -93,16 +103,22 @@ class OfficeRnd::Bookings
 
   def check_room_usage
     now = Time.now.to_i
-    current_booking = false
+    current_booking = nil
 
     bookings = self[:today] || []
     bookings.each do |booking|
       if now < booking[:end_epoch] && now > booking[:start_epoch]
-        current_booking = true
+        current_booking = booking
         break
       end
     end
 
-    self[:room_in_use] = current_booking
+    if current_booking
+      self[:owner_email] = current_booking[:owner_email]
+      self[:room_in_use] = true
+    else
+      self[:owner_email] = nil
+      self[:room_in_use] = false
+    end
   end
 end
