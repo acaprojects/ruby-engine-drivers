@@ -415,10 +415,32 @@ class Gallagher::Rest
         end
         req =  @endpoint.patch(path: cardholder_href, headers: @default_headers, body: patch_params.to_json)
         response = req.value
-        if [200,201, 204].include?(response.status)
-            return 204
+        process_response({response.status => response.body})
+    end
+
+    def process_response(response)
+        case response.status
+        when 200..206
+            return result
+        when 400
+            case response.body.message
+            when "Another cardholder already has a card number 2 with the same facility code."
+                raise CardNumberInUse.new(response.body)
+            when "Card number is out of range for this Card Type."
+                raise CardNumberOutOfRange.new(response.body)
+            end
+        when 409
+            raise Conflict.new
         else
-            return response.body
+            puts "\nERROR > Gallagher response is #{response.status}: #{response.body}\n"
+            raise StandardError.new(response.body)
         end
-    end 
+
+    end
+
+    class ErrorAccessDenied          < StandardError; end
+    class InvalidAuthenticationToken < StandardError; end
+    class Conflict                   < StandardError; end
+    class CardNumberOutOfRange       < StandardError; end
+    class CardNumberInUse            < StandardError; end
 end
