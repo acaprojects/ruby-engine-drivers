@@ -170,6 +170,11 @@ class Gallagher::Rest
         JSON.parse(@endpoint.get(path: @card_types_endpoint, headers: @default_headers).value.body)
     end
 
+    def get_cardtype_max_number()
+        response = JSON.parse(@endpoint.get(path: @card_types_endpoint, query: {fields: 'maximumNumber'}, headers: @default_headers).value.body)
+        response['maximumNumber']&.to_i
+    end
+
     ##
     # Create a new cardholder.
     # @param first_name [String] The first name of the new cardholder. Either this or last name is required (but we should assume both are for most instances).
