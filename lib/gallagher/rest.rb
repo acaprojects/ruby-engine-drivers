@@ -171,7 +171,7 @@ class Gallagher::Rest
     end
 
     def get_cardtype_max_number()
-        response = JSON.parse(@endpoint.get(path: @card_types_endpoint, query: {fields: 'maximumNumber'}, headers: @default_headers).value.body)
+        response = JSON.parse(@endpoint.get(path: @default_card_type, query: {fields: 'maximumNumber'}, headers: @default_headers).value.body)
         response['maximumNumber']&.to_i
     end
 
@@ -414,16 +414,15 @@ class Gallagher::Rest
             patch_params[param.to_s.camelize(:lower)] = { type => value } if value
         end
         req =  @endpoint.patch(path: cardholder_href, headers: @default_headers, body: patch_params.to_json)
-        response = req.value
-        process_response({response.status => response.body})
+        process_response(req.value)
     end
 
     def process_response(response)
-        case response.status
+        case response.code
         when 200..206
-            return result
+            return response
         when 400
-            case response.body.message
+            case response.body[:message]
             when "Another cardholder already has a card number 2 with the same facility code."
                 raise CardNumberInUse.new(response.body)
             when "Card number is out of range for this Card Type."
