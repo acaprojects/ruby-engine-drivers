@@ -418,14 +418,14 @@ class Gallagher::Rest
     end
 
     def process_response(response)
-        case response.code
+        case response.status
         when 200..206
             return response
         when 400
-            case response.body[:message]
-            when "Another cardholder already has a card number 2 with the same facility code."
+            case response.body['code']
+            when -1056964457    # "Another cardholder already has a card number 2 with the same facility code."
                 raise CardNumberInUse.new(response.body)
-            when "Card number is out of range for this Card Type."
+            when -1056964272    # "Card number is out of range for this Card Type."
                 raise CardNumberOutOfRange.new(response.body)
             end
         when 409
