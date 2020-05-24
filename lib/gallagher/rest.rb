@@ -355,12 +355,7 @@ class Gallagher::Rest
             }
         }
         req =  @endpoint.patch(path: cardholder_href, headers: @default_headers, body: patch_params.to_json)
-        response = req.value
-        if [200,201, 204].include?(response.status)
-            return 204
-        else
-            return response.body
-        end
+        process_response(req.value)
     end
 
     # Delete a specific card, given it's href
@@ -420,8 +415,10 @@ class Gallagher::Rest
 
     def process_response(response)
         case response.status
+        when 201
+            return response.headers['Location'] # URI of newly created object will be in Location header. Annoyingly, body is blank
         when 200..206
-            return response
+            return response.body
         when 400
             case response.body['code']
             when -1056964457    # "Another cardholder already has a card number 2 with the same facility code."
@@ -441,7 +438,7 @@ class Gallagher::Rest
 
     class ErrorAccessDenied          < StandardError; end
     class InvalidAuthenticationToken < StandardError; end
-    class CardNumberInUse            < StandardError; end
+    class Conflict                   < StandardError; end
     class NotFound                   < StandardError; end
     class CardNumberOutOfRange       < StandardError; end
     class CardNumberInUse            < StandardError; end
