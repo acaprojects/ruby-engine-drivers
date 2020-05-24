@@ -227,12 +227,7 @@ class Gallagher::Rest
 
         # Create our cardholder and return the response
         response = @endpoint.post(path: @cardholders_endpoint, headers: @default_headers, body: create_params.to_json).value
-
-        if [200,201].include?(response.status)
-            return 201
-        else
-            return response.body
-        end
+        process_response(response)
     end
 
     ##
