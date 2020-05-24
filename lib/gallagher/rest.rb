@@ -416,7 +416,8 @@ class Gallagher::Rest
     def process_response(response)
         case response.status
         when 201
-            return response.headers['Location'] # URI of newly created object will be in Location header. Annoyingly, body is blank
+            puts "INFO  > Gallagher CREATED #{response.status}: #{response['Location']}"
+            return response['Location'] # URI of newly created object will be in Location header. Annoyingly, body is blank
         when 200..206
             return response.body
         when 400
@@ -431,7 +432,7 @@ class Gallagher::Rest
         when 409
             raise Conflict.new
         else
-            puts "\nERROR > Gallagher response is #{response.status}: #{response.body}\n"
+            puts "ERROR > Gallagher returns #{response.status}: #{response.body}"
             raise StandardError.new(response.body)
         end
     end
