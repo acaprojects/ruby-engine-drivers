@@ -368,6 +368,12 @@ class Gallagher::Rest
         end
     end
 
+    # Delete a specific card, given it's href
+    def delete_card(card_href:)
+        req =  @endpoint.delete(path: card_href, headers: @default_headers)
+        process_response(req.value)
+    end
+
 
     ##
     # Retrieves events from Gallagher
@@ -428,18 +434,20 @@ class Gallagher::Rest
             when -1056964272    # "Card number is out of range for this Card Type."
                 raise CardNumberOutOfRange.new(response.body)
             end
+        when 404
+            raise NotFound.new
         when 409
             raise Conflict.new
         else
             puts "\nERROR > Gallagher response is #{response.status}: #{response.body}\n"
             raise StandardError.new(response.body)
         end
-
     end
 
     class ErrorAccessDenied          < StandardError; end
     class InvalidAuthenticationToken < StandardError; end
-    class Conflict                   < StandardError; end
+    class CardNumberInUse            < StandardError; end
+    class NotFound                   < StandardError; end
     class CardNumberOutOfRange       < StandardError; end
     class CardNumberInUse            < StandardError; end
 end
