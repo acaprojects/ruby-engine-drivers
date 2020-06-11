@@ -31,7 +31,8 @@ module Cisco::TelePresence::SxCameraCommon
     def on_update
         @presets = setting(:presets) || {}
         self[:presets] = @presets.keys
-        self[:zoom_max] = 11800
+        self[:zoom_max] = setting(:zoom_max) || 11800
+        self[:zoom_min] = setting(:zoom_min) || 0
 
         @index = setting(:camera_index) || 1
         self[:camera_index] = @index
@@ -325,7 +326,15 @@ module Cisco::TelePresence::SxCameraCommon
             case type
             when :position
                 # Tilt: Pan: Zoom: etc so we massage to our desired status variables
-                self[result[5].downcase.gsub(':', '').to_sym] = result[-1].to_i
+                pos_name = result[5].downcase.gsub(':', '').to_sym
+                value = result[-1].to_i
+
+                case pos_name
+                when :zoom
+                  self[pos_name] = self[:zoom_max] - value
+                else
+                  self[pos_name] = value
+                end
             when :connected
                 self[:connected] = result[-1].downcase == 'true'
             when :model
