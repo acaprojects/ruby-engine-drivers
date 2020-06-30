@@ -84,8 +84,16 @@ module Microsoft::Office2::Events
 
             # Make the request, check the repsonse then parse it
             bulk_response = graph_request(request_method: 'get', endpoints: endpoints, query: query, bulk: true)
-            check_response(bulk_response)
+            check_response(bulk_response)  
+            
+            t1 = Time.now
             parsed_response = JSON.parse(bulk_response.body)['responses']
+            t2 = Time.now
+            parsed_response = Yajl::Parser.parse(bulk_response.body)['responses']
+            t3 = Time.now
+            STDERR.puts "~~~~~< SIMPLE PARSE TIMING TEST >~~~~~~~~~~~~~~~~"
+            STDERR.puts "JSON PARSE TOOK #{(t2-t1)*1000.0} ms"
+            STDERR.puts "YAJL PARSE TOOK #{(t3-t2)*1000.0} ms"
 
             # Ensure that we reaggregate the bulk requests correctly
             parsed_response.each do |res|
