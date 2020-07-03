@@ -33,6 +33,7 @@ class Pexip::Management
         @username = setting(:username)
         @password = setting(:password)
         @default_theme = setting(:default_theme)
+        @default_theme_name = setting(:default_theme_name)
 
         proxy = setting(:proxy)
         if proxy
@@ -56,6 +57,7 @@ class Pexip::Management
 
         # {"id": 1, "name": "Pexip theme (English_US) with entry tones", "uuid": "defaultplustones"}
         options[:ivr_theme] ||= @default_theme if @default_theme
+        options[:ivr_theme_name] ||= @default_theme_name if @default_theme_name
 
         post('/api/admin/configuration/v1/conference/', body: {
             name: name.to_s,
