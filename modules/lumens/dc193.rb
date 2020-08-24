@@ -49,7 +49,7 @@ class Lumens::DC193
     end
   end
 
-  def power(state : Bool)
+  def power(state)
     state = state ? 0x01 : 0x00
     send [0xA0, 0xB0, state, 0x00, 0x00, 0xAF], name: :power
     power?
@@ -158,24 +158,21 @@ class Lumens::DC193
     0x10 => :zoom_stop,
   }
 
-  PICTURE_MODES = {:photo, :test, :greyscale}
+  PICTURE_MODES = [:photo, :test, :greyscale]
 
   def received(data, reesolve, command)
-    logger.debug { "Lumens sent: #{byte_to_hex data}" }
+    logger.debug { "DC193 sent: #{byte_to_hex data}" }
     data = str_to_array(data)
 
-    error = (data[4] & 0x01) > 0
-    ignored = (data[4] & 0x02) > 0
-
-    return :abort if error
-    return :retry if ignored
+    return :abort if (data[4] & 0x01) > 0
+    return :retry if (data[4] & 0x02) > 0
 
     case COMMANDS[data[1]]
     when :power
       data[2] == 0x01
     when :power_staus
-      @ready == data[2] == 0x01
-      @power == data[3] == 0x01
+      @ready = data[2] == 0x01
+      @power = data[3] == 0x01
       logger.debug { "System power: #{@power}, ready: #{@ready}" }
       self[:ready] = @ready
       self[:power] = @power
