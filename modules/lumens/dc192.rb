@@ -1,243 +1,344 @@
 module Lumens; end
 
-# Documentation: https://aca.im/driver_docs/Lumens/DC193-Protocol.pdf
-# RS232 controlled device
+# Documentation: https://aca.im/driver_docs/Lumens/DC192%20Protocol.pdf
 
 class Lumens::Dc192
-  include ::Orchestrator::Constants
-  include ::Orchestrator::Transcoder
+       include ::Orchestrator::Constants
+    include ::Orchestrator::Transcoder
 
-  # Discovery Information
-  implements :device
-  descriptive_name "Lumens DC 193 Document Camera"
-  generic_name :Visualiser
 
-  tokenize delimiter: "\xAF", indicator: "\xA0"
-  delay between_sends: 100
+    # Discovery Information
+    implements :device
+    descriptive_name 'Lumens Visualiser DC192'
+    generic_name :Visualiser
 
-  def on_load
-    self[:zoom_max] = 864
-		self[:zoom_min] = 0
+    # Communication settings
+    tokenize delimiter: "\xAF", indicator: "\xA0"
+    delay between_sends: 300
+    wait_response retries: 8
 
-    @ready = true
-    @power = false
-    @zoom_max = 864
-    @lamp = false
-    @head_led = false
-    @frozen = false
-    @zoom_range = 0..@zoom_max
-  end
 
-  def connected
-    schedule.every('50s') { query_status }
-    query_status
-  end
+       def on_load
+              self[:zoom_max] = 855
+              self[:zoom_min] = 0
+       end
 
-  def disconnected
-    schedule.clear
-  end
+       def on_unload
+       end
 
-  def query_status
-    # Responses are JSON encoded
-    power?.value
-    if self[:power]
-      lamp?
-      zoom?
-      frozen?
-      max_zoom?
-      picture_mode?
-    end
-  end
+       def on_update
+       end
 
-  def power(state)
-    state = state ? 0x01 : 0x00
-    send [0xA0, 0xB0, state, 0x00, 0x00, 0xAF], name: :power
-    power?
-  end
 
-  def power?
-    # item 58 call system status
-    send [0xA0, 0xB7, 0x00, 0x00, 0x00, 0xAF], priority: 0
-  end
 
-  def lamp(state, head_led = false)
-    return if @frozen
+       def connected
+              do_poll
+              schedule.every('60s') do
+                     logger.debug "-- Polling Lumens DC Series Visualiser"
+                     do_poll
+              end
+       end
 
-    lamps = if state && head_led
-              1
-            elsif state
-              2
-            elsif head_led
-              3
-            else
-              0
-            end
+       def disconnected
+              schedule.clear
+       end
 
-    send [0xA0, 0xC1, lamps, 0x00, 0x00, 0xAF], name: :lamp
-  end
 
-  def lamp?
-    send [0xA0, 0x50, 0x00, 0x00, 0x00, 0xAF], priority: 0
-  end
 
-  def zoom_to(position, auto_focus = true)
-    return if @frozen
 
-    position = (position < 0 ? 0 : @zoom_max) unless @zoom_range.include?(position)
-    low = (position & 0xFF)
-    high = ((position >> 8) & 0xFF)
-    auto_focus = auto_focus ? 0x1F : 0x13
-    send [0xA0, auto_focus, low, high, 0x00, 0xAF], name: :zoom_to
-  end
+       COMMANDS = {
+              :zoom_stop => 0x10,              # p1 = 0x00
+              :zoom_start => 0x11,       # p1 (00/01:Tele/Wide)
+              :zoom_direct => 0x13,       # p1-LowByte, p2 highbyte (0~620)
+              :lamp => 0xC1,                     # p1 (00/01:Off/On)
+              :power => 0xB1,                     # p1 (00/01:Off/On)
+              :sharp => 0xA7,              # p1 (00/01/02:Photo/Text/Gray) only photo or text
+              :auto_focus => 0xA3,       # p1 = 0x01
+              :frozen => 0x2C,              # p1 (00/01:Off/On)
 
-  def zoom(direction)
-    return if @frozen
+              0x10 => :zoom_stop,
+              0x11 => :zoom_start,
+              0x13 => :zoom_direct,
+              0xC1 => :lamp,
+              0xB1 => :power,
+              0xA7 => :sharp,
+              0xA3 => :auto_focus,
+              0x2C => :frozen,
 
-    case direction.to_s.downcase
-    when "stop"
-      send [0xA0, 0x10, 0x00, 0x00, 0x00, 0xAF], name: :stop_zoom
-      # Ensures this request is at the normal priority and ordering is preserved
-      zoom?(priority: 50)
-      # This prevents the auto-focus if someone starts zooming again
-      auto_focus(name: :zoom)
-    when "in"
-      send [0xA0, 0x11, 0x00, 0x00, 0x00, 0xAF], name: :zoom
-    when "out"
-      send [0xA0, 0x11, 0x01, 0x00, 0x00, 0xAF], name: :zoom
-    end
-  end
+              # Status response codes:
+              0x78 => :frozen,
+              0x51 => :sharp,
+              0x50 => :lamp,
+              0x60 => :zoom_direct,
+              0xB7 => :system_status
+       }
 
-  def zoom_in
-    zoom("in")
-  end
 
-  def zoom_out
-    zoom("out")
-  end
+       def power(state)
+              state = is_affirmative?(state)
+              self[:power_target] = state
+              power? do
+                     if state && !self[:power]              # Request to power on if off
+                            do_send([COMMANDS[:power], 0x01], :timeout => 15000, :delay_on_receive => 5000, :name => :power)
 
-  def zoom_stop
-    zoom("stop")
-  end
+                     elsif !state && self[:power]       # Request to power off if on
+                            do_send([COMMANDS[:power], 0x00], :timeout => 15000, :delay_on_receive => 5000, :name => :power)
+                            self[:frozen] = false
+                     end
+              end
+       end
 
-  def auto_focus(name = :auto_focus)
-    return if @frozen
-    send [0xA0, 0xA3, 0x01, 0x00, 0x00, 0xAF], name: name
-  end
+       def power?(options = {}, &block)
+              options[:emit] = block
+              do_send(STATUS_CODE[:system_status], options)
+       end
 
-  def zoom?(priority = 0)
-    send [0xA0, 0x60, 0x00, 0x00, 0x00, 0xAF], priority: priority
-  end
+       def zoom_in
+              return if self[:frozen]
+              cancel_focus
+              do_send(COMMANDS[:zoom_start])
+       end
 
-  def freeze(state)
-    state = state ? 1 : 0
-    send [0xA0, 0x2C, state, 0x00, 0x00, 0xAF], name: :freeze
-  end
+       def zoom_out
+              return if self[:frozen]
+              cancel_focus
+              do_send([COMMANDS[:zoom_start], 0x01])
+       end
 
-  def frozen(state)
-    freeze state
-  end
+       def zoom_stop
+              return if self[:frozen]
+              cancel_focus
+              do_send(COMMANDS[:zoom_stop])
+       end
 
-  def frozen?
-    send [0xA0, 0x78, 0x00, 0x00, 0x00, 0xAF], priority: 0
-  end
+       def zoom(position)
+              return if self[:frozen]
+              cancel_focus
+              position = position.to_i
 
-  def picture_mode(state)
-    return if @frozen
-    mode = case state.to_s.downcase
-           when "photo"
-             0x00
-           when "text"
-             0x01
-           when "greyscale", "grayscale"
-             0x02
-           else
-             raise ArgumentError.new("unknown picture mode #{state}")
-           end
-    send [0xA0, 0xA7, mode, 0x00, 0x00, 0xAF], name: :picture_mode
-  end
+              position = in_range(position, self[:zoom_max])
 
-  def sharp(state)
-    picture_mode(state ? "text" : "photo")
-  end
 
-  def picture_mode?
-    send [0xA0, 0x51, 0x00, 0x00, 0x00, 0xAF], priority: 0
-  end
+              low = position & 0xFF
+              high = (position >> 8) & 0xFF
 
-  def max_zoom?
-    send [0xA0, 0x8A, 0x00, 0x00, 0x00, 0xAF], priority: 0
-  end
+              do_send([COMMANDS[:zoom_direct], low, high], {:name => :zoom})
+       end
 
-  COMMANDS = {
-    0xC1 => :lamp,
-    0xB0 => :power,
-    0xB7 => :power_staus,
-    0xA7 => :picture_mode,
-    0xA3 => :auto_focus,
-    0x8A => :max_zoom,
-    0x78 => :frozen_status,
-    0x60 => :zoom_staus,
-    0x51 => :picture_mode_staus,
-    0x50 => :lamp_staus,
-    0x2C => :freeze,
-    0x1F => :zoom_direct_auto_focus,
-    0x13 => :zoom_direct,
-    0x11 => :zoom,
-    0x10 => :zoom_stop,
-  }
 
-  PICTURE_MODES = [:photo, :test, :greyscale]
+       def lamp(power)
+              return if self[:frozen]
+              power = is_affirmative?(power)
 
-  def received(data, reesolve, command)
-    logger.debug { "Lumens sent: #{byte_to_hex data}" }
-    data = str_to_array(data)
+              if power
+                     do_send([COMMANDS[:lamp], 0x01], {:name => :lamp})
+              else
+                     do_send([COMMANDS[:lamp], 0x00], {:name => :lamp})
+              end
+       end
 
-    return :abort if (data[3] & 0x01) > 0
-    return :retry if (data[3] & 0x02) > 0
 
-    case COMMANDS[data[0]]
-    when :power
-      data[1] == 0x01
-    when :power_staus
-      @ready = data[1] == 0x01
-      @power = data[2] == 0x01
-      logger.debug { "System power: #{@power}, ready: #{@ready}" }
-      self[:ready] = @ready
-      self[:power] = @power
-    when :max_zoom
-      @zoom_max = data[1] + (data[2] << 8)
-      @zoom_range = 0..@zoom_max
-      self[:zoom_range] = {min: 0, max: @zoom_max}
-    when :frozen_status, :freeze
-      self[:frozen] = @frozen = data[1] == 1
-    when :zoom_staus, :zoom_direct_auto_focus, :zoom_direct
-      @zoom = data[1].to_i + (data[2] << 8)
-      self[:zoom] = @zoom
-    when :picture_mode_staus, :picture_mode
-      self[:picture_mode] = PICTURE_MODES[data[1]]
-    when :lamp_staus, :lamp
-      case data[1]
-      when 0
-        @head_led = @lamp = false
-      when 1
-        @head_led = @lamp = true
-      when 2
-        @head_led = false
-        @lamp = true
-      when 3
-        @head_led = true
-        @lamp = false
-      end
-      self[:head_led] = @head_led
-      self[:lamp] = @lamp
-    when :auto_focus
-      # Can ignore this response
-    else
-      error = "Unknown command #{data[0]}"
-      logger.debug { error }
-      return :abort
-    end
+       def sharp(state)
+              return if self[:frozen]
+              state = is_affirmative?(state)
 
-    :success
-  end
+              if state
+                     do_send([COMMANDS[:sharp], 0x01], {:name => :sharp})
+              else
+                     do_send([COMMANDS[:sharp], 0x00], {:name => :sharp})
+              end
+       end
+
+
+       def frozen(state)
+              state = is_affirmative?(state)
+
+              if state
+                     do_send([COMMANDS[:frozen], 0x01], {:name => :frozen})
+              else
+                     do_send([COMMANDS[:frozen], 0x00], {:name => :frozen})
+              end
+       end
+
+
+       def auto_focus
+              return if self[:frozen]
+              cancel_focus
+              do_send(COMMANDS[:auto_focus], :timeout => 8000, :name => :auto_focus)
+       end
+
+
+       def reset
+              return if self[:frozen]
+              cancel_focus
+              power(On)
+
+              RESET_CODES.each_value do |value|
+                     do_send(value)
+              end
+
+              sharp(Off)
+              frozen(Off)
+              lamp(On)
+              zoom(0)
+       end
+
+
+       def received(data, reesolve, command)
+              logger.debug "Lumens sent #{byte_to_hex(data)}"
+
+
+              data = str_to_array(data)
+
+
+              #
+              # Process response
+              #
+              logger.debug "command was #{COMMANDS[data[0]]}"
+              case COMMANDS[data[0]]
+              when :zoom_stop
+                     #
+                     # A 3 second delay for zoom status and auto focus
+                     #
+                     zoom_status
+                     delay_focus
+              when :zoom_direct
+                     self[:zoom] = data[1] + (data[2] << 8)
+                     delay_focus if COMMANDS[:zoom_direct] == data[0]       # then 3 second delay for auto focus
+              when :lamp
+                     self[:lamp] = data[1] == 0x01
+              when :power
+                     self[:power] = data[1] == 0x01
+                        if (self[:power] != self[:power_target]) && !self[:power_target].nil?
+                            power(self[:power_target])
+                            logger.debug "Lumens state == unstable - power resp"
+                     else
+                            self[:zoom] = self[:zoom_min] unless self[:power]
+                     end
+              when :sharp
+                     self[:sharp] = data[1] == 0x01
+              when :frozen
+                     self[:frozen] = data[1] == 0x01
+              when :system_status
+                     self[:power] = data[2] == 0x01
+                        if (self[:power] != self[:power_target]) && !self[:power_target].nil?
+                            power(self[:power_target])
+                            logger.debug "Lumens state == unstable - status"
+                     else
+                            self[:zoom] = self[:zoom_min] unless self[:power]
+                     end
+                     # ready = data[1] == 0x01
+              end
+
+
+              #
+              # Check for error
+              # => We check afterwards as power for instance may be on when we call on
+              # => The power status is sent as on with a NAK as the command did nothing
+              #
+              if data[3] != 0x00 && (!!!self[:frozen])
+                     case data[3]
+                     when 0x01
+                            logger.error "Lumens NAK error"
+                     when 0x10
+                            logger.error "Lumens IGNORE error"
+                            if command.present?
+                                   command[:delay_on_receive] = 2000       # update the command
+                                   return :abort                                          # retry the command
+                                   #
+                                   # TODO:: Call system_status(0) and check for ready every second until the command will go through
+                                   #
+                            end
+                     else
+                            logger.warn "Lumens unknown error code #{data[3]}"
+                     end
+
+                     logger.error "Error on #{byte_to_hex(command[:data])}" unless command.nil?
+                     return :abort
+              end
+
+
+              return :success
+       end
+
+
+
+       private
+
+
+       def delay_focus
+              @focus_timer.cancel unless @focus_timer.nil?
+              @focus_timer = schedule.in('4s') do
+                     auto_focus
+              end
+       end
+
+       def cancel_focus
+              @focus_timer.cancel unless @focus_timer.nil?
+       end
+
+
+
+       RESET_CODES = {
+              :OSD => [0x4B, 0x00],                     # p1 (00/01:Off/On)       on screen display
+              :digital_zoom => [0x40, 0x00],       # p1 (00/01:Disable/Enable)
+              :language => [0x38, 0x00],              # p1 == 00 (english)
+              :colour => [0xA7, 0x00],              # p1 (00/01:Photo/Gray)
+              :mode => [0xA9, 0x00],                  # P1 (00/01/02/03:Normal/Slide/Film/Microscope)
+              :logo => [0x47, 0x00],                     # p1 (00/01:Off/On)
+              :source => [0x3A, 0x00],              # p1 (00/01:Live/PC) used for reset
+              :slideshow => [0x04, 0x00]              # p1 (00/01:Off/On) -- NAKs
+       }
+
+
+       STATUS_CODE = {
+              :frozen_status => 0x78,              # p1 = 0x00
+              :sharp_status => 0x51,           # p1 = 0x00
+              :lamp_status => 0x50,              # p1 = 0x00
+              :zoom_status => 0x60,              # p1 = 0x00
+              :system_status => 0xB7
+       }
+       #
+       # Automatically creates a callable function for each command
+       #       http://blog.jayfields.com/2007/10/ruby-defining-class-methods.html
+       #       http://blog.jayfields.com/2008/02/ruby-dynamically-define-method.html
+       #
+       STATUS_CODE.each_key do |command|
+              define_method command do |*args|
+                     priority = 99
+                     if args.length > 0
+                            priority = args[0]
+                     end
+
+                     do_send(STATUS_CODE[command], {:priority => priority, :wait => true})       # Status polling is a low priority
+              end
+       end
+
+
+       def do_poll
+              power?(:priority => 99) do
+                     if self[:power] == On
+                            frozen_status
+                            if not self[:frozen]
+                                   zoom_status
+                                   lamp_status
+                                   sharp_status
+                            end
+                     end
+              end
+       end
+
+
+       def do_send(command, options = {})
+              #logger.debug "-- GlobalCache, sending: #{command}"
+              command = [command] unless command.is_a?(Array)
+              while command.length < 4
+                     command << 0x00
+              end
+
+              command = [0xA0] + command + [0xAF]
+              logger.debug "requesting #{byte_to_hex(command)}"
+
+              send(command, options)
+       end
 end
