@@ -36,7 +36,7 @@ class Philips::Display::SicpProtocol
     end
 
     def connected
-        @buffer.clear
+        @buffer = []
 
         schedule.every('50s') do
             logger.debug "-- Polling Display"
@@ -45,7 +45,7 @@ class Philips::Display::SicpProtocol
     end
 
     def disconnected
-        @buffer.clear
+        @buffer = []
 
         #
         # Disconnected may be called without calling connected
@@ -231,11 +231,21 @@ class Philips::Display::SicpProtocol
         # Buffer data
         @buffer.concat str_to_array(data)
 
+        # Ensure buffer doesn't grow too large
+        if @buffer.length > 4096
+          @buffer = []
+          disconnect
+          return :abort
+        end
+
         # Extract any messages
         tokens = []
         while @buffer[0] && @buffer.length >= @buffer[0]
             tokens << @buffer.slice!(0, @buffer[0])
         end
+
+        # Allocate a new array if buffer empty
+        @buffer = [] if @buffer.empty?
 
         # Process responses
         if tokens.length > 0
@@ -247,6 +257,11 @@ class Philips::Display::SicpProtocol
         else
             :ignore
         end
+    rescue error
+        @buffer = []
+        logger.error { "#{error.message}\n#{error.backtrace}" }
+        disconnect
+        :abort
     end
 
     def checksum(data)
