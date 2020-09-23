@@ -16,7 +16,12 @@ class Toshiba::Display::ESeries
     # Communication settings
     delay between_sends: 100
 
-
+    default_settings({
+        # If TRUE, power() will mute/unmute video+audio while keeping the device "on"
+        # Use only when old firmwares display colour bars when sent the proper power off command.
+        soft_power: false
+    }) 
+    
     def on_load
         on_update
     end
@@ -27,8 +32,10 @@ class Toshiba::Display::ESeries
             max_waits: 5
         })
 
+        @soft_power  = setting(:soft_power)
         @force_state = setting(:force_state)
         self[:power_target] = setting(:power_target) if @force_state
+        
     end
 
     def connected
@@ -50,6 +57,10 @@ class Toshiba::Display::ESeries
 
 
     def power(state)
+        @soft_power ? soft(state) : hard(state)
+    end
+
+    def soft(state)
         self[:power_stable] = false
         promise = if is_affirmative?(state)
             hard(On) if self[:hard_off]
@@ -59,16 +70,17 @@ class Toshiba::Display::ESeries
             self[:power_target] = self[:power] = false
             do_send([0xFB, 0xD8, 0x01, 0x00, 0x20, 0x30, 0x00, 0x00], name: :power)
         end
-
         define_setting(:power_target, self[:power_target]) if @force_state
         promise
     end
 
+
     def hard(state)
-        # Results in colour bars
+        # Results in colour bars on older Toshiba firmwares
         if is_affirmative?(state)
             self[:power_stable] = true
             self[:hard_off] = false
+            # Swich to "OPS" input just to remove colour bars from display (buggy Toshiba firmware)
             schedule.in(50000) {
                 do_send([0xFE, 0xD2, 0x01, 0x00, 0x00, 0x20, 0x00, 0x00])
                 self[:power_stable] = false
