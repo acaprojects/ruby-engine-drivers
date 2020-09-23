@@ -88,9 +88,9 @@ class Toshiba::Display::ESeries
             }
             do_send([0xBA, 0xD2, 0x01, 0x00, 0x00, 0x60, 0x01, 0x00], name: :hard_off)
         else
-            self[:power_stable] = false
-            self[:power_target] = false
+            # ASSUME the command succeeded because the Toshiba will not respond to any subsequent queries (e.g. power?) except power(true)
             self[:hard_off] = true
+            self[:power] = self[:power_stable] = self[:power_target] = false
             do_send([0x2A, 0xD3, 0x01, 0x00, 0x00, 0x60, 0x00, 0x00], name: :hard_off)
         end
     end
