@@ -78,21 +78,14 @@ class Toshiba::Display::ESeries
     def hard(state)
         # Results in colour bars on older Toshiba firmwares
         if is_affirmative?(state)
-            self[:power_stable] = true
-            self[:hard_off] = false
-            # Swich to "OPS" input just to remove colour bars from display (buggy Toshiba firmware)
-            schedule.in(50000) {
-                do_send([0xFE, 0xD2, 0x01, 0x00, 0x00, 0x20, 0x00, 0x00])
-                self[:power_stable] = false
-                self[:power_target] = true
-            }
             do_send([0xBA, 0xD2, 0x01, 0x00, 0x00, 0x60, 0x01, 0x00], name: :hard_on)
         else
-            # ASSUME the command succeeded because the Toshiba will not respond to any subsequent queries (e.g. power?) except power(true)
-            self[:hard_off] = true
-            self[:power] = self[:power_stable] = self[:power_target] = false
             do_send([0x2A, 0xD3, 0x01, 0x00, 0x00, 0x60, 0x00, 0x00], name: :hard_off)
         end
+        # ASSUME the command succeeded because the Toshiba will not respond to any subsequent queries (e.g. power?) except power(true)
+        self[:power] = self[:power_target] = state
+        self[:hard_off] = !state
+        self[:power_stable] = true
     end
 
     def remove_colour_bars
@@ -288,14 +281,15 @@ class Toshiba::Display::ESeries
                 else
                     :unknown
                 end
-            when :power_query
-                self[:power] = data == "\x1D\0\1"
-                if !self[:power_stable] && self[:power] != self[:power_target]
+            #when :power_query
+                # Unfortunately some displays will always reply as power=false, even when they are on. So this power query reponse cannot be used, until a firmware update resolves the power query behaviour
+                #self[:power] = data == "\x1D\0\1"
+                #if !self[:power_stable] && self[:power] != self[:power_target]
                     # We won't play around with forced state as feedback is too unreliable
                     # power(self[:power_target])
-                else
-                    self[:power_stable] = true
-                end
+                #else
+                #    self[:power_stable] = true
+                #end
             # Toshibas report this as always being off. So need to rely on internal state
             #when :hard_off_query
                 # Power false == hard off true
