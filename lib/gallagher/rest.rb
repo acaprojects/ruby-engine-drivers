@@ -422,7 +422,7 @@ class Gallagher::Rest
         process_response(req.value, "Update Cardholder", patch_params)
     end
 
-    def process_response(response, method=nil, metdata=nil)
+    def process_response(response, method=nil, metadata=nil)
         case response.status
         when 201
             puts "INFO  > Gallagher CREATED #{response.status}: #{response['Location']}"
