@@ -419,10 +419,10 @@ class Gallagher::Rest
             patch_params[param.to_s.camelize(:lower)] = { type => value } if value
         end
         req =  @endpoint.patch(path: cardholder_href, headers: @default_headers, body: patch_params.to_json)
-        process_response(req.value)
+        process_response(req.value, "Update Cardholder", {patch_params})
     end
 
-    def process_response(response)
+    def process_response(response, method=nil, metdata=nil)
         case response.status
         when 201
             puts "INFO  > Gallagher CREATED #{response.status}: #{response['Location']}"
@@ -430,6 +430,8 @@ class Gallagher::Rest
         when 200..206
             puts "---------INFO > Gallagher 200 response with body:-------"
             puts response.body.inspect
+            puts "Method: #{method.inspect}"
+            puts "Metadata: #{metadata.inspect}"
             puts "----------------------------------------"
             return response.body
         when 400
