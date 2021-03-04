@@ -134,7 +134,16 @@ class Gallagher::Rest
             custom_pdf_id = self.get_pdfs(name: custom_filter.first[0].to_s)
             query["pdf_#{custom_pdf_id}"] = "\"#{custom_filter}\""
         end
-        JSON.parse(@endpoint.get(path: @cardholders_endpoint, headers: @default_headers, query: query).value.body)
+
+        # Add some debugging as Gallagher appears to be failing for certain requests and we need to log this
+        resp = @endpoint.get(path: @cardholders_endpoint, headers: @default_headers, query: query).value
+        puts "--------GET Cardholder response:--------"
+        puts "id: #{id}"
+        puts "fixed_filter: #{fixed_filter}"
+        puts "custom_filter: #{custom_filter}"
+        puts resp.body.inspect
+        puts '--------------------------'
+        JSON.parse(resp.body)
     end
 
     ##
@@ -419,6 +428,9 @@ class Gallagher::Rest
             puts "INFO  > Gallagher CREATED #{response.status}: #{response['Location']}"
             return response['Location'] # URI of newly created object will be in Location header. Annoyingly, body is blank
         when 200..206
+            puts "---------INFO > Gallagher 200 response with body:-------"
+            puts response.body.inspect
+            puts "----------------------------------------"
             return response.body
         when 400
             case response.body['code']
