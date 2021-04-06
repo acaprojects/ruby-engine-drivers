@@ -108,7 +108,7 @@ class Microsoft::Office2::Client
     def graph_request(request_method:, endpoints:, data:nil, query:{}, headers:{}, bulk: false)
         if bulk
             uv_request_method = :post
-            graph_path = "#{@graph_domain}/v1.0/$batch"
+            graph_path = "/v1.0/$batch"
             query_string = "?#{query.map { |k,v| "#{k}=#{v}" }.join('&')}"
             data = {
                 requests: endpoints.each_with_index.map { |endpoint, i| { id: i, method: request_method.upcase, url: "#{endpoint}#{query_string}" } }
@@ -116,7 +116,7 @@ class Microsoft::Office2::Client
             query = {}
         else
             uv_request_method = request_method.to_sym
-            graph_path = "#{@graph_domain}#{endpoints[0]}"
+            graph_path = endpoints[0]
         end
 
         headers['Authorization'] = "Bearer #{graph_token}"
@@ -150,7 +150,7 @@ class Microsoft::Office2::Client
     BULK_REQUEST_METHOD = :post
     UV_OPTIONS = { inactivity_timeout: 25000, keepalive: false }
     def raw_bulk_request(all_requests)
-        bulk_request_endpoint    = "#{@graph_domain}/v1.0/$batch"
+        bulk_request_endpoint    = "/v1.0/$batch"
         headers = {
             'Authorization' => "Bearer #{graph_token}",
             'Content-Type'  => "application/json",
