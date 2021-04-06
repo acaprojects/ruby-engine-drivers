@@ -2,9 +2,9 @@ require 'active_support/time'
 require 'uv-rays'
 require 'json'
 module Gallagher; end
-
+ 
 class Gallagher::Rest
-
+ 
     ##
     # Create a new instance of the Gallagher Rest client.
     #
@@ -15,9 +15,9 @@ class Gallagher::Rest
     # @param default_card_type [String] The default card type to use when creating a new card. This will be in the form of a URL.
     def initialize(domain:, api_key:, unique_pdf_name: 'email', default_division: nil, default_card_type: nil, default_access_group: nil, default_facility_code: nil, proxy: nil)
         # Initialize the http endpoint to make requests with our API key
-        @default_headers = { 
+        @default_headers = {
             'Authorization' => "GGL-API-KEY #{api_key}",
-            'Content-Type' => 'application/json' 
+            'Content-Type' => 'application/json'
         }
         @default_access_group = default_access_group
         @default_division = default_division
@@ -29,25 +29,25 @@ class Gallagher::Rest
             options[:proxy] = { host: proxy_uri.host, port: proxy_uri.port }
         end
         @endpoint = UV::HttpEndpoint.new(domain, options)
-
+ 
         # Grab the URLs to be used by the other methods (HATEOAS standard)
         # First define where we will find the URLs in the data endpoint's response
         data_endpoint = "/api"
-
+ 
         @cardholders_endpoint = nil
         @pdfs_endpoint = nil
         @access_groups_endpoint = nil
         @card_types_endpoint = nil
         @fixed_pdf_id = nil
-
+ 
         # Get the main data endpoint to determine our new endpoints
         response = JSON.parse(@endpoint.get(path: data_endpoint, headers: @default_headers).value.body)
-
+ 
         @api_version = Gem::Version.new(response['version'])
         @cardholders_endpoint = response['features']['cardholders']['cardholders']['href']
         @access_groups_endpoint = response['features']['accessGroups']['accessGroups']['href']
         @events_endpoint = response['features']['events']['events']['href']
-
+ 
         # Now get our cardholder PDF ID so we don't have to make the request over and over
         if @api_version >= Gem::Version.new('8.10')
             @card_types_endpoint = response['features']['cardTypes']['assign']['href']
@@ -60,7 +60,7 @@ class Gallagher::Rest
         end
         @fixed_pdf_id = pdf_response['results'][0]['id'] # There should only be one result
     end
-
+ 
     ##
     # Personal Data Fields (PDFs) are custom fields that Gallagher allows definintions of on a site-by-site basis.
     # They will usually be for things like email address, employee ID or some other field specific to whoever is hosting the Gallagher instance.
@@ -74,7 +74,7 @@ class Gallagher::Rest
     #        {
     #          "name": "email",
     #          "id": "5516",
-    #          "href": "https://localhost:8904/api/personal_data_fields/5516"    
+    #          "href": "https://localhost:8904/api/personal_data_fields/5516"
     #        },
     #        {
     #          "name": "cellphone",
@@ -92,9 +92,9 @@ class Gallagher::Rest
         name = "\"#{name}\"" if name
         JSON.parse(@endpoint.get(path: @pdfs_endpoint, headers: @default_headers, query: {name: name}.compact).value.body)
     end
-
+ 
     ##
-    # 
+    #
     # Retrieves cardholders and allows for filtering either based on the PDF provided (by name) at initalisation of the library or by some custom filter.
     # Carholders are essentially users in the Gallagher system.
     # For example, if the `unique_pdf_name` param passed in intialisation is `email` then passing `fixed_filter: 'some@email.com'` to this method will only return cardholders with that email.
@@ -134,9 +134,12 @@ class Gallagher::Rest
             custom_pdf_id = self.get_pdfs(name: custom_filter.first[0].to_s)
             query["pdf_#{custom_pdf_id}"] = "\"#{custom_filter}\""
         end
-        JSON.parse(@endpoint.get(path: @cardholders_endpoint, headers: @default_headers, query: query).value.body)
+ 
+        # Add some debugging as Gallagher appears to be failing for certain requests and we need to log this
+        resp = @endpoint.get(path: @cardholders_endpoint, headers: @default_headers, query: query).value
+        JSON.parse(resp.body)
     end
-
+ 
     ##
     # Get a list of card types that this Gallagher instance has. These may include virutal, physical and ID cards.
     # Generally there are not going to be over 100 card types so the `next` field will be unused
@@ -169,12 +172,12 @@ class Gallagher::Rest
     def get_card_types
         JSON.parse(@endpoint.get(path: @card_types_endpoint, headers: @default_headers).value.body)
     end
-
+ 
     def get_cardtype_max_number()
         response = JSON.parse(@endpoint.get(path: @default_card_type, query: {fields: 'maximumNumber'}, headers: @default_headers).value.body)
         response['maximumNumber']&.to_i
     end
-
+ 
     ##
     # Create a new cardholder.
     # @param first_name [String] The first name of the new cardholder. Either this or last name is required (but we should assume both are for most instances).
@@ -197,15 +200,15 @@ class Gallagher::Rest
             }],
             competencies: nil
         }
-
+ 
         # Merge in our default options with those passed in
         options = options.reverse_merge(default_options)
-
+ 
         # Format the division correctly
         options[:division] = {
             href: options[:division]
         }
-
+ 
         # The params we're actually passing to Gallagher for creation
         create_params = {
             firstName: first_name,
@@ -216,20 +219,20 @@ class Gallagher::Rest
             description: description,
             # cards: options[:cards]
         }
-
+ 
         # Add in our passed PDFs appending an '@' to the start of each pdf name
         options[:pdfs].each do |pdf_name, pdf_value|
             create_params["@#{pdf_name}".to_sym] = pdf_value
         end if options[:pdfs]
-
+ 
         # Add in any passed options, converting the keys to camel case which Gallagher uses
         create_params.merge!(options.except(:pdfs).transform_keys{|k| k.to_s.camelize(:lower)})
-
+ 
         # Create our cardholder and return the response
         response = @endpoint.post(path: @cardholders_endpoint, headers: @default_headers, body: create_params.to_json).value
         process_response(response)
     end
-
+ 
     ##
     # This method will take card details and return a hash card detils aligning with the passed parameters in the format Gallagher expects
     #
@@ -266,17 +269,17 @@ class Gallagher::Rest
             email: nil,
             mobile: nil
         }
-
+ 
         # Merge in our default options with those passed in
         options = options.reverse_merge(default_options)
-
+ 
         # Create our card format
         formatted_card = {
             type: {
                 href:  @default_card_type
             }
         }
-
+ 
         formatted_card[:number] = options[:number] if options[:number]
         formatted_card[:from] = Time.at(options[:from].to_i).utc.iso8601 if options[:from]
         formatted_card[:until] = Time.at(options[:until].to_i).utc.iso8601 if options[:until]
@@ -287,7 +290,7 @@ class Gallagher::Rest
         } if options[:email]
         formatted_card
     end
-
+ 
     ##
     # Updates an existing cardholder to add new cards, access groups or competencies.
     # We will often have to add a card and an access group to a user so doing these at the same time should save on requests.
@@ -301,7 +304,7 @@ class Gallagher::Rest
     def add_cardholder_access(cardholder_href:, options: {})
         self.update_cardholder(type: :add, cardholder_href: cardholder_href, options: options)
     end
-
+ 
     ##
     # Updates an existing cardholder to update new cards, access groups or competencies.
     # We will often have to add a card and an access group to a user so doing these at the same time should save on requests.
@@ -315,7 +318,7 @@ class Gallagher::Rest
     def update_cardholder_access(cardholder_href:, options: {})
         self.update_cardholder(type: :update, cardholder_href: cardholder_href, options: options)
     end
-
+ 
     ##
     # Updates an existing cardholder to remove new cards, access groups or competencies.
     # We will often have to add a card and an access group to a user so doing these at the same time should save on requests.
@@ -328,8 +331,8 @@ class Gallagher::Rest
     # @return [Hash] The cardholder that access was added for.
     def remove_cardholder_access(cardholder_href:, options: {})
         self.update_cardholder(type: :remove, cardholder_href: cardholder_href, options: options)
-    end 
-
+    end
+ 
     ##
     # Checks whether a cardholder exists based on an email passed in.
     #
@@ -339,7 +342,7 @@ class Gallagher::Rest
         results = self.get_cardholder(fixed_filter: email)['results']
         results.empty?
     end
-
+ 
     ##
     # Disable a card for a certain cardholder
     def disable_card(cardholder_href:, card_href:)
@@ -357,63 +360,63 @@ class Gallagher::Rest
         req =  @endpoint.patch(path: cardholder_href, headers: @default_headers, body: patch_params.to_json)
         process_response(req.value)
     end
-
+ 
     # Delete a specific card, given it's href
     def delete_card(card_href:)
         req =  @endpoint.delete(path: card_href, headers: @default_headers)
         process_response(req.value)
     end
-
-
+ 
+ 
     ##
     # Retrieves events from Gallagher
     #
-    # @param sources [Array] An array of source IDs as strings 
-    # @param groups [Array] An array of group IDs as strings 
-    # @param types [Array] An array of type IDs as strings 
+    # @param sources [Array] An array of source IDs as strings
+    # @param groups [Array] An array of group IDs as strings
+    # @param types [Array] An array of type IDs as strings
     def get_events(sources:[], groups:[], types:[], after: nil)
         # Convert params to arrays to allow passing of single IDs as strings
         sources = Array(sources)
         groups = Array(groups)
         types = Array(types)
-
+ 
         events_query = {
             source: sources.join(","),
             group: groups.join(","),
             type: types.join(",")
         }
-
+ 
         events_query[:after] = after if after
         # Create our cardholder and return the response
         JSON.parse(response = @endpoint.get(path: @events_endpoint, headers: @default_headers, query: events_query).value.body)['events']
     end
-
+ 
     protected
-
+ 
     def update_cardholder(type:, cardholder_href:, options: {})
         default_options = {
             cards: nil,
             access_groups: nil,
             competencies: nil
         }
-
+ 
         # Merge in our default options with those passed in
         options = options.reverse_merge(default_options)
-
+ 
         # Align to their kinda shitty format
         patch_params = {
             authorised: true
         }
-
+ 
         # Add the fields to update if they were passed in
         options.except(:from, :until).each do |param, value|
             patch_params[param.to_s.camelize(:lower)] = { type => value } if value
         end
         req =  @endpoint.patch(path: cardholder_href, headers: @default_headers, body: patch_params.to_json)
-        process_response(req.value)
+        process_response(req.value, "Update Cardholder", patch_params)
     end
-
-    def process_response(response)
+ 
+    def process_response(response, method=nil, metadata=nil)
         case response.status
         when 201
             puts "INFO  > Gallagher CREATED #{response.status}: #{response['Location']}"
@@ -421,12 +424,18 @@ class Gallagher::Rest
         when 200..206
             return response.body
         when 400
-            case response.body['code']
-            when -1056964457    # "Another cardholder already has a card number 2 with the same facility code."
-                raise CardNumberInUse.new(response.body)
-            when -1056964272    # "Card number is out of range for this Card Type."
-                raise CardNumberOutOfRange.new(response.body)
+            puts "Got 400, Body is:"
+            puts response.body.inspect
+            if response.body.start_with?("{")
+                case JSON.parse(response.body)['code']
+                when -1056964457    # "Another cardholder already has a card number 2 with the same facility code."
+                    raise CardNumberInUse.new(response.body)
+                when -1056964272    # "Card number is out of range for this Card Type."
+                    raise CardNumberOutOfRange.new(response.body)
+                end
             end
+            puts "ERROR > Gallagher returns #{response.status}: #{response.body}"
+            raise StandardError.new(response.body)
         when 404
             raise NotFound.new
         when 409
@@ -436,7 +445,7 @@ class Gallagher::Rest
             raise StandardError.new(response.body)
         end
     end
-
+ 
     class ErrorAccessDenied          < StandardError; end
     class InvalidAuthenticationToken < StandardError; end
     class Conflict                   < StandardError; end
