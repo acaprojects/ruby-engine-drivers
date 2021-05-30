@@ -100,7 +100,8 @@ DESC
         :auto_power => 0x33,
         :screen_split => 0xB2,  # Tri / quad split (larger panels only)
         :software_version => 0x0E,
-        :serial_number => 0x0B
+        :serial_number => 0x0B,
+        :osd => 0xA3
     }
     COMMAND.merge!(COMMAND.invert)
 
@@ -307,6 +308,13 @@ DESC
     end
 
     #
+    # control which on screen displays are shown, 0x00 == source indicator
+    def osd_enable(enable, osd_type = 0x00, options = {})
+        state = is_affirmative?(enable) ? 1 : 0
+        do_send(:osd, [osd_type, state], options)
+    end
+
+    #
     # Colour control
     [
         :contrast,
@@ -358,7 +366,8 @@ DESC
         :tint,
         :red_gain,
         :green_gain,
-        :blue_gain
+        :blue_gain,
+        :osd_enable
     ]
     #
     # Push any configured device settings
@@ -423,6 +432,7 @@ DESC
                 self[:brightness] = value
             when :input
                 self[:input] = INPUTS[value]
+                osd_enable false
                 # The input feedback behaviour seems to go a little odd when
                 # screen split is active. Ignore any input forcing when on.
                 unless self[:screen_split]
