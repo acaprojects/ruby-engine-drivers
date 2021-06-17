@@ -55,19 +55,19 @@ class Cisco::TelePresence::SxTelnet
         }
     end
 
-    
+
     def connected
         do_send (setting(:username) || :admin), wait: false, delay: 200, priority: 98
         do_send setting(:password), wait: false, delay: 200, priority: 97
         do_send "Echo off", wait: false, priority: 96
     end
-    
+
     def disconnected
         # Ensures the buffer is cleared
         new_telnet_client
     end
-    
-    
+
+
     protected
 
 
@@ -86,7 +86,7 @@ class Cisco::TelePresence::SxTelnet
             next if value.blank?
             cmd << key.to_s
             cmd << ':'
-            val = value.to_s.gsub(/[^\w\s\.\:\@\#\*]/, '').strip
+            val = value.to_s.gsub(/[^\w\s\.\:\@\#\*\-]/, '').strip
             if val.include? ' '
                 cmd << '"'
                 cmd << val
@@ -99,7 +99,7 @@ class Cisco::TelePresence::SxTelnet
         cmd.chop!
         cmd
     end
-    
+
 
     def command(*args, **options)
         args.reject! { |item| item.blank? }
@@ -122,4 +122,3 @@ class Cisco::TelePresence::SxTelnet
         send @telnet.prepare(command), options
     end
 end
-

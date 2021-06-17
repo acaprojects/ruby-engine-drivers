@@ -43,14 +43,14 @@ class Cisco::TelePresence::SxSsh
         defaults max_waits: 100
     end
 
-    
+
     def connected
         do_send "Echo off", wait: false, priority: 96
     end
 
     def disconnected; end
-    
-    
+
+
     protected
 
 
@@ -62,7 +62,7 @@ class Cisco::TelePresence::SxSsh
             next if value.blank?
             cmd << key.to_s
             cmd << ':'
-            val = value.to_s.gsub(/[^\w\s\.\:\@\#\*]/, '').strip
+            val = value.to_s.gsub(/[^\w\s\.\:\@\#\*\-]/, '').strip
             if val.include? ' '
                 cmd << '"'
                 cmd << val
@@ -75,7 +75,7 @@ class Cisco::TelePresence::SxSsh
         cmd.chop!
         cmd
     end
-    
+
 
     def command(*args, **options)
         args.reject! { |item| item.blank? }
