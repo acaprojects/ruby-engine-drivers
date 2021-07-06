@@ -32,6 +32,7 @@ class Polycom::RealPresence::GroupSeries
         @default_content = setting(:default_content) || 2
         @vmr_prefix = setting(:vmr_prefix) || '60'
         @vmr_append = setting(:vmr_append) || ''
+        @press_delay = false
     end
 
     def connected
@@ -54,6 +55,7 @@ class Polycom::RealPresence::GroupSeries
 
     def disconnected
         schedule.clear
+        @press_delay = false
     end
 
     protect_method :reboot, :reset, :whoami, :unregister, :register
@@ -269,6 +271,14 @@ class Polycom::RealPresence::GroupSeries
     # mute|volume+|volume-|info
     # camera|delete|directory|home|keyboard|menu|period|pip|preset
     def button_press(*keys)
+        keys = keys.map(&:downcase)
+        keys.each { |key| send "button #{key}\r", delay: 1000 }
+    end
+
+    def button_press_delay(*keys)
+        return if @press_delay
+        @press_delay = true
+        schedule.every('6s') { @press_delay = false }
         keys = keys.map(&:downcase)
         keys.each { |key| send "button #{key}\r", delay: 1000 }
     end
