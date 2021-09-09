@@ -153,7 +153,7 @@ class Pexip::Management
           conference_alias: meeting_alias,
           destination: "#{phone_number}@conference.meet.health.nsw.gov.au",
           protocol: 'sip',
-          system_location: 'UN_InternalWebRTC_SIPH323_Proxy'
+          system_location: 'AWS_AsiaPacSyd_Proxy_Internal_SV'
         }
       else
         {
@@ -163,7 +163,7 @@ class Pexip::Management
           conference_alias: meeting_alias,
           destination: phone_number,
           protocol: 'h323',
-          system_location: 'UN_InternalWebRTC_SIPH323_Proxy'
+          system_location: 'AWS_AsiaPacSyd_Proxy_Internal_UN'
         }
       end
 
