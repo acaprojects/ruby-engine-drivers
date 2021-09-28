@@ -181,10 +181,12 @@ class Pexip::Management
                 # {participant_id: "5acac442-7a25-44fa-badf-4bc725a0f035", participant_ids: ["5acac442-7a25-44fa-badf-4bc725a0f035"]}
                 response[:data]
               else
+                logger.warn { "failed to dial, got response: #{response}" }
                 :abort
               end
           else
-              :abort
+            logger.warn { "failed to dial, got: #{data.status}\nbody: #{data.body}" }
+            :abort
           end
       end
     end
