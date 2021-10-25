@@ -37,11 +37,15 @@ module Cisco::TelePresence::SxSeriesCommon
                 @count -= 1
             end
         end
+
+        schedule.every('60s') { booking_list }
     end
 
     def disconnected
         super
 
+        @listing_phonebook = false
+        @listing_bookings = false
         schedule.clear
     end
 
@@ -254,6 +258,10 @@ module Cisco::TelePresence::SxSeriesCommon
     # END Common functions
     # ====================
 
+    def booking_list
+        command 'bookings list'
+    end
+
 
     # ===========================================
     # IR REMOTE KEYS (NOT AVAILABLE IN SX SERIES)
@@ -335,7 +343,10 @@ module Cisco::TelePresence::SxSeriesCommon
         if command
             if response == :complete
                 # Update status variables
-                if @listing_phonebook
+                if @listing_bookings
+                    @listing_bookings = false
+                    update_booking_state
+                elsif @listing_phonebook
                     @listing_phonebook = false
 
                     # expose results, unique every time
@@ -391,8 +402,60 @@ module Cisco::TelePresence::SxSeriesCommon
     protected
 
 
+    def update_booking_state
+      time_now = Time.now.to_i
+      current_booking = nil
+      next_booking = nil
+      additional_bookings = 0
+      @current_booking_list.sort! { |a, b| a["time_start_time"] <=> b["time_start_time"] }
+      @current_booking_list.each do |booking|
+        next if booking["time_end_time"] < time_now
+        start_time = booking["time_start_time"]
+
+        if start_time <= time_now
+          current_booking = booking
+        elsif next_booking.nil?
+          next_booking = booking
+        else
+          additional_bookings += 1
+        end
+      end
+      self[:bookings] = @current_booking_list
+      self[:booking_next] = next_booking
+      self[:booking_current] = current_booking
+      self[:additional_bookings] = additional_bookings
+    end
+
     def process_results(result)
         case result[1].downcase.to_sym
+        when :bookingslistresult
+            if !@listing_bookings
+              # configure the data structures
+              case result[2].downcase
+              when "resultinfo"
+                @listing_bookings = true
+                @current_booking_list = []
+              when "lastupdated:"
+                @listing_bookings = false if @bookings_last_updated == result[3]
+                @bookings_last_updated = result[3]
+              end
+            elsif result[2].downcase == "booking"
+              bindex = result[3].to_i - 1
+              booking = @current_booking_list[bindex]
+              if booking.nil?
+                booking = {}
+                @current_booking_list << booking
+              end
+              details = result[4..-1]
+              value = details[-1]
+              bkey = details[0..-2].join('').underscore.gsub(":", "")
+              case result[-2].downcase
+              when "starttime:", "endtime:"
+                  booking[bkey] = Time.parse(value).to_i
+              else
+                  booking[bkey] = value
+              end
+            end
         when :phonebooksearchresult, :resultset
             @listing_phonebook = true
 
