@@ -80,7 +80,12 @@ class Microsoft::Office2::Event < Microsoft::Office2::Model
             attendee_email = attendee['emailAddress']['address']
 
             # Compare the domain of this attendee's email against the internal domain
-            mail_object = ::Mail::Address.new(attendee_email)
+            begin
+                mail_object = ::Mail::Address.new(attendee_email)
+            rescue Mail::Field::IncompleteParseError
+                next
+            end
+            
             mail_domain = mail_object.domain&.downcase
             is_visitor = !(internal_domains.map{|d|
                 d.downcase
