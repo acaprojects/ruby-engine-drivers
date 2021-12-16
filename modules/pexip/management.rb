@@ -35,6 +35,10 @@ class Pexip::Management
         @default_theme = setting(:default_theme)
         @default_theme_name = setting(:default_theme_name)
 
+        @sip_location = setting(:sip_location) || 'AWS_AsiaPacSyd_Proxy_Internal_SV'
+        @sip_domain = setting(:sip_domain) || 'conference.meet.health.nsw.gov.au'
+        @phone_location = setting(:phone_location) || 'AWS_AsiaPacSyd_Proxy_Internal_UN'
+
         proxy = setting(:proxy)
         if proxy
             config({
@@ -151,9 +155,9 @@ class Pexip::Management
           role: 'guest',
           routing: 'routing_rule',
           conference_alias: meeting_alias,
-          destination: "#{phone_number}@conference.meet.health.nsw.gov.au",
+          destination: "#{phone_number}@#{@sip_domain}",
           protocol: 'sip',
-          system_location: 'AWS_AsiaPacSyd_Proxy_Internal_SV'
+          system_location: @sip_location
         }
       else
         {
@@ -163,7 +167,7 @@ class Pexip::Management
           conference_alias: meeting_alias,
           destination: phone_number,
           protocol: 'h323',
-          system_location: 'AWS_AsiaPacSyd_Proxy_Internal_UN'
+          system_location: @phone_location
         }
       end
 
