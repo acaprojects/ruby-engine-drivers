@@ -18,11 +18,12 @@ class Qsc::QSysCamera
     def on_update
         @mod_id = setting(:driver) || :Mixer
         @ids = setting(:ids)
+        @invert_power = setting(:invert_power) || false
         self[:no_discrete_zoom] = true
     end
 
     def power(state)
-        state = is_affirmative?(state)
+        state = @invert_power ? !is_affirmative?(state) : is_affirmative?(state)
         camera.mute(@ids[:power], state)
     end
 
