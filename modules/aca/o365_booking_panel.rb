@@ -211,6 +211,8 @@ class Aca::O365BookingPanel
     # 
     def cancel_meeting(start_ms_epoch, reason = "unknown reason")
         now = Time.now.to_i
+        # If we have anything other than an epoch, convert it
+        start_ms_epoch = Time.parse(start_ms_epoch).to_i if start_ms_epoch.to_s[0] != 1
         start_epoch = start_ms_epoch / 1000
         too_early_to_cancel = now < start_epoch
         start_time = Time.at(start_epoch).in_time_zone(ENV['TZ'])
