@@ -214,6 +214,8 @@ class Microsoft::Office2::Client
         when 412
             raise Microsoft::Error::Conflict.new(response.body)
         end
+        
+        response.body
     end
 
 end
