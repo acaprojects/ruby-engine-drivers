@@ -215,7 +215,7 @@ class Microsoft::Office2::Client
             raise Microsoft::Error::Conflict.new(response.body)
         end
         
-        response.body
+        response
     end
 
 end
