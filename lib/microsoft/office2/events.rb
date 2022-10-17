@@ -246,7 +246,7 @@ module Microsoft::Office2::Events
 	    
 	begin 
             Microsoft::Office2::Event.new(client: self, event: JSON.parse(response.body)).event
-	rescue error
+	rescue
 	    return {}
 	end
     end
