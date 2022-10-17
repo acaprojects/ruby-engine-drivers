@@ -78,6 +78,7 @@ class Microsoft::Office2::Event < Microsoft::Office2::Model
         new_attendees = []
         attendees.each do |attendee|
             attendee_email = attendee['emailAddress']['address']
+            next unless attendee_email && attendee_email.include?("@")
 
             # Compare the domain of this attendee's email against the internal domain
             mail_object = ::Mail::Address.new(attendee_email)
