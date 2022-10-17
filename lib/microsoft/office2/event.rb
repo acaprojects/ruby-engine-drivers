@@ -54,11 +54,7 @@ class Microsoft::Office2::Event < Microsoft::Office2::Model
     protected 
 
     def datestring_to_epoch(date_object)
-        if date_object.is_a? Integer
-            date_object
-        else
-            ActiveSupport::TimeZone.new(date_object['timeZone']).parse(date_object['dateTime']).to_i
-        end
+        ActiveSupport::TimeZone.new(date_object['timeZone']).parse(date_object['dateTime']).to_i
     end
 
     def set_room_id(attendees)
