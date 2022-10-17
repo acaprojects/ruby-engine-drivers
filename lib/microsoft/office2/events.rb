@@ -237,13 +237,18 @@ module Microsoft::Office2::Events
         
         # Make the request and check the response
         begin
-            retries ||= 0
-            request = graph_request(request_method: 'post', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"], data: event_json)
-            check_response(request)
+            # retries ||= 0
+            response = graph_request(request_method: 'post', endpoints: ["/v1.0/users/#{mailbox}#{calendar_path(calendargroup_id, calendar_id)}/events"], data: event_json)
+            check_response(response)
         rescue Microsoft::Error::Conflict => e
             return {}
         end
-        Microsoft::Office2::Event.new(client: self, event: JSON.parse(request.body)).event
+	    
+	begin 
+            Microsoft::Office2::Event.new(client: self, event: JSON.parse(response.body)).event
+	rescue error
+	    return {}
+	end
     end
 
     ##
