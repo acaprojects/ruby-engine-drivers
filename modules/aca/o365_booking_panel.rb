@@ -213,7 +213,7 @@ class Aca::O365BookingPanel
         now = Time.now.to_i
         # If we have anything other than an epoch, convert it
         start_ms_epoch = Time.parse(start_ms_epoch).to_i if start_ms_epoch.to_s[0] != 1
-        start_epoch = start_ms_epoch / 1000 if start_ms_epoch.to_s.length > 10
+        start_epoch = start_ms_epoch.to_s.length > 10 ? start_ms_epoch / 1000 : start_ms_epoch
         too_early_to_cancel = now < start_epoch
         start_time = Time.at(start_epoch).in_time_zone(ENV['TZ'])
         too_late_to_cancel = self[:cancel_timeout] ?  (now > (start_epoch + self[:cancel_timeout] + 180)) : false   # "180": allow up to 3mins of slippage, in case endpoint is not NTP synced
