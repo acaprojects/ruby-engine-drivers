@@ -1,4 +1,4 @@
-'Occupancy-PIR' sensor {
+'Occupancy-PIR' sensor 2019 {
     "timestamp":"2019-12-03 14:09:34",
     "deviceName":"SIP-10-002M",
     "deviceId":"058A7F72",
@@ -12,7 +12,9 @@
     "unit":"V"}
 }
 
-Desk sensor:
+
+
+Desk sensor 2019:
 {
     "deviceid":"050B1EE8",
     "devicename":"Desk01",
@@ -22,7 +24,32 @@ Desk sensor:
     "supplyVoltage":"3.26"
 }
 
-Environment sensor:
+Desk Sensor 2022:
+{
+    "d2cMessage": {
+        "timestamp": "2022-11-15 17:55:02",
+        "deviceName": "SIP-12-103",
+        "deviceId": "050B4D4F",
+        "deviceType": "Under-Desk-Sensor",
+        "gatewayName": "SIPG-12-006",
+        "location": "",
+        "dBm": "-61",
+        "security": "No",
+        "motionDetected": false,
+        "supplyVoltage": {
+            "value": 3.24,
+            "unit": "V"
+        }
+    },
+    "reportedProperties": [],
+    "messageDate": "2022-11-15T09:55:02.498Z",
+    "deviceId": "SIPG-12-006",
+    "_msgid": "277ac701cfb3949c"
+}
+
+
+
+Environment sensor 2019:
 {
     "deviceid":"05189BE4",
     "devicename":"PEnvironSensor-02","dbm":"-44",
