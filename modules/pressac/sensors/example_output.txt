@@ -1,4 +1,5 @@
-'Occupancy-PIR' sensor 2019 {
+'Occupancy-PIR' sensor 2019:
+{
     "timestamp":"2019-12-03 14:09:34",
     "deviceName":"SIP-10-002M",
     "deviceId":"058A7F72",
@@ -11,6 +12,30 @@
     "supplyVoltage":{"value":2.58,
     "unit":"V"}
 }
+
+Occupancy Sensor 2022:
+{
+  "d2cMessage": {
+    "timestamp": "2022-11-30 21:59:12",
+    "deviceName": "SIP-12-004M",
+    "deviceId": "058A927B",
+    "deviceType": "Occupancy-PIR",
+    "gatewayName": "SIPG-12-003",
+    "location": "",
+    "dBm": "-84",
+    "security": "No",
+    "motionDetected": true,
+    "supplyVoltage": {
+      "value": 3.36,
+      "unit": "V"
+    }
+  },
+  "reportedProperties": [],
+  "messageDate": "2022-11-30T13:59:12.467Z",
+  "deviceId": "SIPG-12-003",
+  "_msgid": "2797e8c8afa6efb9"
+}
+
 
 
 
