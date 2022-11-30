@@ -153,7 +153,7 @@ class Pressac::Sensors::WsProtocol
 
     def on_message(raw_string)
         logger.debug { "received: #{raw_string}" }
-        sensor = JSON.parse(raw_string, symbolize_names: true)
+        sensor = JSON.parse(raw_string, symbolize_names: true)[:d2cMessage]
 
         case (sensor[:deviceType] || sensor[:devicetype])
         when 'Under-Desk-Sensor', 'Occupancy-PIR'
