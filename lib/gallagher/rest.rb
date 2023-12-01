@@ -28,6 +28,14 @@ class Gallagher::Rest
             proxy_uri = URI(proxy)
             options[:proxy] = { host: proxy_uri.host, port: proxy_uri.port }
         end
+puts "CURRENT DIR IS:"
+puts Dir.pwd
+puts Dir.entries('.')
+	options[:tls_options] = {
+	    cert_chain: "cert.pem",
+	    private_key: "key.pem"
+	}
+
         @endpoint = UV::HttpEndpoint.new(domain, options)
 
         # Grab the URLs to be used by the other methods (HATEOAS standard)
@@ -234,6 +242,9 @@ class Gallagher::Rest
         # Add in any passed options, converting the keys to camel case which Gallagher uses
         create_params.merge!(options.except(:pdfs).transform_keys{|k| k.to_s.camelize(:lower)})
 
+if create_params[:shortName]
+create_params[:shortName] = create_params[:shortName][0..14]
+end
         # Create our cardholder and return the response
         response = @endpoint.post(path: @cardholders_endpoint, headers: @default_headers, body: create_params.to_json).value
         process_response(response)
