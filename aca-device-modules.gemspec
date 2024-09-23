@@ -24,5 +24,5 @@ Gem::Specification.new do |s|
     s.add_dependency 'rails'
     s.add_dependency 'orchestrator'
 
-    s.required_ruby_version = '>= 2.3.0'
+    s.required_ruby_version = '>= 2.5.0'
 end
